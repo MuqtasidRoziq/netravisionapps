@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../data/models/vision_mode.dart';
 import '../../../routes/app_pages.dart';
 import '../../../services/tts_service.dart';
+import '../../detector/controllers/detector_controller.dart';
 
 class HomeController extends GetxController {
   final TtsService _ttsService = Get.find<TtsService>();
@@ -21,6 +22,11 @@ class HomeController extends GetxController {
   void openMode(VisionMode mode) {
     HapticFeedback.mediumImpact();
     _ttsService.speak('Membuka ${mode.title}');
+    // Buang controller detector sesi sebelumnya (jika masih ada) agar mode
+    // baru selalu dibuat segar sesuai argumen. Tanpa ini, controller lama —
+    // mis. sisa Mode Baca Uang — bisa dipakai ulang dan membuat Mode Outdoor
+    // ikut mendeteksi/membacakan uang.
+    Get.delete<DetectorController>(force: true);
     Get.toNamed(Routes.DETECTOR, arguments: mode);
   }
 

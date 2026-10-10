@@ -1,0 +1,48 @@
+sepeda motor
+hewan
+bajaj
+sepeda
+papan reklame
+jembatan
+gedung
+bus
+mobil
+karavan
+tepi trotoar
+area jalan
+kendaraan
+latar belakang
+pagar
+jalur pejalan kaki
+tanah
+pagar pembatas jalan
+plat nomor
+sepeda motor
+bukan jalan
+rintangan jalan
+area terbuka
+luar area
+area parkir
+jalan setapak
+orang
+tiang
+kumpulan tiang
+jalan berlubang
+rel kereta api
+batas visual
+pengendara
+jalan raya
+genangan air
+trotoar
+langit
+tangga
+lampu lalu lintas
+rambu lalu lintas
+truk gandeng
+kereta api
+truk
+terowongan
+objek tidak dikenal
+pohon dan tanaman
+kendaraan
+dinding

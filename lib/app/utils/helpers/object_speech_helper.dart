@@ -80,4 +80,30 @@ class ObjectSpeechHelper {
     // 3. Objek biasa
     return 'Ada $clean di depan';
   }
+
+  /// Format teks hasil deteksi agar rapi saat ditampilkan pada layar UI
+  static String formatDisplayName(String label, VisionMode mode) {
+    final clean = label.trim().toLowerCase();
+    if (mode == VisionMode.currency) {
+      switch (clean) {
+        case '1000':
+          return 'Uang Rp 1.000';
+        case '2000':
+          return 'Uang Rp 2.000';
+        case '5000':
+          return 'Uang Rp 5.000';
+        case '10000':
+          return 'Uang Rp 10.000';
+        case '20000':
+          return 'Uang Rp 20.000';
+        case '50000':
+          return 'Uang Rp 50.000';
+        case '100000':
+          return 'Uang Rp 100.000';
+        default:
+          return 'Uang Rp $label';
+      }
+    }
+    return label;
+  }
 }

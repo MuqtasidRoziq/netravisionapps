@@ -1,14 +1,22 @@
-import 'package:flutter/rendering.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:get/get.dart';
 
 /// Service untuk menangani suara Text-to-Speech (TTS) dan TalkBack announcement.
 /// Didesain dengan debounce agar tidak membingungkan pengguna tunanetra dengan spam audio.
 class TtsService extends GetxService {
+  static const String _accessibilityChannel = 'com.netravision.apps/accessibility';
+  final MethodChannel _accessibilityEngine = const MethodChannel(_accessibilityChannel);
+
   late FlutterTts _tts;
   String _lastSpoken = '';
   DateTime _lastTime = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isSpeaking = false;
+
+  // Status TalkBack disimpan cache agar tidak memanggil platform tiap frame.
+  bool? _talkBackEnabled;
+  DateTime _talkBackCheckedAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   bool get isSpeaking => _isSpeaking;
 
@@ -52,13 +60,36 @@ class TtsService extends GetxService {
     _lastSpoken = text;
     _lastTime = now;
 
+    // Jika TalkBack aktif, serahkan ke TalkBack agar tidak ada dua suara.
+    // Jika tidak, pakai flutter_tts.
+    if (await isTalkBackEnabled()) {
+      SemanticsService.announce(text, TextDirection.ltr);
+      return;
+    }
+
     try {
       await _tts.stop();
       await _tts.speak(text);
     } catch (_) {}
+  }
 
-    // Beritahukan juga ke TalkBack Android jika aktif
-    SemanticsService.announce(text, TextDirection.ltr);
+  /// Mengecek status TalkBack (touch exploration) via channel native.
+  /// Hasil di-cache selama 10 detik agar tidak membebani platform saat deteksi intensif.
+  Future<bool> isTalkBackEnabled() async {
+    final now = DateTime.now();
+    if (_talkBackEnabled == null ||
+        now.difference(_talkBackCheckedAt).inSeconds >= 10) {
+      try {
+        _talkBackEnabled = await _accessibilityEngine
+                .invokeMethod<bool>('isTalkBackEnabled') ??
+            false;
+      } catch (_) {
+        // Platform selain Android (mis. desktop uji) tidak punya channel ini.
+        _talkBackEnabled = false;
+      }
+      _talkBackCheckedAt = now;
+    }
+    return _talkBackEnabled ?? false;
   }
 
   /// Menghentikan suara segera

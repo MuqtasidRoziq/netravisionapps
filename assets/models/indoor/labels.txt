@@ -1,0 +1,80 @@
+orang
+sepeda
+mobil
+sepeda motor
+pesawat terbang
+bus
+kereta api
+truk
+perahu
+lampu lalu lintas
+hidran kebakaran
+rambu berhenti
+meteran parkir
+bangku
+burung
+kucing
+anjing
+kuda
+domba
+sapi
+gajah
+beruang
+zebra
+jerapah
+tas punggung
+payung
+tas tangan
+dasi
+koper
+frisbee
+ski
+papan salju
+bola
+layang-layang
+pemukul baseball
+sarung tangan baseball
+papan luncur
+papan selancar
+raket tenis
+botol
+gelas anggur
+cangkir
+garpu
+pisau
+sendok
+mangkuk
+pisang
+apel
+roti isi
+jeruk
+brokoli
+wortel
+sosis
+pizza
+donat
+kue
+kursi
+sofa
+tanaman pot
+tempat tidur
+meja makan
+toilet
+televisi
+laptop
+tetikus
+remot
+keyboard
+ponsel
+microwave
+oven
+pemanggang roti
+wastafel
+kulkas
+buku
+jam
+vas
+gunting
+boneka beruang
+pengering rambut
+sikat gigi
