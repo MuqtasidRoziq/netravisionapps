@@ -6,8 +6,10 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import '../../../data/models/vision_mode.dart';
 import '../../../data/models/vision_model_config.dart';
 import '../../../services/tts_service.dart';
+import '../../../services/vibration_service.dart';
 import '../../../utils/helpers/detection_filter.dart';
 import '../../../utils/helpers/object_speech_helper.dart';
+import '../../../utils/helpers/spatial_estimator.dart';
 
 /// Orkestrasi deteksi NetraVision di atas plugin `ultralytics_yolo`.
 ///
@@ -16,6 +18,7 @@ import '../../../utils/helpers/object_speech_helper.dart';
 /// deteksi, menentukan prioritas bahaya, lalu membacakan lewat TTS.
 class DetectorController extends GetxController with WidgetsBindingObserver {
   final TtsService ttsService = Get.find<TtsService>();
+  final VibrationService vibrationService = Get.find<VibrationService>();
 
   /// Dikendalikan secara imperatif dan dipasang ke [YOLOView] di layer view.
   final YOLOViewController yoloController = YOLOViewController();
@@ -28,6 +31,13 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   // Throttle: proses maksimal 2 frame per detik agar CPU & TTS tidak dibanjiri.
   static const _frameIntervalMs = 500;
   DateTime _lastFrameTime = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // Gating pengumuman: kalimat biasa hanya diucapkan ulang bila label atau
+  // band jarak berubah, atau cooldown lewat — agar ucapan tidak terputus terus.
+  static const _announceCooldownMs = 3000;
+  String _lastAnnouncedLabel = '';
+  ProximityBand? _lastAnnouncedBand;
+  DateTime _lastAnnounceTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Histori classIndex frame-frame terakhir yang diproses, untuk konfirmasi
   // temporal (label baru hanya diumumkan bila stabil beberapa frame).
@@ -62,6 +72,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       case AppLifecycleState.paused:
         // Hentikan suara & preview saat app ke background agar hemat baterai.
         ttsService.stop();
+        vibrationService.stop();
         yoloController.pause();
         break;
       case AppLifecycleState.resumed:
@@ -139,13 +150,54 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
     final String detectedLabel = targetDetection.className;
     lastDetectedObject.value = detectedLabel;
-    final displayName = ObjectSpeechHelper.formatDisplayName(detectedLabel, mode);
+
+    final spatial = (mode == VisionMode.indoor || mode == VisionMode.outdoor)
+        ? SpatialEstimator.of(targetDetection)
+        : null;
+
+    final displayName =
+        ObjectSpeechHelper.formatDisplayName(detectedLabel, mode, spatial: spatial);
     currentStatusText.value = isDangerous
-        ? '⚠️ Awas: $displayName di depan!'
+        ? '⚠️ $displayName'
         : 'Terdeteksi: $displayName';
 
-    final speechText = ObjectSpeechHelper.formatForTts(detectedLabel, mode);
-    ttsService.speak(speechText, isUrgent: isDangerous);
+    final speechText =
+        ObjectSpeechHelper.formatForTts(detectedLabel, mode, spatial: spatial);
+
+    // Gating: bahaya selalu diumumkan (menyerobot). Kalimat biasa hanya bila
+    // label/band berubah atau cooldown lewat, agar ucapan berjalan tak terputus.
+    final announceTime = DateTime.now();
+    final band = spatial?.band;
+    final bool changed =
+        detectedLabel != _lastAnnouncedLabel || band != _lastAnnouncedBand;
+    final bool cooldownPassed =
+        announceTime.difference(_lastAnnounceTime).inMilliseconds >=
+            _announceCooldownMs;
+    final bool shouldSpeak = isDangerous || changed || cooldownPassed;
+
+    if (shouldSpeak) {
+      _lastAnnouncedLabel = detectedLabel;
+      _lastAnnouncedBand = band;
+      _lastAnnounceTime = announceTime;
+      ttsService.speak(speechText, isUrgent: isDangerous);
+    }
+
+    // Getaran proporsional: hanya indoor/outdoor, dipicu bila bahaya atau dekat.
+    if (mode == VisionMode.indoor || mode == VisionMode.outdoor) {
+      if (isDangerous ||
+          spatial?.band == ProximityBand.sangatDekat ||
+          spatial?.band == ProximityBand.dekat) {
+        vibrationService.vibrateNear(
+          band: spatial?.band ?? ProximityBand.dekat,
+          dangerous: isDangerous,
+        );
+      } else {
+        vibrationService.stop();
+      }
+    } else {
+      // Mode uang: tidak ikut getaran (sesuai permintaan).
+      vibrationService.stop();
+    }
   }
 
   void handleScreenTap() {
@@ -185,6 +237,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     yoloController.dispose(); // Tutup stream zoom/lens/focus milik controller.
     ttsService.stop();
+    vibrationService.stop();
     super.onClose();
   }
 }

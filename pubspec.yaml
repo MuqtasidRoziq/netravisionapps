@@ -37,6 +37,7 @@ dependencies:
   get: ^4.7.3
   flutter_tts: ^4.2.5
   ultralytics_yolo: ^0.6.16
+  vibration: ^3.2.1
 
 dev_dependencies:
   flutter_test:
