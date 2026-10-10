@@ -7,6 +7,7 @@ import '../../../data/models/vision_mode.dart';
 import '../../../data/models/vision_model_config.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/vibration_service.dart';
+import '../../../utils/helpers/danger_speech_policy.dart';
 import '../../../utils/helpers/detection_filter.dart';
 import '../../../utils/helpers/object_speech_helper.dart';
 import '../../../utils/helpers/spatial_estimator.dart';
@@ -38,6 +39,15 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   String _lastAnnouncedLabel = '';
   ProximityBand? _lastAnnouncedBand;
   DateTime _lastAnnounceTime = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // Gating pengumuman bahaya: "Awas" diredam agar tidak seranah tiap frame.
+  static const _dangerCooldownMs = 5000;
+  static const _dangerReannounceMinGapMs = 2000;
+  bool _lastFrameWasDanger = false;
+  String _lastDangerLabel = '';
+  ProximityBand? _lastDangerBand;
+  double? _lastDangerMeters;
+  DateTime _lastDangerSpeakTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Histori classIndex frame-frame terakhir yang diproses, untuk konfirmasi
   // temporal (label baru hanya diumumkan bila stabil beberapa frame).
@@ -164,22 +174,62 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     final speechText =
         ObjectSpeechHelper.formatForTts(detectedLabel, mode, spatial: spatial);
 
-    // Gating: bahaya selalu diumumkan (menyerobot). Kalimat biasa hanya bila
-    // label/band berubah atau cooldown lewat, agar ucapan berjalan tak terputus.
+    // Gating: bahaya diredam ("Awas" saat pertama, memburuk, atau pengingat
+    // periodik). Kalimat biasa hanya bila label/band berubah atau cooldown
+    // lewat — agar ucapan berjalan tak terputus.
     final announceTime = DateTime.now();
     final band = spatial?.band;
+
+    final DangerSpeechDecision dangerDecision =
+        isDangerous
+            ? DangerSpeechPolicy.decide(
+                firstDanger: !_lastFrameWasDanger,
+                worsened: DangerSpeechPolicy.worsened(
+                  label: detectedLabel,
+                  band: band,
+                  meters: spatial?.meters,
+                  prevLabel: _lastDangerLabel,
+                  prevBand: _lastDangerBand,
+                  prevMeters: _lastDangerMeters,
+                ),
+                msSinceLast: announceTime
+                    .difference(_lastDangerSpeakTime)
+                    .inMilliseconds,
+                escalationMinGapMs: _dangerReannounceMinGapMs,
+                periodicCooldownMs: _dangerCooldownMs,
+              )
+            : const DangerSpeechDecision(speak: false, urgent: false);
+
     final bool changed =
-        detectedLabel != _lastAnnouncedLabel || band != _lastAnnouncedBand;
+        !isDangerous &&
+        (detectedLabel != _lastAnnouncedLabel ||
+            band != _lastAnnouncedBand);
     final bool cooldownPassed =
         announceTime.difference(_lastAnnounceTime).inMilliseconds >=
-            _announceCooldownMs;
-    final bool shouldSpeak = isDangerous || changed || cooldownPassed;
+        _announceCooldownMs;
+
+    final bool shouldSpeak =
+        dangerDecision.speak || changed || (cooldownPassed && !isDangerous);
+
+    // Bookkeeping per frame untuk deteksi bahaya.
+    _lastFrameWasDanger = isDangerous;
+    if (isDangerous) {
+      _lastDangerLabel = detectedLabel;
+      _lastDangerBand = band;
+      _lastDangerMeters = spatial?.meters;
+      if (dangerDecision.speak) {
+        _lastDangerSpeakTime = announceTime;
+      }
+    }
 
     if (shouldSpeak) {
       _lastAnnouncedLabel = detectedLabel;
       _lastAnnouncedBand = band;
       _lastAnnounceTime = announceTime;
-      ttsService.speak(speechText, isUrgent: isDangerous);
+      ttsService.speak(
+        speechText,
+        isUrgent: isDangerous ? dangerDecision.urgent : false,
+      );
     }
 
     // Getaran proporsional: hanya indoor/outdoor, dipicu bila bahaya atau dekat.
