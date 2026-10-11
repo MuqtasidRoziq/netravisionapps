@@ -69,6 +69,10 @@ flutter:
     - assets/models/outdoor/labels.txt
     - assets/models/rupiah/rupiah.tflite
     - assets/models/rupiah/labels.txt
+    - assets/models/netra_rupiah.tflite
+    - assets/models/netra_rupiah.pt
+    - assets/models/labels_mapping.json
+    - assets/labels/netra_rupiah_labels.txt
     - assets/models/indoor/indoor_objects.tflite
     - assets/models/indoor/labels.txt
 

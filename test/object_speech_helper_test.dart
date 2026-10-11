@@ -87,8 +87,20 @@ void main() {
         'Uang Rp 10.000',
       );
       expect(
+        ObjectSpeechHelper.formatDisplayName('75000', VisionMode.currency),
+        'Uang Rp 75.000',
+      );
+      expect(
         ObjectSpeechHelper.formatDisplayName('100000', VisionMode.currency),
         'Uang Rp 100.000',
+      );
+      expect(
+        ObjectSpeechHelper.formatDisplayName('coin_1000', VisionMode.currency),
+        'Koin Rp 1.000',
+      );
+      expect(
+        ObjectSpeechHelper.formatDisplayName('coin_50', VisionMode.currency),
+        'Koin Rp 50',
       );
     });
 

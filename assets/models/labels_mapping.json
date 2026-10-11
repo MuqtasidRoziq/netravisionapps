@@ -1,0 +1,97 @@
+{
+  "classes": [
+    "1000",
+    "2000",
+    "5000",
+    "10000",
+    "20000",
+    "50000",
+    "75000",
+    "100000",
+    "coin_1000",
+    "coin_500",
+    "coin_200",
+    "coin_100",
+    "coin_50"
+  ],
+  "metadata": {
+    "0": {
+      "nominal": 1000,
+      "type": "kertas",
+      "speech": "seribu rupiah",
+      "display": "Rp 1.000"
+    },
+    "1": {
+      "nominal": 2000,
+      "type": "kertas",
+      "speech": "dua ribu rupiah",
+      "display": "Rp 2.000"
+    },
+    "2": {
+      "nominal": 5000,
+      "type": "kertas",
+      "speech": "lima ribu rupiah",
+      "display": "Rp 5.000"
+    },
+    "3": {
+      "nominal": 10000,
+      "type": "kertas",
+      "speech": "sepuluh ribu rupiah",
+      "display": "Rp 10.000"
+    },
+    "4": {
+      "nominal": 20000,
+      "type": "kertas",
+      "speech": "dua puluh ribu rupiah",
+      "display": "Rp 20.000"
+    },
+    "5": {
+      "nominal": 50000,
+      "type": "kertas",
+      "speech": "lima puluh ribu rupiah",
+      "display": "Rp 50.000"
+    },
+    "6": {
+      "nominal": 75000,
+      "type": "kertas",
+      "speech": "tujuh puluh lima ribu rupiah",
+      "display": "Rp 75.000"
+    },
+    "7": {
+      "nominal": 100000,
+      "type": "kertas",
+      "speech": "seratus ribu rupiah",
+      "display": "Rp 100.000"
+    },
+    "8": {
+      "nominal": 1000,
+      "type": "koin",
+      "speech": "koin seribu rupiah",
+      "display": "Rp 1.000 (Koin)"
+    },
+    "9": {
+      "nominal": 500,
+      "type": "koin",
+      "speech": "koin lima ratus rupiah",
+      "display": "Rp 500 (Koin)"
+    },
+    "10": {
+      "nominal": 200,
+      "type": "koin",
+      "speech": "koin dua ratus rupiah",
+      "display": "Rp 200 (Koin)"
+    },
+    "11": {
+      "nominal": 100,
+      "type": "koin",
+      "speech": "koin seratus rupiah",
+      "display": "Rp 100 (Koin)"
+    },
+    "12": {
+      "nominal": 50,
+      "type": "koin",
+      "speech": "koin lima puluh rupiah",
+      "display": "Rp 50 (Koin)"
+    }
+  }
+}

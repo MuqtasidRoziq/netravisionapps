@@ -43,7 +43,13 @@ class ObjectSpeechHelper {
     '10000': 'Uang sepuluh ribu rupiah',
     '20000': 'Uang dua puluh ribu rupiah',
     '50000': 'Uang lima puluh ribu rupiah',
+    '75000': 'Uang tujuh puluh lima ribu rupiah',
     '100000': 'Uang seratus ribu rupiah',
+    'coin_1000': 'Koin seribu rupiah',
+    'coin_500': 'Koin lima ratus rupiah',
+    'coin_200': 'Koin dua ratus rupiah',
+    'coin_100': 'Koin seratus rupiah',
+    'coin_50': 'Koin lima puluh rupiah',
   };
 
   /// Memeriksa apakah objek layak diumumkan ke tunanetra
@@ -153,8 +159,20 @@ class ObjectSpeechHelper {
           return 'Uang Rp 20.000';
         case '50000':
           return 'Uang Rp 50.000';
+        case '75000':
+          return 'Uang Rp 75.000';
         case '100000':
           return 'Uang Rp 100.000';
+        case 'coin_1000':
+          return 'Koin Rp 1.000';
+        case 'coin_500':
+          return 'Koin Rp 500';
+        case 'coin_200':
+          return 'Koin Rp 200';
+        case 'coin_100':
+          return 'Koin Rp 100';
+        case 'coin_50':
+          return 'Koin Rp 50';
         default:
           return 'Uang Rp $label';
       }
