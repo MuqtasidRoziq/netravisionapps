@@ -75,7 +75,6 @@ flutter:
     - assets/images/logo_no_bg.png
     - assets/models/outdoor/netravision_out.tflite
     - assets/models/outdoor/labels.txt
-    - assets/models/rupiah/rupiah.tflite
     - assets/models/rupiah/best.tflite
     - assets/models/rupiah/labels.txt
     - assets/labels/netra_rupiah_labels.txt

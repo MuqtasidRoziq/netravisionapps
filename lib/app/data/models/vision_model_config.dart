@@ -25,7 +25,7 @@ class VisionModelConfig {
 
   static const Map<VisionMode, VisionModelConfig> byMode = {
     VisionMode.currency: VisionModelConfig(
-      modelPath: 'assets/models/rupiah/rupiah.tflite',
+      modelPath: 'assets/models/rupiah/best.tflite',
       task: YOLOTask.detect,
       confidenceThreshold: 0.65,
       iouThreshold: 0.50,
