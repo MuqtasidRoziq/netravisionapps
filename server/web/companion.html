@@ -1258,6 +1258,28 @@
     }
 
     // 5. Muat dan Render Daftar Permintaan Masuk
+    // 5. Cek auto-join dari link WhatsApp URL (?session=req_...)
+    let hasCheckedAutoJoin = false;
+    async function checkAutoAcceptUrlParam() {
+      if (hasCheckedAutoJoin || activeSession) return;
+      hasCheckedAutoJoin = true;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetReqId = urlParams.get('session') || urlParams.get('req') || urlParams.get('id');
+
+      if (targetReqId) {
+        console.log('[WhatsApp Dispatcher] Menerima panggilan via tautan WhatsApp:', targetReqId);
+        // Bersihkan query param dari URL agar tidak memicu ulang jika di-refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Tampilkan feedback visual
+        const statusEl = document.getElementById('cloudStatusText');
+        if (statusEl) statusEl.innerText = 'Menyambungkan panggilan WhatsApp...';
+        
+        await acceptRequest(targetReqId);
+      }
+    }
+
     async function loadPendingRequests() {
       try {
         const { data, error } = await sb
@@ -1347,6 +1369,7 @@
         if (error || !data || data.length === 0) {
           alert('Permintaan ini sudah diterima oleh relawan lain.');
           loadPendingRequests();
+      checkAutoAcceptUrlParam();
           return;
         }
 
@@ -1388,6 +1411,7 @@
       }, 1000);
 
       loadPendingRequests();
+      checkAutoAcceptUrlParam();
     }
 
     // 8. Selesaikan Sesi Bantuan
@@ -1439,6 +1463,7 @@
       if (camStatus) camStatus.innerText = 'Standby';
 
       loadPendingRequests();
+      checkAutoAcceptUrlParam();
     }
 
     // Realtime Listener Supabase
@@ -1446,6 +1471,7 @@
       .channel('public:help_requests')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'help_requests' }, payload => {
         loadPendingRequests();
+      checkAutoAcceptUrlParam();
         if (activeSession && payload.new && payload.new.id === activeSession.id) {
           if (payload.new.status === 'completed' || payload.new.status === 'cancelled') {
             alert('Pengguna telah mengakhiri sesi bantuan.');
@@ -1456,6 +1482,7 @@
       .subscribe();
 
     loadPendingRequests();
+      checkAutoAcceptUrlParam();
     setInterval(loadPendingRequests, 3000);
   </script>
 </body>

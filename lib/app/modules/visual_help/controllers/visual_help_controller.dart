@@ -10,6 +10,28 @@ import '../../../services/tts_service.dart';
 import '../../../services/visual_help_service.dart';
 
 class VisualHelpController extends GetxController {
+  /// Mengirim pesan broadcast panggilan ke grup relawan WhatsApp
+  void broadcastRequestToWhatsApp() {
+    final req = visualHelpService.activeRequest.value;
+    final reqId = req?.id ?? '';
+    final targetName = (req?.taskContext.targetName != null && req!.taskContext.targetName!.isNotEmpty)
+        ? req.taskContext.targetName!
+        : (req?.taskContext.taskType.label ?? 'Bantuan Visual');
+    final userName = visualHelpService.currentUserName.value.isNotEmpty
+        ? visualHelpService.currentUserName.value
+        : 'Pengguna Netra';
+
+    HapticFeedback.mediumImpact();
+    ttsService.speak('Membuka WhatsApp untuk mengirim notifikasi ke relawan');
+
+    final fallbackService = Get.find<FallbackService>();
+    fallbackService.broadcastHelpRequestToWhatsApp(
+      requestId: reqId,
+      userName: userName,
+      taskDescription: targetName,
+    );
+  }
+
   final VisualHelpService visualHelpService = Get.find<VisualHelpService>();
   final LiveKitCallService liveKitCallService = Get.find<LiveKitCallService>();
   final FallbackService fallbackService = Get.find<FallbackService>();

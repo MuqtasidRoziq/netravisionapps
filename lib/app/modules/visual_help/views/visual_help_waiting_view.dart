@@ -141,7 +141,31 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                 const Spacer(),
 
                 // Tombol Aksi
-                if (!isExpired)
+                if (!isExpired) ...[
+                  Semantics(
+                    label: 'Kirim Notifikasi ke Grup WhatsApp Relawan',
+                    hint: 'Ketuk dua kali untuk mengirim pesan bantuan ke grup WhatsApp agar relawan segera menjawab.',
+                    button: true,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 2,
+                        ),
+                        onPressed: () => controller.broadcastRequestToWhatsApp(),
+                        icon: const Icon(Icons.share_rounded, size: 22),
+                        label: const Text(
+                          'Kirim ke Grup WhatsApp Relawan',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Semantics(
                     label: 'Batalkan Permintaan Bantuan',
                     button: true,
@@ -164,8 +188,8 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                         ),
                       ),
                     ),
-                  )
-                else ...[
+                  ),
+                ] else ...[
                   // Opsi 1: Panggilan Cepat WhatsApp Kontak Tepercaya jika ada
                   Builder(
                     builder: (context) {

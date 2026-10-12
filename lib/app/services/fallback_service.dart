@@ -4,6 +4,44 @@ import 'package:url_launcher/url_launcher.dart';
 /// Service untuk menangani fallback panggilan seluler (dialer) dan WhatsApp
 /// Mendukung Telepon Seluler, Telepon Suara/Video WhatsApp, dan Obrolan WhatsApp.
 class FallbackService extends GetxService {
+  /// Melakukan broadcast / share pesan darurat sesi NetraVision ke WhatsApp (Grup atau Kontak)
+  Future<bool> broadcastHelpRequestToWhatsApp({
+    required String requestId,
+    required String userName,
+    required String taskDescription,
+    String? targetPhone,
+  }) async {
+    final message = '🚨 *PANGGILAN BANTUAN NETRAVISION*\n'
+        '👤 *Pengguna:* $userName\n'
+        '🎯 *Kebutuhan:* $taskDescription\n\n'
+        '👉 *Klik tautan ini untuk menjawab panggilan langsung:*\n'
+        'https://netravision-portal.vercel.app/?session=$requestId';
+
+    final encodedMsg = Uri.encodeComponent(message);
+
+    Uri targetUri;
+    if (targetPhone != null && targetPhone.trim().isNotEmpty) {
+      String clean = targetPhone.replaceAll(RegExp(r'[^0-9]'), '');
+      if (clean.startsWith('0')) clean = '62${clean.substring(1)}';
+      targetUri = Uri.parse('whatsapp://send?phone=$clean&text=$encodedMsg');
+    } else {
+      targetUri = Uri.parse('whatsapp://send?text=$encodedMsg');
+    }
+
+    try {
+      if (await canLaunchUrl(targetUri)) {
+        return await launchUrl(targetUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+
+    // Fallback browser wa.me
+    final webUri = Uri.parse('https://api.whatsapp.com/send?text=$encodedMsg');
+    try {
+      return await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    return false;
+  }
+
   /// Membuka dialer telepon seluler perangkat
   Future<bool> launchPhoneDialer(String phoneNumber) async {
     final clean = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
