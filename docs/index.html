@@ -549,7 +549,7 @@
     // Konfigurasi Supabase Cloud Resmi
     const SUPABASE_URL = 'https://sipxavvrhgvlbqkazghv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let activeSession = null;
     let callTimerInterval = null;
@@ -607,7 +607,7 @@
     // Ambil daftar permintaan pending
     async function loadPendingRequests() {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await sb
           .from('help_requests')
           .select('*')
           .eq('status', 'pending')
@@ -678,7 +678,7 @@
     // Terima bantuan (Atomic Update di Supabase)
     async function acceptRequest(requestId) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await sb
           .from('help_requests')
           .update({
             status: 'accepted',
@@ -730,7 +730,7 @@
       if (!confirm('Selesaikan sesi bantuan visual ini?')) return;
 
       try {
-        await supabase
+        await sb
           .from('help_requests')
           .update({
             status: 'completed',
@@ -748,7 +748,7 @@
     }
 
     // Subscribe ke Supabase Realtime Channel
-    supabase
+    sb
       .channel('public:help_requests')
       .on(
         'postgres_changes',
