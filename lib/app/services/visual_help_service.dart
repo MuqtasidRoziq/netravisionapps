@@ -6,18 +6,17 @@ import 'dart:io';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 import '../data/models/visual_help_models.dart';
 import 'contacts_service.dart';
 
 class VisualHelpService extends GetxService {
   // ====================== SUPABASE CLOUD PILOT ======================
-    // ====================== LIVEKIT CLOUD 24/7 ======================
-  static const String livekitCloudUrl = 'wss://netravision-ibcqale8.livekit.cloud';
-  static const String livekitApiKey = 'APIBJi3QQYe7Ytk';
-  static const String livekitApiSecret = 'eMnuTE46reQZrSNbhVqiRCZuOiGuwyM5yqFKpHIGPDe';
-
-  static const String supabaseUrl = 'https://sipxavvrhgvlbqkazghv.supabase.co';
-  static const String supabaseAnonKey = 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG';
+    // ====================== KONFIGURASI TERPUSAT ======================
+  // Mengambil konfigurasi dari AppConfig (Aman tanpa bocoran secret di APK)
+  static String get livekitCloudUrl => AppConfig.livekitCloudUrl;
+  static String get supabaseUrl => AppConfig.supabaseUrl;
+  static String get supabaseAnonKey => AppConfig.supabaseAnonKey;
   final RxBool useSupabaseCloud = true.obs;
   Timer? _supabaseWatcherTimer;
 
@@ -244,15 +243,8 @@ class VisualHelpService extends GetxService {
       // Edge Function belum dideploy atau jaringan bermasalah -> fallback
     }
 
-    return LiveKitJwt.createToken(
-      apiKey: livekitApiKey,
-      apiSecret: livekitApiSecret,
-      roomName: roomName,
-      identity: identity,
-      name: name,
-      canPublish: canPublish,
-      canSubscribe: true,
-    );
+    // Jika Edge Function gagal/offline, lempar pesan ramah jaringan
+    throw Exception('Gagal mendapatkan token LiveKit dari server keamanan cloud.');
   }
 
   Future<VisualHelpRequestModel?> createHelpRequest({

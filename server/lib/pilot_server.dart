@@ -800,6 +800,29 @@ class PilotServer {
 
   // ====================== SERVING WEB PENDAMPING ======================
 
+  Future<void> _handleServeStaticFile(HttpRequest request, String filePath, String contentType) async {
+    try {
+      var file = File(filePath);
+      if (!await file.exists()) {
+        file = File(filePath.replaceFirst('server/', ''));
+      }
+      if (await file.exists()) {
+        request.response.headers.set('Content-Type', contentType);
+        request.response.statusCode = HttpStatus.ok;
+        await request.response.addStream(file.openRead());
+        await request.response.close();
+      } else {
+        request.response.statusCode = HttpStatus.notFound;
+        await request.response.close();
+      }
+    } catch (_) {
+      request.response.statusCode = HttpStatus.internalServerError;
+      await request.response.close();
+    }
+  }
+
+
+
   Future<void> _handleServeCompanionDashboard(HttpRequest request) async {
     request.response.headers.contentType = ContentType.html;
     request.response.statusCode = HttpStatus.ok;
