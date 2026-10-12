@@ -91,6 +91,21 @@ class PilotServer {
             return;
           }
 
+                    if (path == '/sw.js') {
+            await _handleServeStaticFile(request, 'server/web/sw.js', 'application/javascript');
+            return;
+          }
+
+          if (path == '/manifest.json') {
+            await _handleServeStaticFile(request, 'server/web/manifest.json', 'application/json');
+            return;
+          }
+
+          if (path == '/logo_no_bg.png') {
+            await _handleServeStaticFile(request, 'server/web/logo_no_bg.png', 'image/png');
+            return;
+          }
+
           if (path == '/assist') {
             await _handleServeAssistPage(request);
             return;

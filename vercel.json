@@ -1,9 +1,12 @@
-﻿{
-  " version\: 2,
- \cleanUrls\: true,
- \rewrites\: [
- { \source\: \/\, \destination\: \/docs/index.html\ },
- { \source\: \/companion\, \destination\: \/docs/index.html\ },
- { \source\: \/assist\, \destination\: \/server/web/assist.html\ }
- ]
+{
+  "version": 2,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/manifest.json", "destination": "/manifest.json" },
+    { "source": "/sw.js", "destination": "/sw.js" },
+    { "source": "/logo_no_bg.png", "destination": "/logo_no_bg.png" },
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/companion", "destination": "/index.html" },
+    { "source": "/assist", "destination": "/assist.html" }
+  ]
 }

@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0D47A1">
   <title>NetraVision - Portal Pendamping Visual</title>
   
   <!-- LiveKit WebRTC Client & Supabase JS Client resmi via CDN -->
@@ -786,6 +788,12 @@
         <span class="status-cloud-text">Terhubung ke Cloud</span>
       </div>
 
+      <button class="btn-secondary" id="btnEnableNotification" onclick="togglePushNotification()" title="Aktifkan notifikasi sistem dan nada dering latar belakang">
+        <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+        </svg>
+        <span id="notifStatusText">Aktifkan Notifikasi Siaga</span>
+      </button>
       <button class="btn-secondary" id="btnTestChime" onclick="playAlertChime()" title="Uji audio lonceng bel panggilan">
         <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
@@ -1065,6 +1073,106 @@
     let currentScreenTrack = null;
     let preferredStream = 'camera';
 
+    // ==========================================================================
+    // Progressive Web App (PWA) & Web Notification API
+    // ==========================================================================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          console.log('[PWA] Service Worker aktif:', reg.scope);
+        }).catch((err) => {
+          console.warn('[PWA] Registrasi SW gagal:', err);
+        });
+      });
+    }
+
+    function updateNotificationButtonUI() {
+      const btn = document.getElementById('btnEnableNotification');
+      const txt = document.getElementById('notifStatusText');
+      if (!btn || !txt) return;
+
+      if (!('Notification' in window)) {
+        btn.style.display = 'none';
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        btn.style.borderColor = '#15803D';
+        btn.style.color = '#15803D';
+        btn.style.background = '#DCFCE7';
+        txt.innerText = 'Notifikasi Siaga Aktif';
+      } else if (Notification.permission === 'denied') {
+        btn.style.borderColor = '#EF4444';
+        btn.style.color = '#EF4444';
+        btn.style.background = '#FEE2E2';
+        txt.innerText = 'Notifikasi Diblokir Browser';
+      } else {
+        btn.style.borderColor = 'var(--portal-border)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.background = 'transparent';
+        txt.innerText = 'Aktifkan Notifikasi Siaga';
+      }
+    }
+
+    async function togglePushNotification() {
+      if (!('Notification' in window)) {
+        alert('Browser Anda belum mendukung Web Notification API.');
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        playAlertChime();
+        showSystemNotification({
+          id: 'test_demo',
+          user_name: 'Uji Sistem NetraVision',
+          description: 'Notifikasi siaga relawan aktif. Anda akan menerima dering saat ada panggilan masuk.'
+        });
+        return;
+      }
+
+      const perm = await Notification.requestPermission();
+      if (typeof updateNotificationButtonUI === "function") updateNotificationButtonUI();
+      if (perm === 'granted') {
+        playAlertChime();
+        showSystemNotification({
+          id: 'test_welcome',
+          user_name: 'Selamat Datang Relawan',
+          description: 'Notifikasi latar belakang aktif. Anda akan menerima dering saat ada panggilan masuk.'
+        });
+      }
+    }
+
+    function showSystemNotification(req) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+      const title = '🚨 PANGGILAN BANTUAN NETRAVISION';
+      const options = {
+        body: `${req.user_name || 'Pengguna Netra'} butuh bantuan: ${req.description || 'Bantuan Visual'}`,
+        icon: 'logo_no_bg.png',
+        badge: 'logo_no_bg.png',
+        tag: 'netravision-call-' + req.id,
+        renotify: true,
+        requireInteraction: true,
+        vibrate: [300, 100, 300, 100, 300],
+        data: {
+          sessionId: req.id,
+          url: '/?session=' + req.id
+        }
+      };
+
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title, options);
+          });
+        } else {
+          new Notification(title, options);
+        }
+      } catch (e) {
+        console.warn('Gagal memunculkan notifikasi:', e);
+      }
+    }
+
     // 1. Audio Lonceng Pemanggilan
     function playAlertChime() {
       try {
@@ -1306,6 +1414,9 @@
 
       if (list.length > lastKnownCount) {
         playAlertChime();
+        if (list.length > 0) {
+          showSystemNotification(list[0]);
+        }
       }
       lastKnownCount = list.length;
 
