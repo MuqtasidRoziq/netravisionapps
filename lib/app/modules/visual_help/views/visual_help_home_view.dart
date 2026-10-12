@@ -34,7 +34,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
           ),
         ),
         title: const Text(
-          'Bantuan Visual',
+          'Bantuan Relawan',
           style: TextStyle(
             color: AppColors.primaryBlue,
             fontSize: 22,

@@ -9,9 +9,9 @@ extension VisionModeExtension on VisionMode {
   String get title {
     switch (this) {
       case VisionMode.indoor:
-        return 'Mode Indoor';
+        return 'Mode Dalam Ruangan';
       case VisionMode.outdoor:
-        return 'Mode Outdoor';
+        return 'Mode Luar Ruangan';
       case VisionMode.currency:
         return 'Mode Baca Uang';
     }
@@ -31,9 +31,9 @@ extension VisionModeExtension on VisionMode {
   String get announcement {
     switch (this) {
       case VisionMode.indoor:
-        return 'Mode Indoor aktif. Kamera siap mendeteksi perabotan dan rintangan di dalam ruangan.';
+        return 'Mode Dalam Ruangan aktif. Kamera siap mendeteksi perabotan dan rintangan di dalam ruangan.';
       case VisionMode.outdoor:
-        return 'Mode Outdoor aktif. Kamera siap mendeteksi jalan, kendaraan, dan rintangan luar ruangan.';
+        return 'Mode Luar Ruangan aktif. Kamera siap mendeteksi jalan, kendaraan, dan rintangan luar ruangan.';
       case VisionMode.currency:
         return 'Mode Baca Uang aktif. Arahkan uang rupiah ke kamera.';
     }

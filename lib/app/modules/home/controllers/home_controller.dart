@@ -9,10 +9,10 @@ class HomeController extends GetxController {
   final RxInt activeMenuIndex = 0.obs;
 
   final List<String> menuTitles = [
-    'Mode Indoor, mendeteksi perabotan di dalam ruangan',
-    'Mode Outdoor, mendeteksi rintangan dan jalan di luar',
+    'Mode Dalam Ruangan, mendeteksi perabotan dan pintu',
+    'Mode Luar Ruangan, mendeteksi rintangan dan jalan di luar',
     'Mode Baca Uang, memindai nominal uang rupiah',
-    'Bantuan Visual, menghubungi relawan atau keluarga',
+    'Bantuan Relawan, panggilan langsung ke pendamping manusia',
   ];
 
   void nextMenu() {
@@ -52,7 +52,7 @@ class HomeController extends GetxController {
 
   void triggerEmergencySOS() {
     HapticFeedback.heavyImpact();
-    _ttsService.speak('Panggilan darurat bantuan visual dipicu', isUrgent: true);
+    _ttsService.speak('Panggilan darurat bantuan relawan dipicu', isUrgent: true);
     openVisualHelp();
   }
 

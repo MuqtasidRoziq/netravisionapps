@@ -144,7 +144,7 @@ class HomeView extends GetView<HomeController> {
             // Card 1: Mode Indoor
             _buildMenuCard(
               index: '1',
-              title: '1. Mode Indoor',
+              title: '1. Mode Dalam Ruangan',
               subtitle: 'Deteksi rintangan, perabotan & pintu',
               icon: Icons.meeting_room_rounded,
               onTap: () => controller.openMode(VisionMode.indoor),
@@ -155,7 +155,7 @@ class HomeView extends GetView<HomeController> {
             // Card 2: Mode Outdoor
             _buildMenuCard(
               index: '2',
-              title: '2. Mode Outdoor',
+              title: '2. Mode Luar Ruangan',
               subtitle: 'Navigasi jalan raya, trotoar & bahaya',
               icon: Icons.explore_rounded,
               onTap: () => controller.openMode(VisionMode.outdoor),
@@ -177,11 +177,11 @@ class HomeView extends GetView<HomeController> {
             // Card 4: Bantuan Visual
             _buildVisualHelpCard(
               index: '4',
-              title: '4. Bantuan Visual',
-              subtitle: 'Hubungi relawan via kamera & audio',
+              title: '4. Bantuan Relawan',
+              subtitle: 'Panggilan langsung ke pendamping manusia',
               icon: Icons.volunteer_activism_rounded,
               onTap: () => controller.openVisualHelp(),
-              accessibilityHint: 'Ketuk dua kali untuk membuka menu Bantuan Visual dan relawan pendamping',
+              accessibilityHint: 'Ketuk dua kali untuk membuka menu Bantuan Relawan dan pendamping manusia',
             ),
             const SizedBox(height: 24),
           ],
