@@ -27,7 +27,7 @@ void main() {
     test('Mode Baca Uang punya ambang confidence lebih ketat (> 0.55)', () {
       final currency = VisionModelConfig.forMode(VisionMode.currency);
       final outdoor = VisionModelConfig.forMode(VisionMode.outdoor);
-      expect(currency.confidenceThreshold, 0.60);
+      expect(currency.confidenceThreshold, 0.65);
       expect(currency.confidenceThreshold, greaterThan(outdoor.confidenceThreshold));
     });
   });

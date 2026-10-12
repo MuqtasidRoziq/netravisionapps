@@ -27,7 +27,7 @@ class VisionModelConfig {
     VisionMode.currency: VisionModelConfig(
       modelPath: 'assets/models/rupiah/rupiah.tflite',
       task: YOLOTask.detect,
-      confidenceThreshold: 0.60,
+      confidenceThreshold: 0.65,
       iouThreshold: 0.50,
     ),
     VisionMode.outdoor: VisionModelConfig(

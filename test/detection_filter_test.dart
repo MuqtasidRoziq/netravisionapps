@@ -65,6 +65,60 @@ void main() {
         isTrue,
       );
     });
+
+    test('menolak objek dengan lebar/tinggi terlalu kecil (< 8% layar)', () {
+      // Tombol keyboard kecil misalnya lebar 0.05
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.3, 0.3, 0.05, 0.05),
+        ),
+        isFalse,
+      );
+    });
+
+    test('menolak koin lonjong / tombol keyboard (aspect ratio > 1.8)', () {
+      // Objek memanjang: w=0.35, h=0.12 -> rasio 2.9 > 1.8
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.2, 0.2, 0.35, 0.12),
+          label: 'coin_1000',
+        ),
+        isFalse,
+      );
+    });
+
+    test('menerima koin asli mendekati lingkaran (aspect ratio <= 1.8)', () {
+      // Objek koin: w=0.2, h=0.2 -> rasio 1.0 <= 1.8
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.4, 0.4, 0.2, 0.2),
+          label: 'coin_1000',
+        ),
+        isTrue,
+      );
+    });
+
+    test('menolak uang kertas sangat pipih / kabel / list meja (aspect ratio > 3.2)', () {
+      // Objek garis sangat panjang: w=0.8, h=0.1 -> rasio 8.0 > 3.2
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.1, 0.4, 0.8, 0.1),
+          label: '10000',
+        ),
+        isFalse,
+      );
+    });
+
+    test('menerima uang kertas proporsional (aspect ratio <= 3.2)', () {
+      // Uang kertas normal: w=0.5, h=0.25 -> rasio 2.0 <= 3.2
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.2, 0.3, 0.5, 0.25),
+          label: '10000',
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('DetectionFilter.selectBest', () {

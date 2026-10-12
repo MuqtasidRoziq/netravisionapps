@@ -170,6 +170,17 @@ class HomeView extends GetView<HomeController> {
               onTap: () => controller.openItemSearch(),
               accessibilityHint: 'Ketuk dua kali untuk membuka pencarian barang dengan suara',
             ),
+            const SizedBox(height: 16),
+
+            // Card 5: Bantuan Visual
+            _buildVisualHelpCard(
+              index: '5',
+              title: '5. Bantuan Visual',
+              subtitle: 'Hubungi relawan via kamera & audio',
+              icon: Icons.volunteer_activism_rounded,
+              onTap: () => controller.openVisualHelp(),
+              accessibilityHint: 'Ketuk dua kali untuk membuka menu Bantuan Visual dan relawan pendamping',
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -203,7 +214,7 @@ class HomeView extends GetView<HomeController> {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.lightBlueBorder.withOpacity(0.6), width: 1.5),
+              border: Border.all(color: AppColors.lightBlueBorder.withValues(alpha: 0.6), width: 1.5),
             ),
             child: Row(
               children: [
@@ -272,4 +283,98 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
+  /// Komponen Kartu Bantuan Visual (Aksen Biru Kontras Tinggi)
+  Widget _buildVisualHelpCard({
+    required String index,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+    required String accessibilityHint,
+  }) {
+    return Semantics(
+      label: '$title. $subtitle.',
+      hint: accessibilityHint,
+      button: true,
+      child: Material(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.circular(22),
+        elevation: 4,
+        shadowColor: AppColors.primaryBlue.withValues(alpha: 0.35),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          splashColor: Colors.white24,
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white24, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                // Kotak Ikon Bantuan Visual
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Teks Judul & Deskripsi
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Tombol Panah
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: AppColors.primaryBlue,
+                    size: 18,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+>>>>>>> origin/main
 }

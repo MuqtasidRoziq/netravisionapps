@@ -63,10 +63,8 @@ class ObjectSpeechHelper {
     final clean = label.trim().toLowerCase();
     if (_ignoredLabels.contains(clean)) return false;
     if (mode == VisionMode.currency) {
-      return _currencyToken.hasMatch(clean);
+      return _currencyNames.containsKey(clean);
     }
-    // Mode itemSearch & indoor & outdoor: semua label non-ignored boleh lolos.
-    // Filter barang spesifik ditangani di DetectorController._processDetectionResults.
     return clean.isNotEmpty;
   }
 
@@ -127,7 +125,7 @@ class ObjectSpeechHelper {
       if (_currencyNames.containsKey(clean)) {
         return _currencyNames[clean]!;
       }
-      return 'Terdeteksi uang $label rupiah';
+      return '';
     }
 
     // 2. Jika rintangan berbahaya (Indoor / Outdoor)
@@ -185,7 +183,7 @@ class ObjectSpeechHelper {
         case 'coin_50':
           return 'Koin Rp 50';
         default:
-          return 'Uang Rp $label';
+          return 'Bukan uang';
       }
     }
 

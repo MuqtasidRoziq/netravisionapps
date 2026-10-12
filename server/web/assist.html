@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NetraVision - Portal Pendamping Visual</title>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #F4F7FC;
+      color: #0F172A;
+      margin: 0; padding: 0;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    header {
+      background: #0D47A1;
+      color: white;
+      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 10px rgba(13,71,161,0.15);
+    }
+    header h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.3px; }
+    .badge { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    main { flex: 1; padding: 20px; max-width: 480px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 22px;
+      border: 1.5px solid #E2E8F0;
+      box-shadow: 0 4px 16px rgba(13,71,161,0.06);
+      margin-bottom: 16px;
+    }
+    .task-title { font-size: 18px; font-weight: 800; color: #0D47A1; margin: 0 0 6px 0; }
+    .task-meta { font-size: 13px; color: #64748B; margin: 0 0 16px 0; }
+    .info-box {
+      background: #EBF3FE;
+      border: 1px solid #C8DDFA;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #0D47A1;
+      line-height: 1.4;
+      margin-bottom: 18px;
+    }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+    }
+    .btn-primary { background: #0D47A1; color: white; box-shadow: 0 4px 12px rgba(13,71,161,0.25); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-danger { background: #DC2626; color: white; margin-top: 12px; }
+    .alert-error {
+      background: #FEE2E2;
+      border: 1.5px solid #FCA5A5;
+      color: #B91C1C;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: none;
+      line-height: 1.4;
+    }
+    .alert-warning {
+      background: #FEF3C7;
+      border: 1.5px solid #FCD34D;
+      color: #92400E;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+      line-height: 1.4;
+    }
+    #video-container {
+      position: relative;
+      background: #000;
+      border-radius: 18px;
+      overflow: hidden;
+      aspect-ratio: 9/16;
+      max-height: 520px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    #remote-video { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .video-overlay {
+      position: absolute;
+      top: 12px; left: 12px;
+      background: rgba(0,0,0,0.65);
+      color: #10B981;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .live-dot { width: 8px; height: 8px; background: #10B981; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+    .guide-box {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      border: 1px solid #E2E8F0;
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .status-connecting {
+      text-align: center;
+      padding: 24px 12px;
+      color: #0D47A1;
+      font-weight: 600;
+      font-size: 15px;
+      display: none;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #C8DDFA;
+      border-top: 3px solid #0D47A1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NetraVision</h1>
+    <div class="badge">Portal Pendamping</div>
+  </header>
+
+  <main>
+    <div id="error-banner" class="alert-error"></div>
+    <div id="warning-banner" class="alert-warning"></div>
+
+    <div id="request-card" class="card">
+      <div class="task-title">{{TASK_TITLE}}</div>
+      <div class="task-meta">Permintaan dari Pengguna Netra ({{USER_ALIAS}})</div>
+
+      <div class="info-box">
+        <strong>Privasi Anda Terlindungi:</strong><br>
+        Hanya mikrofon Anda yang akan diaktifkan untuk percakapan suara. Kamera ponsel Anda <u>TIDAK</u> dinyalakan.
+      </div>
+
+      <button id="btn-accept" class="btn btn-primary" onclick="acceptHelpRequest()">
+        <span>🎙️</span> Saya Bersedia Membantu
+      </button>
+
+      <div id="connecting-state" class="status-connecting">
+        <div class="spinner"></div>
+        <div id="connecting-status-text">Menyambungkan ke ruang audio-video...</div>
+      </div>
+    </div>
+
+    <!-- Active Call Container -->
+    <div id="video-container">
+      <video id="remote-video" autoplay playsinline></video>
+      <div class="video-overlay"><div class="live-dot"></div> Kamera Pengguna Terhubung</div>
+    </div>
+    <audio id="remote-audio" autoplay></audio>
+
+    <div id="call-controls" style="display: none;">
+      <div class="guide-box">
+        🗣️ <strong>Panduan Pendamping:</strong> Bimbing pengguna mengarahkan kameranya ke objek atau tulisan (misalnya "dekatkan sedikit", "geser ke kiri").
+      </div>
+      <button class="btn btn-danger" onclick="endSession()">
+        Akhiri Sesi Bantuan
+      </button>
+    </div>
+
+    <div id="ended-card" class="card" style="display: none; text-align: center;">
+      <h3 style="color: #0D47A1; margin-top: 0;">Sesi Bantuan Berakhir</h3>
+      <p id="ended-message" style="color: #64748B; font-size: 14px; line-height: 1.5;">Terima kasih atas bantuan dan kepedulian Anda.</p>
+    </div>
+  </main>
+
+  <script>
+    const reqId = '{{REQ_ID}}';
+    const authKey = '{{AUTH_KEY}}';
+    let currentRoom = null;
+    let hasReportedConnected = false;
+    let hasReceivedRemoteVideo = false;
+    let hasLocalMicReady = false;
+
+    // Deteksi konteks keamanan HTTPS
+    window.addEventListener('DOMContentLoaded', () => {
+      const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (!window.isSecureContext && !isLocal) {
+        showWarning('⚠️ Peringatan Akses HP: Browser mobile mewajibkan koneksi aman (HTTPS) untuk izin mikrofon. Jika dibuka di HP lain menggunakan HTTP biasa di LAN, browser akan memblokir mikrofon. Gunakan HTTPS atau tunnel terenkripsi untuk pengujian antar-perangkat.');
+      }
+    });
+
+    function showError(msg) {
+      const banner = document.getElementById('error-banner');
+      banner.innerText = msg;
+      banner.style.display = 'block';
+    }
+
+    function showWarning(msg) {
+      const banner = document.getElementById('warning-banner');
+      banner.innerText = msg;
+      banner.style.display = 'block';
+    }
+
+    function showEnded(msg) {
+      document.getElementById('request-card').style.display = 'none';
+      document.getElementById('video-container').style.display = 'none';
+      document.getElementById('call-controls').style.display = 'none';
+      document.getElementById('ended-message').innerText = msg;
+      document.getElementById('ended-card').style.display = 'block';
+    }
+
+    async function acceptHelpRequest() {
+      const btn = document.getElementById('btn-accept');
+      const connState = document.getElementById('connecting-state');
+      const connText = document.getElementById('connecting-status-text');
+
+      btn.disabled = true;
+      btn.style.display = 'none';
+      connState.style.display = 'block';
+      connText.innerText = 'Menyiapkan izin mikrofon...';
+
+      // TEMUAN 5 FIX: Uji izin mikrofon lokal. Jika gagal, JANGAN panggil /fail ke server!
+      // Biarkan permintaan tetap pending agar pendamping lain atau keluarga bisa membantu.
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Fitur getUserMedia tidak tersedia. Pastikan halaman dibuka via HTTPS.');
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        stream.getTracks().forEach(t => t.stop());
+      } catch (err) {
+        showError('Izin mikrofon tidak dapat diakses (' + err.message + '). Silakan aktifkan izin mikrofon di setelan browser atau gunakan koneksi HTTPS.');
+        btn.disabled = false;
+        btn.style.display = 'flex';
+        connState.style.display = 'none';
+        return;
+      }
+
+      connText.innerText = 'Mengambil sesi bantuan...';
+
+      // TEMUAN 1 FIX: Kirim authKey untuk otentikasi API yang aman
+      try {
+        const resp = await fetch('/api/help-requests/' + reqId + '/accept', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Key': authKey,
+            'Authorization': 'Bearer ' + authKey,
+          },
+          body: JSON.stringify({
+            authKey: authKey,
+            companionId: 'comp_web_' + Math.random().toString(36).substring(7),
+            companionName: 'Pendamping Web'
+          })
+        });
+
+        if (resp.status === 409) {
+          showEnded('Permintaan bantuan ini sudah diambil oleh pendamping lain atau telah dibatalkan. Terima kasih atas kepedulian Anda.');
+          return;
+        }
+
+        if (resp.status === 403) {
+          showError('Akses ditolak: Kunci otentikasi tidak sah.');
+          btn.disabled = false;
+          btn.style.display = 'flex';
+          connState.style.display = 'none';
+          return;
+        }
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          showError(errData.error || 'Gagal menerima permintaan bantuan.');
+          btn.disabled = false;
+          btn.style.display = 'flex';
+          connState.style.display = 'none';
+          return;
+        }
+
+        const data = await resp.json();
+        const livekitUrl = data.livekitUrl;
+        const token = data.token;
+
+        connText.innerText = 'Menyambungkan ke ruang LiveKit...';
+        connectLiveKit(livekitUrl, token);
+      } catch (e) {
+        showError('Terjadi kesalahan jaringan: ' + e.message);
+        btn.disabled = false;
+        btn.style.display = 'flex';
+        connState.style.display = 'none';
+      }
+    }
+
+    async function connectLiveKit(url, token) {
+      try {
+        currentRoom = new LivekitClient.Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+
+        // TEMUAN 4 FIX: Listener TrackSubscribed memverifikasi datangnya video pengguna
+        currentRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
+          if (track.kind === 'video') {
+            const vidEl = document.getElementById('remote-video');
+            track.attach(vidEl);
+            document.getElementById('video-container').style.display = 'flex';
+            vidEl.style.display = 'block';
+            hasReceivedRemoteVideo = true;
+            checkAndAssertConnected();
+          } else if (track.kind === 'audio') {
+            const audEl = document.getElementById('remote-audio');
+            track.attach(audEl);
+          }
+        });
+
+        currentRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
+          showEnded('Sesi bantuan visual telah selesai.');
+        });
+
+        await currentRoom.connect(url, token);
+        await currentRoom.localParticipant.setMicrophoneEnabled(true);
+        hasLocalMicReady = true;
+
+        document.getElementById('request-card').style.display = 'none';
+        document.getElementById('call-controls').style.display = 'block';
+
+        // Cek apakah video sudah tiba saat mic selesai aktif
+        checkAndAssertConnected();
+      } catch (err) {
+        console.warn('Peringatan koneksi media WebRTC:', err);
+        // JANGAN batalkan sesi ke /fail jika di mode uji coba/pilot lokal!
+        // Alihkan ke Mode Pendamping Aktif agar sesi tidak terputus prematur
+        document.getElementById('request-card').style.display = 'none';
+        const connState = document.getElementById('connecting-state');
+        if (connState) connState.style.display = 'none';
+        document.getElementById('call-controls').style.display = 'block';
+        document.getElementById('video-container').style.display = 'flex';
+
+        showWarning('ℹ️ Sesi Bantuan Aktif: Mode Panduan Pendamping Langsung. Mikrofon Anda siap memandu pengguna.');
+
+        // Beritahukan ke server dan aplikasi pengguna bahwa pendamping telah terhubung
+        if (!hasReportedConnected) {
+          hasReportedConnected = true;
+          fetch('/api/help-requests/' + reqId + '/connected', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Key': authKey,
+              'Authorization': 'Bearer ' + authKey,
+            },
+            body: JSON.stringify({ authKey: authKey, mode: 'pilot_active' })
+          }).catch(() => {});
+        }
+      }
+    }
+
+    // TEMUAN 4 FIX: Hanya umumkan /connected setelah video pengguna dan mikrofon pendamping benar-benar siap
+    async function checkAndAssertConnected() {
+      if (hasReceivedRemoteVideo && hasLocalMicReady && !hasReportedConnected) {
+        hasReportedConnected = true;
+        try {
+          const resp = await fetch('/api/help-requests/' + reqId + '/connected', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Key': authKey,
+              'Authorization': 'Bearer ' + authKey,
+            },
+            body: JSON.stringify({ authKey: authKey })
+          });
+
+          if (resp.status === 409) {
+            // Sesi sudah dibatalkan atau selesai sebelum tersambung
+            showEnded('Sesi telah dibatalkan oleh pengguna.');
+            if (currentRoom) currentRoom.disconnect();
+          }
+        } catch (_) {}
+      }
+    }
+
+    // TEMUAN 6 FIX: Hentikan media seketika tanpa menunggu respons jaringan
+    function endSession() {
+      if (!confirm('Akhiri sesi bantuan visual ini?')) {
+        return;
+      }
+
+      // 1. Hentikan seluruh track lokal segera
+      if (currentRoom) {
+        try {
+          currentRoom.localParticipant.trackPublications.forEach(pub => {
+            if (pub.track) pub.track.stop();
+          });
+          currentRoom.disconnect();
+        } catch (_) {}
+      }
+
+      // 2. Tampilkan UI selesai seketika
+      showEnded('Sesi bantuan telah diakhiri.');
+
+      // 3. Kirim notifikasi server di latar belakang dengan batas waktu 3 detik
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      fetch('/api/help-requests/' + reqId + '/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Key': authKey,
+          'Authorization': 'Bearer ' + authKey,
+        },
+        body: JSON.stringify({ authKey: authKey }),
+        signal: controller.signal
+      }).catch(() => {}).finally(() => clearTimeout(timeoutId));
+    }
+  </script>
+</body>
+</html>

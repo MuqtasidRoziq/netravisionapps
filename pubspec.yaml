@@ -42,8 +42,11 @@ dependencies:
   google_maps_flutter: ^2.18.2
   geolocator: ^14.0.1
   flutter_compass: ^0.8.1
+  livekit_client: ^2.13.1
+  url_launcher: ^6.3.3
+  shared_preferences: ^2.5.6
   http: ^1.6.0
-
+  crypto: ^3.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -73,10 +76,8 @@ flutter:
     - assets/models/outdoor/netravision_out.tflite
     - assets/models/outdoor/labels.txt
     - assets/models/rupiah/rupiah.tflite
+    - assets/models/rupiah/best.tflite
     - assets/models/rupiah/labels.txt
-    - assets/models/rupiah/netra_rupiah.tflite
-    - assets/models/rupiah/netra_rupiah.pt
-    - assets/models/rupiah/labels_mapping.json
     - assets/labels/netra_rupiah_labels.txt
     - assets/models/indoor/indoor_objects.tflite
     - assets/models/indoor/labels.txt

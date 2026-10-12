@@ -9,6 +9,8 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 import '../../../data/models/vision_mode.dart';
 import '../../../data/models/vision_model_config.dart';
+import '../../../data/models/visual_help_models.dart';
+import '../../../routes/app_pages.dart';
 import '../../../services/compass_service.dart';
 import '../../../services/directions_service.dart';
 import '../../../services/location_service.dart';
@@ -21,6 +23,7 @@ import '../../../utils/helpers/geo_math.dart';
 import '../../../utils/helpers/navigation_models.dart';
 import '../../../utils/helpers/object_speech_helper.dart';
 import '../../../utils/helpers/spatial_estimator.dart';
+
 
 /// Orkestrasi deteksi NetraVision di atas plugin `ultralytics_yolo`.
 ///
@@ -109,6 +112,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   // Histori classIndex frame-frame terakhir yang diproses, untuk konfirmasi
   // temporal (label baru hanya diumumkan bila stabil beberapa frame).
   final List<int> _recentClassIndices = [];
+  int _emptyCurrencyFrames = 0;
 
   /// Konfigurasi model untuk mode aktif (sumber tunggal di
   /// [VisionModelConfig]): path model, task, dan ambang threshold.
@@ -197,13 +201,15 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   }
 
   void _processDetectionResults(List<YOLOResult> results) {
-    // 1. Saring label yang layak diumumkan + (khusus uang) bentuk kotak yang
-    //    memang layak uang (ukuran cukup, tidak terpotong tepi).
+    // 1. Saring label yang layak diumumkan + ambang batas keyakinan + (khusus uang)
+    //    bentuk kotak & rasio aspek yang memang valid uang Rupiah.
     var validDetections = results
+        .where((r) => r.confidence >= modelConfig.confidenceThreshold)
         .where((r) => ObjectSpeechHelper.shouldAnnounce(r.className, mode))
         .where((r) =>
             mode != VisionMode.currency ||
-            DetectionFilter.isPlausibleMoneyBox(r.normalizedBox))
+            DetectionFilter.isPlausibleMoneyBox(r.normalizedBox,
+                label: r.className))
         .toList();
 
     // 1b. Khusus mode pencarian barang: hanya tampilkan yang cocok target.
@@ -219,7 +225,22 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       if (validDetections.isEmpty) return;
     }
 
-    if (validDetections.isEmpty) return;
+    if (validDetections.isEmpty) {
+      if (mode == VisionMode.currency) {
+        _emptyCurrencyFrames++;
+        if (_emptyCurrencyFrames >= 4) {
+          _lastAnnouncedLabel = '';
+          _recentClassIndices.clear();
+          if (currentStatusText.value != 'Arahkan uang ke kamera...') {
+            currentStatusText.value = 'Arahkan uang ke kamera...';
+          }
+        }
+      }
+      return;
+    }
+
+    _emptyCurrencyFrames = 0;
+
 
     // 2. Prioritas: rintangan berbahaya langsung; selain itu ambil deteksi
     //    terbaik (confidence × luas) — uang asli besar menang atas palsu kecil.
@@ -296,8 +317,11 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         announceTime.difference(_lastAnnounceTime).inMilliseconds >=
         _announceCooldownMs;
 
-    final bool shouldSpeak =
-        dangerDecision.speak || changed || (cooldownPassed && !isDangerous);
+    // Untuk mode baca uang: JANGAN spam suara setiap interval cooldown bila uangnya sama.
+    // Tunanetra dapat mengetuk layar kapan saja (On-Demand Repeat) jika ingin mendengar ulang nominal.
+    final bool shouldSpeak = dangerDecision.speak ||
+        changed ||
+        (cooldownPassed && !isDangerous && mode != VisionMode.currency);
 
     // Bookkeeping per frame untuk deteksi bahaya.
     _lastFrameWasDanger = isDangerous;
@@ -584,6 +608,53 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       yoloController.resume();
       ttsService.speak('Deteksi dilanjutkan');
     }
+  }
+
+  /// Meminta Bantuan Visual langsung dari aktivitas deteksi aktif
+  void requestVisualHelp() {
+    HapticFeedback.mediumImpact();
+    // 1. Matikan audio dan getaran deteksi saat berpindah
+    ttsService.stop();
+    vibrationService.stop();
+
+    // 2. Jeda deteksi kamera agar tidak bentrok dengan video call
+    yoloController.pause();
+    isPaused.value = true;
+
+    // 3. Susun konteks tugas otomatis sesuai mode
+    TaskType taskType;
+    switch (mode) {
+      case VisionMode.indoor:
+        taskType = TaskType.findObject;
+        break;
+      case VisionMode.currency:
+        taskType = TaskType.readLabel;
+        break;
+      case VisionMode.outdoor:
+        taskType = TaskType.generalHelp;
+        break;
+    }
+
+    final detected = lastDetectedObject.value.isNotEmpty ? lastDetectedObject.value : null;
+
+    final context = TaskContext(
+      taskType: taskType,
+      targetName: detected,
+      unverifiedAiLabel: detected,
+      sourceScreen: 'detector_${mode.name}',
+    );
+
+    ttsService.speak('Membuka menu Bantuan Visual untuk ${taskType.label}');
+    Get.toNamed(Routes.VISUAL_HELP, arguments: context)?.then((_) {
+      resumeDetection();
+    });
+  }
+
+  /// Memulihkan kembali sesi deteksi kamera dan audio setelah kembali dari bantuan visual
+  void resumeDetection() {
+    isPaused.value = false;
+    yoloController.resume();
+    ttsService.speak('Kamera deteksi diaktifkan kembali');
   }
 
   @override

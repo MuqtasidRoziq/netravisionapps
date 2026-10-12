@@ -36,6 +36,13 @@ class HomeController extends GetxController {
     Get.toNamed(Routes.ITEM_SEARCH);
   }
 
+  /// Fitur Bantuan Visual
+  void openVisualHelp() {
+    HapticFeedback.mediumImpact();
+    _ttsService.speak('Membuka menu Bantuan Visual');
+    Get.toNamed(Routes.VISUAL_HELP);
+  }
+
   /// Panduan suara pengantar bagi tunanetra
   void playGuide() {
     HapticFeedback.lightImpact();
@@ -43,7 +50,8 @@ class HomeController extends GetxController {
       'Panduan NetraVision. Menu satu: Mode Indoor untuk mendeteksi perabotan di dalam rumah. '
       'Menu dua: Mode Outdoor untuk mendeteksi jalan dan rintangan luar ruangan. '
       'Menu tiga: Mode Baca Uang untuk memindai uang rupiah. '
-      'Menu empat: Cari Barang, ucapkan nama barang yang ingin dicari, kamera akan mendeteksi barang itu. '
+      'Menu empat: Cari Barang, ucapkan nama barang yang ingin dicari. '
+      'Menu lima: Bantuan Visual untuk meminta bantuan relawan via kamera dan audio. '
       'Ketuk dua kali menu mana saja untuk mengaktifkannya.',
       isUrgent: true,
     );

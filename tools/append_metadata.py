@@ -36,7 +36,7 @@ TARGETS = [
         "detect",
     ),
     (
-        REPO_ROOT / "assets/models/rupiah/netra_rupiah.tflite",
+        REPO_ROOT / "assets/models/rupiah/best.tflite",
         REPO_ROOT / "assets/models/rupiah/labels.txt",
         "detect",
     ),
@@ -113,6 +113,10 @@ def localize(tflite_path: Path, labels_path: Path, task: str) -> None:
         )
 
     metadata["task"] = task
+    if "imgsz" not in metadata:
+        metadata["imgsz"] = [640, 640]
+    if "stride" not in metadata:
+        metadata["stride"] = 32
     metadata["names"] = {str(i): name for i, name in enumerate(labels)}
 
     tflite_path.write_bytes(build_zip(base, metadata))
