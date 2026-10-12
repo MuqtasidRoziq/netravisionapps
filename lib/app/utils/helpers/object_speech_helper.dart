@@ -56,6 +56,11 @@ class ObjectSpeechHelper {
   static bool shouldAnnounce(String label, VisionMode mode) {
     final clean = label.trim().toLowerCase();
     if (_ignoredLabels.contains(clean)) return false;
+    if (mode == VisionMode.currency) {
+      // Khusus mode baca uang: HANYA izinkan jika label termasuk 13 pecahan Rupiah resmi.
+      // Objek non-uang (seperti keyboard, laptop, orang, meja, dll) ditolak mutlak.
+      return _currencyNames.containsKey(clean);
+    }
     return clean.isNotEmpty;
   }
 
@@ -116,7 +121,7 @@ class ObjectSpeechHelper {
       if (_currencyNames.containsKey(clean)) {
         return _currencyNames[clean]!;
       }
-      return 'Terdeteksi uang $label rupiah';
+      return '';
     }
 
     // 2. Jika rintangan berbahaya (Indoor / Outdoor)
@@ -174,7 +179,7 @@ class ObjectSpeechHelper {
         case 'coin_50':
           return 'Koin Rp 50';
         default:
-          return 'Uang Rp $label';
+          return 'Bukan uang';
       }
     }
 

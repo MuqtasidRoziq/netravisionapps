@@ -20,6 +20,30 @@ void main() {
           ObjectSpeechHelper.shouldAnnounce('tangga', VisionMode.indoor),
           isTrue);
     });
+
+    test('mode baca uang HANYA menerima 13 kelas pecahan rupiah resmi', () {
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('10000', VisionMode.currency),
+          isTrue);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('coin_1000', VisionMode.currency),
+          isTrue);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('75000', VisionMode.currency),
+          isTrue);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('keyboard', VisionMode.currency),
+          isFalse);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('laptop', VisionMode.currency),
+          isFalse);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('mobil', VisionMode.currency),
+          isFalse);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('meja', VisionMode.currency),
+          isFalse);
+    });
   });
 
   group('ObjectSpeechHelper.isDangerousObstacle', () {

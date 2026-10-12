@@ -52,6 +52,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   // Histori classIndex frame-frame terakhir yang diproses, untuk konfirmasi
   // temporal (label baru hanya diumumkan bila stabil beberapa frame).
   final List<int> _recentClassIndices = [];
+  int _emptyCurrencyFrames = 0;
 
   /// Konfigurasi model untuk mode aktif (sumber tunggal di
   /// [VisionModelConfig]): path model, task, dan ambang threshold.
@@ -123,15 +124,31 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   }
 
   void _processDetectionResults(List<YOLOResult> results) {
-    // 1. Saring label yang layak diumumkan + (khusus uang) bentuk kotak yang
-    //    memang layak uang (ukuran cukup, tidak terpotong tepi).
+    // 1. Saring label yang layak diumumkan + ambang batas keyakinan + (khusus uang)
+    //    bentuk kotak & rasio aspek yang memang valid uang Rupiah.
     final validDetections = results
+        .where((r) => r.confidence >= modelConfig.confidenceThreshold)
         .where((r) => ObjectSpeechHelper.shouldAnnounce(r.className, mode))
         .where((r) =>
             mode != VisionMode.currency ||
-            DetectionFilter.isPlausibleMoneyBox(r.normalizedBox))
+            DetectionFilter.isPlausibleMoneyBox(r.normalizedBox,
+                label: r.className))
         .toList();
-    if (validDetections.isEmpty) return;
+
+    if (validDetections.isEmpty) {
+      if (mode == VisionMode.currency) {
+        _emptyCurrencyFrames++;
+        if (_emptyCurrencyFrames >= 4) {
+          _lastAnnouncedLabel = '';
+          _recentClassIndices.clear();
+          if (currentStatusText.value != 'Arahkan uang ke kamera...') {
+            currentStatusText.value = 'Arahkan uang ke kamera...';
+          }
+        }
+      }
+      return;
+    }
+    _emptyCurrencyFrames = 0;
 
     // 2. Prioritas: rintangan berbahaya langsung; selain itu ambil deteksi
     //    terbaik (confidence × luas) — uang asli besar menang atas palsu kecil.
@@ -208,8 +225,11 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         announceTime.difference(_lastAnnounceTime).inMilliseconds >=
         _announceCooldownMs;
 
-    final bool shouldSpeak =
-        dangerDecision.speak || changed || (cooldownPassed && !isDangerous);
+    // Untuk mode baca uang: JANGAN spam suara setiap interval cooldown bila uangnya sama.
+    // Tunanetra dapat mengetuk layar kapan saja (On-Demand Repeat) jika ingin mendengar ulang nominal.
+    final bool shouldSpeak = dangerDecision.speak ||
+        changed ||
+        (cooldownPassed && !isDangerous && mode != VisionMode.currency);
 
     // Bookkeeping per frame untuk deteksi bahaya.
     _lastFrameWasDanger = isDangerous;
