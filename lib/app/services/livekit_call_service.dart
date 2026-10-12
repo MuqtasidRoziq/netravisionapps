@@ -56,6 +56,8 @@ class LiveKitCallService extends GetxService {
       connectionStatusText.value = 'Terhubung langsung';
 
       if (isUserRole) {
+        // Pengguna Tunanetra: Beri konfirmasi suara tersambung
+        Get.find<TtsService>().speak('Tersambung dengan pendamping. Kamera dan mikrofon aktif.');
         // Pengguna Tunanetra: Aktifkan kamera belakang dan mikrofon
         await _room!.localParticipant?.setCameraEnabled(
           true,
