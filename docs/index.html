@@ -643,6 +643,83 @@
       gap: 6px;
     }
 
+  
+    /* 5 TOMBOL KONTROL PERSIS SEPERTI DI LAYAR HP TUNANETRA */
+    .phone-bottom-nav {
+      position: absolute;
+      bottom: 12px;
+      left: 10px;
+      right: 10px;
+      z-index: 25;
+    }
+
+    .phone-control-bar {
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 28px;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+    }
+
+    .phone-ctrl-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #FFFFFF;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .phone-ctrl-btn span {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .phone-ctrl-btn label {
+      font-size: 8px;
+      font-weight: 700;
+      margin-top: 2px;
+      color: #94A3B8;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .phone-ctrl-btn:hover {
+      transform: scale(1.08);
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .phone-ctrl-btn.btn-active-tool {
+      background: rgba(37, 99, 235, 0.5);
+      border-color: #60A5FA;
+    }
+
+    .phone-ctrl-btn.btn-danger-call {
+      background: #EF4444;
+      border-color: #F87171;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+    }
+
+    .phone-ctrl-btn.btn-danger-call label {
+      color: #FFFFFF;
+    }
+
+    .phone-ctrl-btn.btn-danger-call:hover {
+      background: #DC2626;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
+    }
+
   </style>
 </head>
 <body>
@@ -718,7 +795,38 @@
                 <h4 id="placeholderTitle">Menunggu Siaran Layar HP...</h4>
                 <p id="placeholderSubtitle">Minta pengguna menekan tombol "Bagikan Layar" di HP, atau klik tab Kamera Belakang di atas.</p>
               </div>
+            
+            <!-- 5 TOMBOL KONTROL PERSIS SEPERTI DI LAYAR HP PENGGUNA -->
+            <div class="phone-bottom-nav">
+              <div class="phone-control-bar">
+                <!-- 1. Mic -->
+                <button class="phone-ctrl-btn" id="pBtnMic" onclick="speakGuide('Mikrofon aktif')" title="1. Mikrofon Pengguna">
+                  <span>🎤</span>
+                  <label>Mic</label>
+                </button>
+                <!-- 2. Kamera -->
+                <button class="phone-ctrl-btn btn-active-tool" id="pBtnCam" onclick="switchStreamMode('camera')" title="2. Kamera Belakang">
+                  <span>📹</span>
+                  <label>Kamera</label>
+                </button>
+                <!-- 3. Bagikan Layar -->
+                <button class="phone-ctrl-btn" id="pBtnScreen" onclick="switchStreamMode('screen')" title="3. Bagikan Layar HP">
+                  <span>📱</span>
+                  <label>Layar</label>
+                </button>
+                <!-- 4. Speaker Audio -->
+                <button class="phone-ctrl-btn" id="pBtnSpeaker" onclick="speakGuide('Status audio aktif dan lancar')" title="4. Speaker Suara">
+                  <span>🔊</span>
+                  <label>Suara</label>
+                </button>
+                <!-- 5. Akhiri Panggilan (Merah) -->
+                <button class="phone-ctrl-btn btn-danger-call" id="pBtnEnd" onclick="finishCurrentSession()" title="5. Akhiri Panggilan">
+                  <span>📞</span>
+                  <label>Selesai</label>
+                </button>
+              </div>
             </div>
+</div>
           </div>
         </div>
       </div>
