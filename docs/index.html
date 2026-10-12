@@ -452,42 +452,107 @@
       background: #DC2626;
     }
   
-    /* VIDEO VIEWPORT UNTUK KAMERA / LAYAR PENGGUNA */
-    .video-viewport-card {
+    /* SMARTPHONE VERTIKAL (9:16) - MENYESUAIKAN HP PENGGUNA TUNANETRA */
+    .stream-switcher-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stream-tab-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94A3B8;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stream-tab-btn:hover {
+      background: rgba(51, 65, 85, 0.9);
+      color: #F8FAFC;
+    }
+
+    .stream-tab-btn.active {
+      background: #2563EB;
+      border-color: #60A5FA;
+      color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    }
+
+    .phone-mockup-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .phone-frame {
+      width: 100%;
+      max-width: 340px;
+      height: 600px;
       background: #000;
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      border-radius: 16px;
+      border: 8px solid #1E293B;
+      border-radius: 40px;
       overflow: hidden;
-      margin-bottom: 20px;
       position: relative;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .phone-notch {
+      width: 100px;
+      height: 16px;
+      background: #1E293B;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      z-index: 20;
+    }
+
+    .video-viewport-card {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      position: relative;
+      display: flex;
+      flex-direction: column;
     }
 
     .video-topbar {
       position: absolute;
-      top: 12px;
+      top: 22px;
       left: 12px;
       right: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      z-index: 10;
+      z-index: 15;
       pointer-events: none;
     }
 
     .live-badge-stream {
-      background: rgba(15, 23, 42, 0.75);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 6px 12px;
+      padding: 5px 10px;
       border-radius: 999px;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       color: #F8FAFC;
       display: flex;
       align-items: center;
       gap: 6px;
-      letter-spacing: 0.04em;
     }
 
     .live-red-dot {
@@ -506,25 +571,20 @@
 
     .video-display-area {
       width: 100%;
-      height: 380px;
-      background: #090D16;
+      height: 100%;
+      background: #050811;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
     }
 
-    @media (max-width: 640px) {
-      .video-display-area {
-        height: 280px;
-      }
-    }
-
     #userRemoteVideo {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain; /* Layar HP vertikal pas sempurna tanpa terpotong */
       display: none;
+      background: #000;
     }
 
     .video-waiting-placeholder {
@@ -560,13 +620,13 @@
       font-size: 15px;
       font-weight: 700;
       color: var(--text-main);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .video-waiting-placeholder p {
       font-size: 12px;
       line-height: 1.5;
-      max-width: 320px;
+      max-width: 260px;
     }
 
   
@@ -624,31 +684,44 @@
         <div class="timer-display" id="callDuration">00:00</div>
       </div>
 
-      <!-- TAMPILAN LIVE KAMERA / LAYAR PENGGUNA -->
-      <div class="video-viewport-card" id="videoViewport">
-        <div class="video-topbar">
-          <div class="live-badge-stream">
-            <div class="live-red-dot"></div>
-            <span id="camStreamStatus">KAMERA PENGGUNA</span>
-          </div>
-          <div class="audio-pill" id="audioPill">
-            <span>🎤</span>
-            <span id="audioLiveStatus">Audio: Menyambungkan</span>
-          </div>
-        </div>
+      <!-- PILIHAN TAMPILAN: LAYAR HP VS KAMERA -->
+      <div class="stream-switcher-tabs">
+        <button class="stream-tab-btn active" id="tabScreenShare" onclick="switchStreamMode('screen')">
+          📱 Layar HP Tunanetra
+        </button>
+        <button class="stream-tab-btn" id="tabCamera" onclick="switchStreamMode('camera')">
+          📹 Kamera Belakang
+        </button>
+      </div>
 
-        <div class="video-display-area">
-          <video id="userRemoteVideo" autoplay playsinline></video>
-          <audio id="userRemoteAudio" autoplay playsinline></audio>
+      <!-- FRAME SMARTPHONE VERTIKAL (9:16) -->
+      <div class="phone-mockup-wrapper">
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <div class="video-viewport-card" id="videoViewport">
+            <div class="video-topbar">
+              <div class="live-badge-stream">
+                <div class="live-red-dot"></div>
+                <span id="camStreamStatus">LAYAR HP LIVE</span>
+              </div>
+              <div class="audio-pill" id="audioPill">
+                <span>🎤</span>
+                <span id="audioLiveStatus">Audio Aktif</span>
+              </div>
+            </div>
 
-          <div class="video-waiting-placeholder" id="videoPlaceholder">
-            <div class="cam-radar-icon">📹</div>
-            <h4>Kamera Belakang Pengguna Aktif</h4>
-            <p>Sesi visual terhubung. Pengguna siap diarahkan melalui tombol panduan suara di bawah atau panggilan WhatsApp.</p>
+            <div class="video-display-area">
+              <video id="userRemoteVideo" autoplay playsinline></video>
+              <audio id="userRemoteAudio" autoplay playsinline></audio>
+              <div class="video-waiting-placeholder" id="videoPlaceholder">
+                <div class="cam-radar-icon">📱</div>
+                <h4 id="placeholderTitle">Menunggu Siaran Layar HP...</h4>
+                <p id="placeholderSubtitle">Minta pengguna menekan tombol "Bagikan Layar" di HP, atau klik tab Kamera Belakang di atas.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
 
       <div class="task-box">
         <div class="task-label">Tugas Bantuan</div>
@@ -865,6 +938,55 @@
     
     let livekitRoom = null;
 
+    
+    let currentCameraTrack = null;
+    let currentScreenTrack = null;
+    let preferredStream = 'screen';
+
+    function switchStreamMode(mode) {
+      preferredStream = mode;
+      const tabScreen = document.getElementById('tabScreenShare');
+      const tabCam = document.getElementById('tabCamera');
+      if (tabScreen) tabScreen.classList.toggle('active', mode === 'screen');
+      if (tabCam) tabCam.classList.toggle('active', mode === 'camera');
+      renderActiveVideoStream();
+    }
+
+    function renderActiveVideoStream() {
+      const videoEl = document.getElementById('userRemoteVideo');
+      const placeholder = document.getElementById('videoPlaceholder');
+      const camStatus = document.getElementById('camStreamStatus');
+      const pTitle = document.getElementById('placeholderTitle');
+      const pSub = document.getElementById('placeholderSubtitle');
+
+      let targetTrack = (preferredStream === 'screen') ? currentScreenTrack : currentCameraTrack;
+      if (!targetTrack) {
+        targetTrack = currentCameraTrack || currentScreenTrack;
+      }
+
+      if (targetTrack) {
+        targetTrack.attach(videoEl);
+        videoEl.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+
+        if (targetTrack === currentScreenTrack) {
+          if (camStatus) camStatus.innerText = '📱 LAYAR HP LIVE';
+        } else {
+          if (camStatus) camStatus.innerText = '📹 KAMERA BELAKANG LIVE';
+        }
+      } else {
+        videoEl.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+        if (preferredStream === 'screen') {
+          if (pTitle) pTitle.innerText = 'Menunggu Siaran Layar HP...';
+          if (pSub) pSub.innerText = 'Minta pengguna menekan tombol "Bagikan Layar" di HP, atau klik tab Kamera Belakang.';
+        } else {
+          if (pTitle) pTitle.innerText = 'Menunggu Kamera Belakang...';
+          if (pSub) pSub.innerText = 'Menghubungkan ke lensa kamera belakang HP pengguna...';
+        }
+      }
+    }
+
     async function connectLiveKit(url, token) {
       if (!url || !token) {
         console.warn('LiveKit URL atau token tidak ditemukan dalam sesi');
@@ -882,23 +1004,27 @@
         });
 
         livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-          console.log('Track diterima:', track.kind, 'dari participant:', participant.identity);
+          console.log('Track diterima:', track.kind, publication ? publication.source : '', 'dari participant:', participant.identity);
           if (track.kind === 'video') {
-            const videoEl = document.getElementById('userRemoteVideo');
-            const placeholder = document.getElementById('videoPlaceholder');
-            track.attach(videoEl);
-            videoEl.style.display = 'block';
-            if (placeholder) placeholder.style.display = 'none';
-            if (publication.source === LivekitClient.Track.Source.ScreenShare) {
-              if (camStatus) camStatus.innerText = '📱 LAYAR HP PENGGUNA (SCREEN SHARE LIVE)';
+            const isScreen = (publication && publication.source === LivekitClient.Track.Source.ScreenShare) || track.source === 'screen_share';
+            if (isScreen) {
+              console.log('Layar HP (ScreenShare) terdeteksi!');
+              currentScreenTrack = track;
+              preferredStream = 'screen';
+              const tabScreen = document.getElementById('tabScreenShare');
+              const tabCam = document.getElementById('tabCamera');
+              if (tabScreen) tabScreen.classList.add('active');
+              if (tabCam) tabCam.classList.remove('active');
             } else {
-              if (camStatus) camStatus.innerText = '📹 KAMERA BELAKANG LIVE (30 FPS)';
+              currentCameraTrack = track;
             }
+            renderActiveVideoStream();
           }
+
           if (track.kind === 'audio') {
             console.log('Audio suara dari pengguna tunanetra diterima. Menyambungkan ke speaker browser...');
             const audioStatus = document.getElementById('audioLiveStatus');
-            if (audioStatus) audioStatus.innerText = 'Audio: Aktif & Terdengar';
+            if (audioStatus) audioStatus.innerText = 'Audio Aktif';
             const audioEl = document.getElementById('userRemoteAudio');
             if (audioEl) {
               track.attach(audioEl);
@@ -918,13 +1044,13 @@
         livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
           track.detach();
           if (track.kind === 'video') {
-            const videoEl = document.getElementById('userRemoteVideo');
-            const placeholder = document.getElementById('videoPlaceholder');
-            videoEl.style.display = 'none';
-            if (placeholder) placeholder.style.display = 'flex';
-            if (camStatus) camStatus.innerText = 'KAMERA BERHENTI';
+            if (track === currentScreenTrack) currentScreenTrack = null;
+            if (track === currentCameraTrack) currentCameraTrack = null;
+            renderActiveVideoStream();
           }
         });
+
+        
 
         await livekitRoom.connect(livekitUrl, token);
         console.log('Berhasil terhubung ke LiveKit Room:', livekitRoom.name);
