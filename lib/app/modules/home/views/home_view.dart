@@ -376,5 +376,4 @@ class HomeView extends GetView<HomeController> {
       ),
     );
   }
->>>>>>> origin/main
 }

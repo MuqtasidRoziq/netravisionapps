@@ -633,6 +633,9 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       case VisionMode.outdoor:
         taskType = TaskType.generalHelp;
         break;
+      case VisionMode.itemSearch:
+        taskType = TaskType.findObject;
+        break;
     }
 
     final detected = lastDetectedObject.value.isNotEmpty ? lastDetectedObject.value : null;
