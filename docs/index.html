@@ -569,6 +569,20 @@
       max-width: 320px;
     }
 
+  
+    .audio-pill {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34D399;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
   </style>
 </head>
 <body>
@@ -616,6 +630,10 @@
           <div class="live-badge-stream">
             <div class="live-red-dot"></div>
             <span id="camStreamStatus">KAMERA PENGGUNA</span>
+          </div>
+          <div class="audio-pill" id="audioPill">
+            <span>🎤</span>
+            <span id="audioLiveStatus">Audio: Menyambungkan</span>
           </div>
         </div>
 
@@ -879,6 +897,8 @@
           }
           if (track.kind === 'audio') {
             console.log('Audio suara dari pengguna tunanetra diterima. Menyambungkan ke speaker browser...');
+            const audioStatus = document.getElementById('audioLiveStatus');
+            if (audioStatus) audioStatus.innerText = 'Audio: Aktif & Terdengar';
             const audioEl = document.getElementById('userRemoteAudio');
             if (audioEl) {
               track.attach(audioEl);
