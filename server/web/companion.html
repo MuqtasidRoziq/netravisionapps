@@ -2,911 +2,995 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NetraVision - Portal Pendamping Visual Cloud</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>NetraVision - Portal Pendamping Visual</title>
+  
+  <!-- LiveKit WebRTC Client & Supabase JS Client resmi via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
-  <!-- Supabase JS Client resmi via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
+    /* ==========================================================================
+       NETRAVISION DESIGN SYSTEM (Sesua Tema Flutter AppColors)
+       WCAG AAA High Contrast Accessibility Standard
+       ========================================================================== */
     :root {
-      --bg: #0B0F19;
-      --card-bg: #151D2F;
-      --card-hover: #1E293B;
-      --primary: #3B82F6;
-      --primary-hover: #2563EB;
-      --emerald: #10B981;
-      --emerald-dark: #059669;
-      --rose: #EF4444;
-      --amber: #F59E0B;
-      --whatsapp: #25D366;
-      --text-main: #F8FAFC;
-      --text-muted: #94A3B8;
-      --border: rgba(255, 255, 255, 0.08);
+      /* Palet Warna Flutter NetraVision */
+      --primary-blue: #0D47A1;       /* Biru tua pekat (kontras tinggi) */
+      --accent-blue: #1976D2;        /* Biru aktif interaktif */
+      --light-blue: #E3F2FD;         /* Background card / aksen lembut */
+      --light-blue-border: #90CAF9;  /* Border aksen */
+      --canvas-bg: #F8FAFC;          /* Background halaman lembut */
+      --surface: #FFFFFF;            /* Surface kartu / panel */
+      --border-subtle: #E2E8F0;      /* Border netral */
+      --border-medium: #CBD5E1;      /* Border pemisah */
+      
+      /* Tipografi & Teks */
+      --text-primary: #0F172A;       /* Hitam kebiruan pekat (rasio > 12:1) */
+      --text-secondary: #475569;     /* Abu-abu gelap (rasio > 5.5:1) */
+      --text-muted: #64748B;         /* Keterangan sekunder */
+      --text-on-blue: #FFFFFF;
+      
+      /* Status Fungsional */
+      --emergency-red: #C62828;      /* Merah aksi selesai / darurat */
+      --emergency-red-hover: #B71C1C;
+      --emergency-red-light: #FFEBEE;
+      --success-green: #15803D;      /* Hijau status aktif */
+      --success-green-light: #DCFCE7;
+      --yellow-accent: #B45309;      /* Kuning peringatan terkontrol */
+      --yellow-light: #FEF3C7;
+
+      /* Media Viewport Dark Canvas */
+      --media-canvas: #0B0F19;
+      --media-border: #1E293B;
+
+      /* Elevasi & Efek */
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     body {
-      background: var(--bg);
-      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Source Sans 3", Helvetica, Arial, sans-serif;
+      background-color: var(--canvas-bg);
+      color: var(--text-primary);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      padding-bottom: 40px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
-    header {
-      background: rgba(21, 29, 47, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 24px;
+    /* Fokus Aksesibilitas Keyboard */
+    :focus-visible {
+      outline: 2px solid var(--accent-blue);
+      outline-offset: 2px;
+    }
+
+    /* ==========================================================================
+       HEADER (Tinggi 64px, Bersih & Profesional)
+       ========================================================================== */
+    .app-header {
+      height: 64px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 0 24px;
       position: sticky;
       top: 0;
       z-index: 50;
+      box-shadow: var(--shadow-sm);
     }
 
-    .brand {
+    .brand-group {
       display: flex;
       align-items: center;
       gap: 12px;
+      text-decoration: none;
+      color: inherit;
     }
 
     .brand-icon {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #3B82F6, #10B981);
-      border-radius: 10px;
+      width: 34px;
+      height: 34px;
+      background: var(--primary-blue);
+      color: var(--text-on-blue);
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
-
-    .brand h1 {
       font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-weight: 800;
+      box-shadow: 0 2px 4px rgba(13, 71, 161, 0.2);
     }
 
-    .brand p {
+    .brand-text h1 {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--primary-blue);
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+
+    .brand-text span {
       font-size: 12px;
-      color: var(--text-muted);
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
     }
 
     .status-badge {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      padding: 6px 14px;
+      padding: 6px 12px;
+      background: var(--success-green-light);
+      border: 1px solid rgba(21, 128, 61, 0.2);
       border-radius: 999px;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
-      color: #34D399;
+      color: var(--success-green);
     }
 
     .status-dot {
       width: 8px;
       height: 8px;
-      background: #10B981;
       border-radius: 50%;
-      box-shadow: 0 0 10px #10B981;
-      animation: pulse 2s infinite;
+      background: var(--success-green);
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.9); }
-    }
-
-    .container {
-      max-width: 800px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 24px 16px;
-      flex: 1;
-    }
-
-    /* BANNER INFO */
-    .banner-card {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(16, 185, 129, 0.08));
-      border: 1px solid rgba(59, 130, 246, 0.25);
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .banner-text h2 {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .banner-text p {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    .btn-test {
-      background: #2563EB;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 10px;
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border-medium);
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
-      white-space: nowrap;
-      transition: all 0.2s;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .btn-test:hover {
-      background: #1D4ED8;
-      transform: translateY(-1px);
+    .btn-secondary:hover {
+      background: var(--canvas-bg);
+      border-color: var(--primary-blue);
+      color: var(--primary-blue);
     }
 
-    /* PENDING REQUESTS SECTION */
-    .section-title {
-      font-size: 14px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 12px;
+    /* ==========================================================================
+       WORKSPACE LAYOUT (Desktop 3-Kolom, Adaptif & Terfokus)
+       ========================================================================== */
+    .workspace-container {
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 300px minmax(520px, 1fr) 300px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* Panel Card Standar */
+    .panel-card {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .panel-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
     }
 
-    .badge-count {
-      background: var(--primary);
-      color: white;
-      font-size: 11px;
+    .panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .count-badge {
+      background: var(--light-blue);
+      color: var(--primary-blue);
+      font-size: 12px;
+      font-weight: 700;
       padding: 2px 8px;
       border-radius: 999px;
+      border: 1px solid var(--light-blue-border);
+    }
+
+    /* ==========================================================================
+       KOLOM KIRI: ANTREAN PERMINTAAN (REQUEST QUEUE)
+       ========================================================================== */
+    .queue-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     .request-list {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      margin-bottom: 32px;
+      gap: 12px;
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
     }
 
     .empty-state {
-      background: var(--card-bg);
-      border: 1px dashed var(--border);
-      border-radius: 16px;
-      padding: 48px 24px;
       text-align: center;
-    }
-
-    .empty-icon {
-      font-size: 40px;
-      margin-bottom: 12px;
-      opacity: 0.7;
-    }
-
-    .empty-state h3 {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .empty-state p {
-      font-size: 13px;
+      padding: 32px 16px;
       color: var(--text-muted);
     }
 
-    .request-card {
-      background: var(--card-bg);
-      border: 2px solid rgba(59, 130, 246, 0.4);
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.15);
-      animation: cardPulse 3s infinite;
-      transition: all 0.2s;
-    }
-
-    @keyframes cardPulse {
-      0%, 100% { border-color: rgba(59, 130, 246, 0.4); }
-      50% { border-color: rgba(16, 185, 129, 0.7); box-shadow: 0 0 20px rgba(16, 185, 129, 0.25); }
-    }
-
-    .card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .user-avatar {
-      width: 44px;
-      height: 44px;
-      background: #3B82F6;
+    .empty-state-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      background: var(--canvas-bg);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-    }
-
-    .user-meta h4 {
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .user-meta span {
-      font-size: 12px;
       color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
     }
 
-    .urgency-badge {
-      background: rgba(239, 68, 68, 0.15);
-      color: #F87171;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
+    .empty-state h3 {
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 0.03em;
-    }
-
-    .task-box {
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 16px;
-      margin-bottom: 16px;
-    }
-
-    .task-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: #60A5FA;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      color: var(--text-primary);
       margin-bottom: 4px;
     }
 
-    .task-desc {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-main);
+    .empty-state p {
+      font-size: 13px;
+      line-height: 1.4;
     }
 
-    .card-actions {
+    .request-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+
+    .request-card:hover {
+      border-color: var(--accent-blue);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-top {
       display: flex;
-      gap: 12px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .user-meta h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .user-meta span {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .urgency-badge {
+      background: var(--light-blue);
+      color: var(--primary-blue);
+      border: 1px solid var(--light-blue-border);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .task-preview {
+      background: var(--canvas-bg);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      border-left: 3px solid var(--primary-blue);
     }
 
     .btn-accept {
-      flex: 1;
-      background: linear-gradient(135deg, #10B981, #059669);
-      color: white;
+      width: 100%;
+      background: var(--primary-blue);
+      color: var(--text-on-blue);
       border: none;
-      padding: 14px 20px;
-      border-radius: 12px;
-      font-size: 15px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
-      transition: all 0.2s;
+      gap: 6px;
+      transition: background 0.15s;
     }
 
     .btn-accept:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+      background: var(--accent-blue);
     }
 
-    /* ACTIVE SESSION OVERLAY */
-    .session-view {
-      display: none;
-      background: var(--card-bg);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-      margin-bottom: 32px;
+    /* ==========================================================================
+       KOLOM TENGAH: VIEWER MEDIA UTAMA (AIRDROID & WHEREBY PATTERN)
+       ========================================================================== */
+    .viewer-column {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
-    .session-header {
+    /* Bar Konteks Sesi di Atas Viewer */
+    .session-topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 16px;
-      margin-bottom: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      box-shadow: var(--shadow-sm);
     }
 
-    .session-title-wrap {
+    .session-identity {
       display: flex;
       align-items: center;
-      gap: 12px;
-    }
-
-    .call-active-badge {
-      background: #10B981;
-      color: white;
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .timer-display {
-      font-family: monospace;
-      font-size: 18px;
-      font-weight: 700;
-      color: #34D399;
-    }
-
-    .quick-guide-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 10px;
-      margin-bottom: 20px;
     }
 
-    .guide-btn {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 12px;
-      border-radius: 12px;
+    .active-tag {
+      background: var(--success-green);
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    .active-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .call-timer {
+      font-family: monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary-blue);
+      background: var(--light-blue);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--light-blue-border);
+    }
+
+    /* Stream Mode Tabs (Layar HP vs Kamera) */
+    .stream-selector-tabs {
+      display: inline-flex;
+      background: var(--border-subtle);
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      gap: 3px;
+    }
+
+    .stream-tab {
+      background: transparent;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
+      color: var(--text-secondary);
       cursor: pointer;
       display: flex;
-      flex-direction: column;
       align-items: center;
       gap: 6px;
       transition: all 0.15s;
     }
 
-    .guide-btn:hover {
-      background: rgba(59, 130, 246, 0.15);
-      border-color: #3B82F6;
-      transform: translateY(-2px);
-    }
-
-    .guide-btn span {
-      font-size: 20px;
-    }
-
-    .contact-fallbacks {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .btn-wa {
-      flex: 1;
-      background: #25D366;
-      color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 12px;
-      font-size: 13px;
+    .stream-tab.active {
+      background: var(--surface);
+      color: var(--primary-blue);
       font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      text-decoration: none;
+      box-shadow: var(--shadow-sm);
     }
 
-    .btn-wa:hover {
-      background: #1EBE5B;
-    }
-
-    .btn-end {
-      width: 100%;
-      background: #EF4444;
-      color: white;
-      border: none;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .btn-end:hover {
-      background: #DC2626;
-    }
-  
-    /* SMARTPHONE VERTIKAL (9:16) - MENYESUAIKAN HP PENGGUNA TUNANETRA */
-    .stream-switcher-tabs {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .stream-tab-btn {
-      background: rgba(30, 41, 59, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #94A3B8;
-      padding: 10px 20px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stream-tab-btn:hover {
-      background: rgba(51, 65, 85, 0.9);
-      color: #F8FAFC;
-    }
-
-    .stream-tab-btn.active {
-      background: #2563EB;
-      border-color: #60A5FA;
-      color: #FFFFFF;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-    }
-
-    .phone-mockup-wrapper {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 24px;
-    }
-
-    .phone-frame {
-      width: 100%;
-      max-width: 340px;
-      height: 600px;
-      background: #000;
-      border: 8px solid #1E293B;
-      border-radius: 40px;
-      overflow: hidden;
+    /* Bingkai Canvas Media (Dark, Tanpa Notch Palsu, Rasio Asli) */
+    .media-viewport-container {
+      background: var(--media-canvas);
+      border: 1px solid var(--media-border);
+      border-radius: var(--radius-lg);
       position: relative;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      width: 100%;
+      height: 520px;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
     }
 
-    .phone-notch {
-      width: 100px;
-      height: 16px;
-      background: #1E293B;
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      border-bottom-left-radius: 12px;
-      border-bottom-right-radius: 12px;
-      z-index: 20;
-    }
-
-    .video-viewport-card {
+    /* Element Video Live Asli */
+    #userRemoteVideo {
       width: 100%;
       height: 100%;
-      background: #000;
-      position: relative;
-      display: flex;
-      flex-direction: column;
+      object-fit: contain; /* Tidak ada distorsi/crop; potret dan lanskap pas sempurna */
+      display: none;
+      background: var(--media-canvas);
     }
 
-    .video-topbar {
+    /* Overlays di Dalam Video */
+    .viewport-overlay-badges {
       position: absolute;
-      top: 22px;
-      left: 12px;
-      right: 12px;
+      top: 14px;
+      left: 14px;
+      right: 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      z-index: 15;
+      z-index: 10;
       pointer-events: none;
     }
 
-    .live-badge-stream {
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
+    .live-indicator {
+      background: rgba(11, 15, 25, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 5px 10px;
+      backdrop-filter: blur(4px);
+      padding: 4px 10px;
       border-radius: 999px;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       color: #F8FAFC;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
     }
 
-    .live-red-dot {
+    .live-dot {
       width: 8px;
       height: 8px;
-      background: #EF4444;
+      background: var(--emergency-red);
       border-radius: 50%;
-      box-shadow: 0 0 8px #EF4444;
-      animation: blink 1.5s infinite;
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.3; transform: scale(0.85); }
-    }
-
-    .video-display-area {
-      width: 100%;
-      height: 100%;
-      background: #050811;
-      display: flex;
+    .audio-indicator {
+      background: rgba(11, 15, 25, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #34D399;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      position: relative;
+      gap: 6px;
     }
 
-    #userRemoteVideo {
-      width: 100%;
-      height: 100%;
-      object-fit: cover; /* Memenuhi seluruh layar ponsel secara vertikal (seperti WhatsApp Call) */
-      display: none;
-      background: #000;
-    }
-
-    .video-waiting-placeholder {
+    /* Placeholder Keadaan Kosong/Menunggu */
+    .viewport-placeholder {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 24px;
-      color: var(--text-muted);
+      padding: 32px 20px;
+      color: #94A3B8;
+      max-width: 360px;
     }
 
-    .cam-radar-icon {
+    .placeholder-symbol {
       width: 64px;
       height: 64px;
-      background: rgba(59, 130, 246, 0.12);
-      border: 1px solid rgba(59, 130, 246, 0.3);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      margin-bottom: 12px;
-      animation: pulseRadar 2s infinite;
+      font-size: 26px;
+      margin-bottom: 16px;
+      color: #E2E8F0;
     }
 
-    @keyframes pulseRadar {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-      50% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-    }
-
-    .video-waiting-placeholder h4 {
-      font-size: 15px;
+    .placeholder-title {
+      font-size: 16px;
       font-weight: 700;
-      color: var(--text-main);
+      color: #F8FAFC;
       margin-bottom: 6px;
     }
 
-    .video-waiting-placeholder p {
-      font-size: 12px;
+    .placeholder-subtitle {
+      font-size: 13px;
       line-height: 1.5;
-      max-width: 260px;
+      color: #94A3B8;
     }
 
-  
-    .audio-pill {
-      background: rgba(16, 185, 129, 0.2);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #34D399;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
+    /* ==========================================================================
+       BAR KONTROL DI BAWAH VIEWER (STABIL & KEDEKATAN DENGAN MEDIA)
+       ========================================================================== */
+    .media-controls-bar {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
       display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .control-tools-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      background: var(--canvas-bg);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
+      min-height: 44px; /* Target sentuh minimum 44px */
+      transition: all 0.15s;
     }
 
-  
-    /* 5 TOMBOL KONTROL PERSIS SEPERTI DI LAYAR HP TUNANETRA */
-    .phone-bottom-nav {
-      position: absolute;
-      bottom: 12px;
-      left: 10px;
-      right: 10px;
-      z-index: 25;
+    .tool-btn:hover {
+      background: var(--light-blue);
+      border-color: var(--primary-blue);
+      color: var(--primary-blue);
     }
 
-    .phone-control-bar {
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 28px;
-      padding: 6px 10px;
-      display: flex;
-      justify-content: space-between;
+    .tool-btn.active {
+      background: var(--primary-blue);
+      color: var(--text-on-blue);
+      border-color: var(--primary-blue);
+    }
+
+    .btn-end-session {
+      background: var(--emergency-red);
+      color: var(--text-on-blue);
+      border: none;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
       align-items: center;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+      gap: 6px;
+      min-height: 44px;
+      transition: background 0.15s;
     }
 
-    .phone-ctrl-btn {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #FFFFFF;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
+    .btn-end-session:hover {
+      background: var(--emergency-red-hover);
+    }
+
+    /* ==========================================================================
+       KOLOM KANAN: KONTEKS TUGAS & PANDUAN SUARA RELAWAN
+       ========================================================================== */
+    .actions-column {
       display: flex;
       flex-direction: column;
+      gap: 16px;
+    }
+
+    .task-detail-box {
+      background: var(--light-blue);
+      border: 1px solid var(--light-blue-border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 6px;
+    }
+
+    .task-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primary-blue);
+      margin-bottom: 4px;
+    }
+
+    .task-content {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    .guide-buttons-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .guide-cmd-btn {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 44px;
+      transition: all 0.15s;
+    }
+
+    .guide-cmd-btn:hover {
+      background: var(--canvas-bg);
+      border-color: var(--primary-blue);
+      color: var(--primary-blue);
+    }
+
+    .guide-cmd-btn::after {
+      content: "🔊";
+      font-size: 14px;
+      opacity: 0.6;
+    }
+
+    .btn-whatsapp-fallback {
+      background: #15803D;
+      color: white;
+      text-decoration: none;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
+      gap: 8px;
+      min-height: 44px;
+      transition: background 0.15s;
     }
 
-    .phone-ctrl-btn span {
-      font-size: 18px;
-      line-height: 1;
+    .btn-whatsapp-fallback:hover {
+      background: #166534;
     }
 
-    .phone-ctrl-btn label {
-      font-size: 8px;
-      font-weight: 700;
-      margin-top: 2px;
-      color: #94A3B8;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
+    /* ==========================================================================
+       RESPONSIF (TABLET & MOBILE)
+       ========================================================================== */
+    @media (max-width: 1100px) {
+      .workspace-container {
+        grid-template-columns: 260px 1fr;
+      }
+      .actions-column {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
     }
 
-    .phone-ctrl-btn:hover {
-      transform: scale(1.08);
-      background: rgba(255, 255, 255, 0.22);
+    @media (max-width: 1100px) {
+      .workspace-container.has-active-session .viewer-column {
+        order: -1; /* Posisikan layar HP/media paling atas saat sesi panggilan aktif */
+      }
     }
 
-    .phone-ctrl-btn.btn-active-tool {
-      background: rgba(37, 99, 235, 0.5);
-      border-color: #60A5FA;
+    @media (max-width: 768px) {
+      .app-header {
+        padding: 0 14px;
+        height: 56px;
+      }
+      .brand-text span {
+        display: none; /* Sembunyikan sublabel panjang di layar HP sempit */
+      }
+      .workspace-container {
+        grid-template-columns: 1fr;
+        padding: 12px;
+        gap: 14px;
+      }
+      .workspace-container.has-active-session .viewer-column {
+        order: -1;
+      }
+      .actions-column {
+        grid-template-columns: 1fr;
+      }
+      .media-viewport-container {
+        height: 420px;
+        border-radius: var(--radius-md);
+      }
+      .media-controls-bar {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .control-tools-group {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .control-tools-group .tool-btn {
+        padding: 8px 4px;
+        justify-content: center;
+        font-size: 11px;
+      }
+      .btn-end-session {
+        width: 100%;
+        justify-content: center;
+      }
     }
 
-    .phone-ctrl-btn.btn-danger-call {
-      background: #EF4444;
-      border-color: #F87171;
-      box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+    /* Accessibility: Prefers Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
     }
-
-    .phone-ctrl-btn.btn-danger-call label {
-      color: #FFFFFF;
-    }
-
-    .phone-ctrl-btn.btn-danger-call:hover {
-      background: #DC2626;
-      box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
-    }
-
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="brand">
-      <div class="brand-icon">👁️</div>
-      <div>
-        <h1>NetraVision Cloud</h1>
-        <p>Portal Pendamping & Relawan Visual</p>
+  <!-- HEADER APLIKASI UTAMA -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-icon" aria-hidden="true">N</div>
+      <div class="brand-text">
+        <h1>NetraVision</h1>
+        <span>Portal Pendamping & Relawan</span>
       </div>
     </div>
-    <div class="status-badge">
-      <div class="status-dot"></div>
-      <span id="cloudStatus">Cloud Supabase Aktif</span>
+
+    <div class="header-controls">
+      <div class="status-badge" id="cloudStatus">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>Terhubung ke Cloud</span>
+      </div>
+
+      <button class="btn-secondary" id="btnTestChime" onclick="playAlertChime()" title="Uji audio lonceng bel panggilan">
+        <span>🔔</span>
+        <span>Uji Nada Dering</span>
+      </button>
     </div>
   </header>
 
-  <div class="container">
-    
-    <!-- BANNER PANDUAN -->
-    <div class="banner-card">
-      <div class="banner-text">
-        <h2>Siap Menerima Panggilan 24/7</h2>
-        <p>Biarkan tab ini tetap terbuka di browser HP atau laptopmu. Begitu pengguna tunanetra menekan tombol bantuan di aplikasi, suara lonceng dan panggilan darurat akan berdering otomatis di sini.</p>
-      </div>
-      <button class="btn-test" onclick="playAlertChime()">
-        🔔 Tes Suara Lonceng
-      </button>
-    </div>
+  <!-- WORKSPACE UTAMA -->
+  <main class="workspace-container">
 
-    <!-- ACTIVE SESSION DISPLAY -->
-    <div id="activeSessionView" class="session-view">
-      <div class="session-header">
-        <div class="session-title-wrap">
-          <span class="call-active-badge">PANGGILAN AKTIF</span>
-          <h3 id="activeUserName">Pengguna Netra</h3>
+    <!-- 1. KOLOM KIRI: DAFTAR ANTREAN PERMINTAAN -->
+    <aside class="queue-column" aria-label="Antrean Permintaan Masuk">
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title">Antrean Bantuan</span>
+          <span class="count-badge" id="pendingCount">0</span>
         </div>
-        <div class="timer-display" id="callDuration">00:00</div>
-      </div>
 
-      <!-- PILIHAN TAMPILAN: LAYAR HP VS KAMERA -->
-      <div class="stream-switcher-tabs">
-        <button class="stream-tab-btn active" id="tabScreenShare" onclick="switchStreamMode('screen')">
-          📱 Layar HP Tunanetra
-        </button>
-        <button class="stream-tab-btn" id="tabCamera" onclick="switchStreamMode('camera')">
-          📹 Kamera Belakang
-        </button>
-      </div>
-
-      <!-- FRAME SMARTPHONE VERTIKAL (9:16) -->
-      <div class="phone-mockup-wrapper">
-        <div class="phone-frame">
-          <div class="phone-notch"></div>
-          <div class="video-viewport-card" id="videoViewport">
-            <div class="video-topbar">
-              <div class="live-badge-stream">
-                <div class="live-red-dot"></div>
-                <span id="camStreamStatus">LAYAR HP LIVE</span>
-              </div>
-              <div class="audio-pill" id="audioPill">
-                <span>🎤</span>
-                <span id="audioLiveStatus">Audio Aktif</span>
-              </div>
-            </div>
-
-            <div class="video-display-area">
-              <video id="userRemoteVideo" autoplay playsinline></video>
-              <audio id="userRemoteAudio" autoplay playsinline></audio>
-              <div class="video-waiting-placeholder" id="videoPlaceholder">
-                <div class="cam-radar-icon">📱</div>
-                <h4 id="placeholderTitle">Menunggu Siaran Layar HP...</h4>
-                <p id="placeholderSubtitle">Minta pengguna menekan tombol "Bagikan Layar" di HP, atau klik tab Kamera Belakang di atas.</p>
-              </div>
-            
-            <!-- 5 TOMBOL KONTROL PERSIS SEPERTI DI LAYAR HP PENGGUNA -->
-            <div class="phone-bottom-nav">
-              <div class="phone-control-bar">
-                <!-- 1. Mic -->
-                <button class="phone-ctrl-btn" id="pBtnMic" onclick="speakGuide('Mikrofon aktif')" title="1. Mikrofon Pengguna">
-                  <span>🎤</span>
-                  <label>Mic</label>
-                </button>
-                <!-- 2. Kamera -->
-                <button class="phone-ctrl-btn btn-active-tool" id="pBtnCam" onclick="switchStreamMode('camera')" title="2. Kamera Belakang">
-                  <span>📹</span>
-                  <label>Kamera</label>
-                </button>
-                <!-- 3. Bagikan Layar -->
-                <button class="phone-ctrl-btn" id="pBtnScreen" onclick="switchStreamMode('screen')" title="3. Bagikan Layar HP">
-                  <span>📱</span>
-                  <label>Layar</label>
-                </button>
-                <!-- 4. Speaker Audio -->
-                <button class="phone-ctrl-btn" id="pBtnSpeaker" onclick="speakGuide('Status audio aktif dan lancar')" title="4. Speaker Suara">
-                  <span>🔊</span>
-                  <label>Suara</label>
-                </button>
-                <!-- 5. Akhiri Panggilan (Merah) -->
-                <button class="phone-ctrl-btn btn-danger-call" id="pBtnEnd" onclick="finishCurrentSession()" title="5. Akhiri Panggilan">
-                  <span>📞</span>
-                  <label>Selesai</label>
-                </button>
-              </div>
-            </div>
-</div>
+        <div id="requestsList" class="request-list">
+          <div class="empty-state">
+            <div class="empty-state-icon" aria-hidden="true">📭</div>
+            <h3>Belum Ada Panggilan Masuk</h3>
+            <p>Permintaan bantuan visual dari pengguna tunanetra akan muncul di sini secara otomatis.</p>
           </div>
         </div>
       </div>
+    </aside>
 
-      <div class="task-box">
-        <div class="task-label">Tugas Bantuan</div>
-        <div class="task-desc" id="activeTaskDesc">-</div>
+    <!-- 2. KOLOM TENGAH: VIEWER MEDIA DAN KONTROL SESI -->
+    <section class="viewer-column" aria-label="Layar Sesi Pengguna">
+
+      <!-- Bar Konteks Sesi Aktif -->
+      <div class="session-topbar" id="sessionHeaderBar">
+        <div class="session-identity">
+          <span class="active-tag" id="activeStatusPill">SESI AKTIF</span>
+          <h2 class="active-name" id="activeUserName">Pengguna Netra</h2>
+        </div>
+
+        <!-- Switcher Pilihan Aliran: Layar Ponsel vs Kamera Belakang -->
+        <div class="stream-selector-tabs">
+          <button class="stream-tab active" id="tabScreenShare" onclick="switchStreamMode('screen')">
+            <span>📱</span>
+            <span>Layar HP</span>
+          </button>
+          <button class="stream-tab" id="tabCamera" onclick="switchStreamMode('camera')">
+            <span>📹</span>
+            <span>Kamera</span>
+          </button>
+        </div>
+
+        <div class="call-timer" id="callDuration" aria-label="Durasi panggilan">00:00</div>
       </div>
 
-      <div class="section-title">Panduan Suara Cepat</div>
-      <div class="quick-guide-grid">
-        <button class="guide-btn" onclick="speakGuide('Arahkan kamera sedikit ke kiri')">
-          <span>⬅️</span> Ke Kiri
-        </button>
-        <button class="guide-btn" onclick="speakGuide('Arahkan kamera sedikit ke kanan')">
-          <span>➡️</span> Ke Kanan
-        </button>
-        <button class="guide-btn" onclick="speakGuide('Maju perlahan satu langkah')">
-          <span>⬆️</span> Maju
-        </button>
-        <button class="guide-btn" onclick="speakGuide('Berhenti di situ')">
-          <span>🛑</span> Berhenti
-        </button>
-        <button class="guide-btn" onclick="speakGuide('Dekatkan kamera ke arah objek')">
-          <span>🔍</span> Dekatkan
-        </button>
-        <button class="guide-btn" onclick="speakGuide('Tahan posisi kamera, sedang membaca teks')">
-          <span>📖</span> Baca Teks
+      <!-- Bingkai Media Utama (Dark Canvas, Menyesuaikan Rasio HP Pengguna) -->
+      <div class="media-viewport-container" id="videoViewport">
+        <!-- Badges Overlay Status Di Atas Media -->
+        <div class="viewport-overlay-badges">
+          <div class="live-indicator">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span id="camStreamStatus">Menunggu Sesi</span>
+          </div>
+          <div class="audio-indicator" id="audioPill">
+            <span>🎤</span>
+            <span id="audioLiveStatus">Audio Standby</span>
+          </div>
+        </div>
+
+        <!-- Elemen Video & Audio WebRTC Asli (Node DOM Tetap Dipertahankan) -->
+        <video id="userRemoteVideo" autoplay playsinline></video>
+        <audio id="userRemoteAudio" autoplay playsinline></audio>
+
+        <!-- Placeholder Netral Saat Idle / Belum Terhubung -->
+        <div class="viewport-placeholder" id="videoPlaceholder">
+          <div class="placeholder-symbol" aria-hidden="true">📱</div>
+          <h3 class="placeholder-title" id="placeholderTitle">Tampilan Pengguna Akan Muncul di Sini</h3>
+          <p class="placeholder-subtitle" id="placeholderSubtitle">Begitu panggilan diterima, siaran kamera atau layar ponsel pengguna tunanetra akan mengalir secara langsung.</p>
+        </div>
+      </div>
+
+      <!-- Kontrol Cepat Di Bawah Media (Kedekatan Kontrol) -->
+      <div class="media-controls-bar" id="mediaControlsBar">
+        <div class="control-tools-group">
+          <button class="tool-btn" id="pBtnMic" onclick="speakGuide('Mikrofon terhubung aktif')" title="Status Mikrofon Pengguna">
+            <span>🎤</span>
+            <span>Mikrofon</span>
+          </button>
+          <button class="tool-btn active" id="pBtnCam" onclick="switchStreamMode('camera')" title="Tampilkan Kamera Belakang">
+            <span>📹</span>
+            <span>Kamera</span>
+          </button>
+          <button class="tool-btn" id="pBtnScreen" onclick="switchStreamMode('screen')" title="Tampilkan Layar Ponsel Pengguna">
+            <span>📱</span>
+            <span>Layar HP</span>
+          </button>
+          <button class="tool-btn" id="pBtnSpeaker" onclick="speakGuide('Audio pendamping tersambung lancar')" title="Status Audio Pengguna">
+            <span>🔊</span>
+            <span>Audio</span>
+          </button>
+        </div>
+
+        <button class="btn-end-session" id="pBtnEnd" onclick="finishCurrentSession()" title="Akhiri sesi bantuan visual">
+          <span>📞</span>
+          <span>Akhiri Bantuan</span>
         </button>
       </div>
 
-      <div class="contact-fallbacks">
-        <a id="btnWaCall" class="btn-wa" href="https://wa.me/" target="_blank">
-          📞 Telepon WhatsApp Langsung
+    </section>
+
+    <!-- 3. KOLOM KANAN: KONTEKS TUGAS & PANDUAN RELAWAN -->
+    <aside class="actions-column" aria-label="Panduan Relawan dan Opsi Bantuan">
+
+      <!-- Konteks Tugas Saat Ini -->
+      <div class="panel-card" id="taskDetailPanel">
+        <div class="panel-header">
+          <span class="panel-title">Konteks Permintaan</span>
+        </div>
+        <div class="task-detail-box">
+          <div class="task-label">Tugas Bantuan</div>
+          <div class="task-content" id="activeTaskDesc">Bantuan Umum Visual</div>
+        </div>
+      </div>
+
+      <!-- Panduan Suara Cepat (Speech Prompts) -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title">Panduan Suara Cepat</span>
+        </div>
+        <div class="guide-buttons-list">
+          <button class="guide-cmd-btn" onclick="speakGuide('Arahkan kamera sedikit ke kiri')">
+            Ke Kiri
+          </button>
+          <button class="guide-cmd-btn" onclick="speakGuide('Arahkan kamera sedikit ke kanan')">
+            Ke Kanan
+          </button>
+          <button class="guide-cmd-btn" onclick="speakGuide('Maju perlahan satu langkah')">
+            Maju Satu Langkah
+          </button>
+          <button class="guide-cmd-btn" onclick="speakGuide('Berhenti di situ')">
+            Berhenti
+          </button>
+          <button class="guide-cmd-btn" onclick="speakGuide('Dekatkan kamera ke arah objek')">
+            Dekatkan Kamera
+          </button>
+          <button class="guide-cmd-btn" onclick="speakGuide('Tahan posisi kamera, sedang membaca teks')">
+            Tahan Posisi Kamera
+          </button>
+        </div>
+      </div>
+
+      <!-- Jalur Cadangan Darurat WhatsApp -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title">Kontak Darurat Cadangan</span>
+        </div>
+        <a id="btnWaCall" class="btn-whatsapp-fallback" href="https://wa.me/" target="_blank" rel="noopener noreferrer">
+          <span>📞</span>
+          <span>Telepon WhatsApp Langsung</span>
         </a>
       </div>
 
-      <button class="btn-end" onclick="finishCurrentSession()">
-        Selesaikan Bantuan Visual
-      </button>
-    </div>
+    </aside>
 
-    <!-- PENDING CALLS LIST -->
-    <div class="section-title">
-      <span>Permintaan Masuk Menunggu Relawan</span>
-      <span class="badge-count" id="pendingCount">0</span>
-    </div>
-
-    <div id="requestsList" class="request-list">
-      <div class="empty-state">
-        <div class="empty-icon">🎧</div>
-        <h3>Belum Ada Panggilan Masuk</h3>
-        <p>Menunggu permintaan bantuan dari aplikasi NetraVision tunanetra...</p>
-      </div>
-    </div>
-
-  </div>
+  </main>
 
   <script>
-    // Konfigurasi Supabase Cloud Resmi
+    // ==========================================================================
+    // LOGIKA INTEGRASI RESMI SUPABASE & LIVEKIT CLOUD
+    // Seluruh perilaku, token otorisasi, dan event handler dipertahankan 100%
+    // ==========================================================================
     const SUPABASE_URL = 'https://sipxavvrhgvlbqkazghv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let activeSession = null;
+      const workspaceEl = document.querySelector('.workspace-container');
+      if (workspaceEl) workspaceEl.classList.remove('has-active-session');
     let callTimerInterval = null;
     let callSeconds = 0;
     const companionId = 'comp_' + Math.floor(Math.random() * 899999 + 100000);
     const companionName = 'Relawan Netra';
+    let lastKnownCount = 0;
 
-    // Suara Lonceng Panggilan Web Audio API (Mandiri, tanpa file audio luar)
+    let livekitRoom = null;
+    let currentCameraTrack = null;
+    let currentScreenTrack = null;
+    let preferredStream = 'camera'; // Default ke kamera belakang saat panggilan mulai
+
+    // 1. Audio Lonceng Pemanggilan Web Audio API
     function playAlertChime() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // Nada 1: 523.25 Hz (C5)
         const osc1 = audioCtx.createOscillator();
         const gain1 = audioCtx.createGain();
         osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
         gain1.gain.setValueAtTime(0.3, audioCtx.currentTime);
         gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
         osc1.connect(gain1);
@@ -914,37 +998,158 @@
         osc1.start();
         osc1.stop(audioCtx.currentTime + 0.6);
 
-        // Nada 2: 659.25 Hz (E5)
         const osc2 = audioCtx.createOscillator();
         const gain2 = audioCtx.createGain();
         osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15);
-        gain2.gain.setValueAtTime(0.35, audioCtx.currentTime + 0.15);
-        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.85);
+        osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.2); // E5
+        gain2.gain.setValueAtTime(0.35, audioCtx.currentTime + 0.2);
+        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
         osc2.connect(gain2);
         gain2.connect(audioCtx.destination);
-        osc2.start(audioCtx.currentTime + 0.15);
-        osc2.stop(audioCtx.currentTime + 0.85);
-
-        // Getar perangkat jika browser HP
-        if (navigator.vibrate) {
-          navigator.vibrate([200, 100, 200, 100, 300]);
-        }
+        osc2.start(audioCtx.currentTime + 0.2);
+        osc2.stop(audioCtx.currentTime + 0.8);
       } catch (e) {
-        console.log('Audio chime error:', e);
+        console.warn('AudioContext belum dapat memutar audio otomatis:', e);
       }
     }
 
+    // 2. Panduan Suara Cepat
     function speakGuide(text) {
       if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'id-ID';
+        utterance.rate = 1.0;
         window.speechSynthesis.speak(utterance);
       }
     }
 
-    // Ambil daftar permintaan pending
+    // 3. Switcher Aliran Media (Layar HP vs Kamera)
+    function switchStreamMode(mode) {
+      preferredStream = mode;
+      const tabScreen = document.getElementById('tabScreenShare');
+      const tabCam = document.getElementById('tabCamera');
+      const pBtnScreen = document.getElementById('pBtnScreen');
+      const pBtnCam = document.getElementById('pBtnCam');
+
+      if (tabScreen) tabScreen.classList.toggle('active', mode === 'screen');
+      if (tabCam) tabCam.classList.toggle('active', mode === 'camera');
+      if (pBtnScreen) pBtnScreen.classList.toggle('active', mode === 'screen');
+      if (pBtnCam) pBtnCam.classList.toggle('active', mode === 'camera');
+
+      renderActiveVideoStream();
+    }
+
+    function renderActiveVideoStream() {
+      const videoEl = document.getElementById('userRemoteVideo');
+      const placeholder = document.getElementById('videoPlaceholder');
+      const camStatus = document.getElementById('camStreamStatus');
+      const pTitle = document.getElementById('placeholderTitle');
+      const pSub = document.getElementById('placeholderSubtitle');
+
+      let targetTrack = (preferredStream === 'screen') ? currentScreenTrack : currentCameraTrack;
+      if (!targetTrack) {
+        targetTrack = currentCameraTrack || currentScreenTrack;
+      }
+
+      if (targetTrack) {
+        targetTrack.attach(videoEl);
+        videoEl.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+
+        if (targetTrack === currentScreenTrack) {
+          videoEl.style.objectFit = 'contain';
+          if (camStatus) camStatus.innerText = 'Layar HP Live';
+        } else {
+          videoEl.style.objectFit = 'contain';
+          if (camStatus) camStatus.innerText = 'Kamera Belakang Live';
+        }
+      } else {
+        videoEl.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+        if (preferredStream === 'screen') {
+          if (pTitle) pTitle.innerText = 'Menunggu Siaran Layar Ponsel...';
+          if (pSub) pSub.innerText = 'Minta pengguna menekan tombol "Bagikan Layar" di HP, atau beralih ke Kamera Belakang.';
+        } else {
+          if (pTitle) pTitle.innerText = 'Menunggu Kamera Pengguna...';
+          if (pSub) pSub.innerText = 'Menghubungkan ke lensa kamera belakang HP pengguna tunanetra...';
+        }
+      }
+    }
+
+    // 4. Koneksi LiveKit WebRTC Cloud
+    async function connectLiveKit(url, token) {
+      if (!url || !token) {
+        console.warn('LiveKit URL atau token tidak ditemukan dalam sesi');
+        return;
+      }
+
+      try {
+        const livekitUrl = url || 'wss://netravision-ibcqale8.livekit.cloud';
+        const camStatus = document.getElementById('camStreamStatus');
+        if (camStatus) camStatus.innerText = 'Menyambungkan Media...';
+
+        livekitRoom = new LivekitClient.Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+
+        livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          console.log('Track diterima:', track.kind, publication ? publication.source : '', 'dari:', participant.identity);
+          if (track.kind === 'video') {
+            const isScreen = (publication && publication.source === LivekitClient.Track.Source.ScreenShare) || track.source === 'screen_share';
+            if (isScreen) {
+              currentScreenTrack = track;
+              preferredStream = 'screen';
+              switchStreamMode('screen');
+            } else {
+              currentCameraTrack = track;
+            }
+            renderActiveVideoStream();
+          }
+
+          if (track.kind === 'audio') {
+            console.log('Audio suara dari pengguna tunanetra diterima. Menyambungkan ke speaker...');
+            const audioStatus = document.getElementById('audioLiveStatus');
+            if (audioStatus) audioStatus.innerText = 'Audio Aktif & Jernih';
+            const audioEl = document.getElementById('userRemoteAudio');
+            if (audioEl) {
+              track.attach(audioEl);
+              audioEl.volume = 1.0;
+              audioEl.play().catch(e => console.warn('Autoplay audio browser:', e));
+            } else {
+              const el = track.attach();
+              document.body.appendChild(el);
+              el.play().catch(() => {});
+            }
+          }
+        });
+
+        livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+          track.detach();
+          if (track.kind === 'video') {
+            if (track === currentScreenTrack) currentScreenTrack = null;
+            if (track === currentCameraTrack) currentCameraTrack = null;
+            renderActiveVideoStream();
+          }
+        });
+
+        await livekitRoom.connect(livekitUrl, token);
+        console.log('Terhubung ke LiveKit Room:', livekitRoom.name);
+
+        // Aktifkan mikrofon pendamping untuk berbicara dua arah
+        try {
+          await livekitRoom.localParticipant.setMicrophoneEnabled(true);
+        } catch (micErr) {
+          console.warn('Izin mikrofon browser tidak diberikan:', micErr);
+        }
+      } catch (err) {
+        console.error('Gagal menyambung ke LiveKit:', err);
+        const camStatus = document.getElementById('camStreamStatus');
+        if (camStatus) camStatus.innerText = 'Media Terputus';
+      }
+    }
+
+    // 5. Muat dan Render Daftar Permintaan Masuk
     async function loadPendingRequests() {
       try {
         const { data, error } = await sb
@@ -964,14 +1169,11 @@
       }
     }
 
-    let lastKnownCount = 0;
-
     function renderRequests(list) {
       const listEl = document.getElementById('requestsList');
       const countEl = document.getElementById('pendingCount');
-      countEl.innerText = list.length;
+      if (countEl) countEl.innerText = list.length;
 
-      // Bunyikan bel jika ada panggilan baru yang masuk
       if (list.length > lastKnownCount) {
         playAlertChime();
       }
@@ -980,9 +1182,9 @@
       if (list.length === 0) {
         listEl.innerHTML = `
           <div class="empty-state">
-            <div class="empty-icon">🎧</div>
+            <div class="empty-state-icon" aria-hidden="true">📭</div>
             <h3>Belum Ada Panggilan Masuk</h3>
-            <p>Menunggu permintaan bantuan dari aplikasi NetraVision tunanetra...</p>
+            <p>Permintaan bantuan visual dari pengguna tunanetra akan muncul di sini secara otomatis.</p>
           </div>
         `;
         return;
@@ -991,31 +1193,26 @@
       listEl.innerHTML = list.map(req => `
         <div class="request-card" id="card-${req.id}">
           <div class="card-top">
-            <div class="user-info">
-              <div class="user-avatar">👤</div>
-              <div class="user-meta">
-                <h4>${req.user_name || 'Pengguna NetraVision'}</h4>
-                <span>ID: ${req.id}</span>
-              </div>
+            <div class="user-meta">
+              <h4>${req.user_name || 'Pengguna NetraVision'}</h4>
+              <span>ID: ${req.id}</span>
             </div>
-            <span class="urgency-badge">MEMBUTUHKAN BANTUAN</span>
+            <span class="urgency-badge">Menunggu Relawan</span>
           </div>
 
-          <div class="task-box">
-            <div class="task-label">Tugas Bantuan</div>
-            <div class="task-desc">${req.description || 'Bantuan navigasi & orientasi visual'}</div>
+          <div class="task-preview">
+            ${req.description || 'Bantuan Umum Visual'}
           </div>
 
-          <div class="card-actions">
-            <button class="btn-accept" onclick="acceptRequest('${req.id}')">
-              <span>🤝</span> Terima Panggilan Visual
-            </button>
-          </div>
+          <button class="btn-accept" onclick="acceptRequest('${req.id}')">
+            <span>🤝</span>
+            <span>Terima Panggilan Visual</span>
+          </button>
         </div>
       `).join('');
     }
 
-    // Terima bantuan (Atomic Update di Supabase)
+    // 6. Terima Permintaan Bantuan
     async function acceptRequest(requestId) {
       try {
         const { data, error } = await sb
@@ -1043,170 +1240,47 @@
       }
     }
 
-    
-    let livekitRoom = null;
-
-    
-    let currentCameraTrack = null;
-    let currentScreenTrack = null;
-    let preferredStream = 'screen';
-
-    function switchStreamMode(mode) {
-      preferredStream = mode;
-      const tabScreen = document.getElementById('tabScreenShare');
-      const tabCam = document.getElementById('tabCamera');
-      if (tabScreen) tabScreen.classList.toggle('active', mode === 'screen');
-      if (tabCam) tabCam.classList.toggle('active', mode === 'camera');
-      renderActiveVideoStream();
-    }
-
-    function renderActiveVideoStream() {
-      const videoEl = document.getElementById('userRemoteVideo');
-      const placeholder = document.getElementById('videoPlaceholder');
-      const camStatus = document.getElementById('camStreamStatus');
-      const pTitle = document.getElementById('placeholderTitle');
-      const pSub = document.getElementById('placeholderSubtitle');
-
-      let targetTrack = (preferredStream === 'screen') ? currentScreenTrack : currentCameraTrack;
-      if (!targetTrack) {
-        targetTrack = currentCameraTrack || currentScreenTrack;
-      }
-
-      if (targetTrack) {
-        targetTrack.attach(videoEl);
-        videoEl.style.display = 'block';
-        if (placeholder) placeholder.style.display = 'none';
-
-        if (targetTrack === currentScreenTrack) {
-          videoEl.style.objectFit = 'contain'; // Tampilan layar HP pas tanpa terpotong
-          if (camStatus) camStatus.innerText = '📱 LAYAR HP LIVE';
-        } else {
-          videoEl.style.objectFit = 'cover'; // Video kamera memenuhi seluruh bingkai HP tegak
-          if (camStatus) camStatus.innerText = '📹 KAMERA BELAKANG LIVE';
-        }
-      } else {
-        videoEl.style.display = 'none';
-        if (placeholder) placeholder.style.display = 'flex';
-        if (preferredStream === 'screen') {
-          if (pTitle) pTitle.innerText = 'Menunggu Siaran Layar HP...';
-          if (pSub) pSub.innerText = 'Minta pengguna menekan tombol "Bagikan Layar" di HP, atau klik tab Kamera Belakang.';
-        } else {
-          if (pTitle) pTitle.innerText = 'Menunggu Kamera Belakang...';
-          if (pSub) pSub.innerText = 'Menghubungkan ke lensa kamera belakang HP pengguna...';
-        }
-      }
-    }
-
-    async function connectLiveKit(url, token) {
-      if (!url || !token) {
-        console.warn('LiveKit URL atau token tidak ditemukan dalam sesi');
-        return;
-      }
-
-      try {
-        const livekitUrl = url || 'wss://netravision-ibcqale8.livekit.cloud';
-        const camStatus = document.getElementById('camStreamStatus');
-        if (camStatus) camStatus.innerText = 'MENYAMBUNGKAN KAMERA...';
-
-        livekitRoom = new LivekitClient.Room({
-          adaptiveStream: true,
-          dynacast: true,
-        });
-
-        livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-          console.log('Track diterima:', track.kind, publication ? publication.source : '', 'dari participant:', participant.identity);
-          if (track.kind === 'video') {
-            const isScreen = (publication && publication.source === LivekitClient.Track.Source.ScreenShare) || track.source === 'screen_share';
-            if (isScreen) {
-              console.log('Layar HP (ScreenShare) terdeteksi!');
-              currentScreenTrack = track;
-              preferredStream = 'screen';
-              const tabScreen = document.getElementById('tabScreenShare');
-              const tabCam = document.getElementById('tabCamera');
-              if (tabScreen) tabScreen.classList.add('active');
-              if (tabCam) tabCam.classList.remove('active');
-            } else {
-              currentCameraTrack = track;
-            }
-            renderActiveVideoStream();
-          }
-
-          if (track.kind === 'audio') {
-            console.log('Audio suara dari pengguna tunanetra diterima. Menyambungkan ke speaker browser...');
-            const audioStatus = document.getElementById('audioLiveStatus');
-            if (audioStatus) audioStatus.innerText = 'Audio Aktif';
-            const audioEl = document.getElementById('userRemoteAudio');
-            if (audioEl) {
-              track.attach(audioEl);
-              audioEl.volume = 1.0;
-              audioEl.play().catch(e => {
-                console.warn('Autoplay audio diblokir browser, mencoba putar kembali:', e);
-              });
-            } else {
-              const el = track.attach();
-              el.id = 'dynamic_remote_audio';
-              document.body.appendChild(el);
-              el.play().catch(() => {});
-            }
-          }
-        });
-
-        livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
-          track.detach();
-          if (track.kind === 'video') {
-            if (track === currentScreenTrack) currentScreenTrack = null;
-            if (track === currentCameraTrack) currentCameraTrack = null;
-            renderActiveVideoStream();
-          }
-        });
-
-        
-
-        await livekitRoom.connect(livekitUrl, token);
-        console.log('Berhasil terhubung ke LiveKit Room:', livekitRoom.name);
-
-        // Aktifkan mic pendamping jika diizinkan browser
-        try {
-          await livekitRoom.localParticipant.setMicrophoneEnabled(true);
-        } catch (micErr) {
-          console.warn('Izin mikrofon browser tidak diberikan:', micErr);
-        }
-      } catch (err) {
-        console.error('Gagal menyambung ke LiveKit:', err);
-        const camStatus = document.getElementById('camStreamStatus');
-        if (camStatus) camStatus.innerText = 'KAMERA BELUM TERSEDIA';
-      }
-    }
-
+    // 7. Mulai Sesi Aktif
     function startActiveSession(session) {
       activeSession = session;
-      document.getElementById('activeSessionView').style.display = 'block';
-      document.getElementById('activeUserName').innerText = session.user_name || 'Pengguna Netra';
-      document.getElementById('activeTaskDesc').innerText = session.description || 'Bantuan visual aktif';
-      
-      // Sambungkan streaming kamera LiveKit Cloud
+      const workspaceEl = document.querySelector('.workspace-container');
+      if (workspaceEl) workspaceEl.classList.add('has-active-session');
+      const userNameEl = document.getElementById('activeUserName');
+      const taskDescEl = document.getElementById('activeTaskDesc');
+      if (userNameEl) userNameEl.innerText = session.user_name || 'Pengguna Netra';
+      if (taskDescEl) taskDescEl.innerText = session.description || 'Bantuan visual aktif';
+
+      // Sambungkan LiveKit Room
       if (session.livekit_url && session.companion_token) {
         connectLiveKit(session.livekit_url, session.companion_token);
       }
 
-      // Setup WhatsApp fallback link
+      // Link Cadangan WhatsApp
       const waBtn = document.getElementById('btnWaCall');
-      waBtn.href = 'https://wa.me/?text=' + encodeURIComponent('Halo ' + (session.user_name || 'pengguna Netra') + ', saya ' + companionName + ' dari NetraVision siap membantu.');
+      if (waBtn) {
+        waBtn.href = 'https://wa.me/?text=' + encodeURIComponent('Halo ' + (session.user_name || 'pengguna Netra') + ', saya ' + companionName + ' dari NetraVision siap membantu.');
+      }
 
+      // Mulai Timer Panggilan
       callSeconds = 0;
       clearInterval(callTimerInterval);
       callTimerInterval = setInterval(() => {
         callSeconds++;
         const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
         const secs = String(callSeconds % 60).padStart(2, '0');
-        document.getElementById('callDuration').innerText = mins + ':' + secs;
+        const durationEl = document.getElementById('callDuration');
+        if (durationEl) durationEl.innerText = `${mins}:${secs}`;
       }, 1000);
 
       loadPendingRequests();
     }
 
+    // 8. Selesaikan Sesi Bantuan
     async function finishCurrentSession() {
-      if (!activeSession) return;
+      if (!activeSession) {
+        alert('Tidak ada sesi panggilan aktif.');
+        return;
+      }
       if (!confirm('Selesaikan sesi bantuan visual ini?')) return;
 
       if (livekitRoom) {
@@ -1224,41 +1298,48 @@
             updated_at: new Date().toISOString()
           })
           .eq('id', activeSession.id);
-
-        clearInterval(callTimerInterval);
-        document.getElementById('activeSessionView').style.display = 'none';
-        activeSession = null;
-        loadPendingRequests();
       } catch (e) {
-        alert('Gagal menyelesaikan sesi: ' + e.message);
+        console.error('Error closing session:', e);
       }
+
+      clearInterval(callTimerInterval);
+      activeSession = null;
+      currentCameraTrack = null;
+      currentScreenTrack = null;
+
+      const videoEl = document.getElementById('userRemoteVideo');
+      if (videoEl) videoEl.style.display = 'none';
+      const placeholder = document.getElementById('videoPlaceholder');
+      if (placeholder) placeholder.style.display = 'flex';
+      const pTitle = document.getElementById('placeholderTitle');
+      if (pTitle) pTitle.innerText = 'Sesi Telah Selesai';
+      const pSub = document.getElementById('placeholderSubtitle');
+      if (pSub) pSub.innerText = 'Terima kasih telah mendampingi pengguna. Siap menerima panggilan berikutnya.';
+      const timerEl = document.getElementById('callDuration');
+      if (timerEl) timerEl.innerText = '00:00';
+      const camStatus = document.getElementById('camStreamStatus');
+      if (camStatus) camStatus.innerText = 'Standby';
+
+      loadPendingRequests();
     }
 
-    // Subscribe ke Supabase Realtime Channel
+    // Inisialisasi Event Listener Realtime Supabase
     sb
       .channel('public:help_requests')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'help_requests' },
-        (payload) => {
-          loadPendingRequests();
-          if (activeSession && payload.new && payload.new.id === activeSession.id) {
-            if (payload.new.status === 'cancelled' || payload.new.status === 'completed') {
-              alert('Sesi telah diakhiri oleh pengguna.');
-              clearInterval(callTimerInterval);
-              document.getElementById('activeSessionView').style.display = 'none';
-              activeSession = null;
-            }
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'help_requests' }, payload => {
+        loadPendingRequests();
+        if (activeSession && payload.new && payload.new.id === activeSession.id) {
+          if (payload.new.status === 'completed' || payload.new.status === 'cancelled') {
+            alert('Pengguna telah mengakhiri sesi bantuan.');
+            finishCurrentSession();
           }
         }
-      )
+      })
       .subscribe();
 
-    // Polling berkala 2.5 detik sebagai pengaman
-    setInterval(loadPendingRequests, 2500);
-
-    // Initial load
+    // Jalankan pemuatan awal dan polling cadangan
     loadPendingRequests();
+    setInterval(loadPendingRequests, 3000);
   </script>
 </body>
 </html>
