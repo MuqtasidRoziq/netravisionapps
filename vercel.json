@@ -1,0 +1,9 @@
+﻿{
+  " version\: 2,
+ \cleanUrls\: true,
+ \rewrites\: [
+ { \source\: \/\, \destination\: \/docs/index.html\ },
+ { \source\: \/companion\, \destination\: \/docs/index.html\ },
+ { \source\: \/assist\, \destination\: \/server/web/assist.html\ }
+ ]
+}
