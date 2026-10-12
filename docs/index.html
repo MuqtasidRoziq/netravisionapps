@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NetraVision - Portal Pendamping Visual Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Supabase JS Client resmi via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0B0F19;
+      --card-bg: #151D2F;
+      --card-hover: #1E293B;
+      --primary: #3B82F6;
+      --primary-hover: #2563EB;
+      --emerald: #10B981;
+      --emerald-dark: #059669;
+      --rose: #EF4444;
+      --amber: #F59E0B;
+      --whatsapp: #25D366;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 40px;
+    }
+
+    header {
+      background: rgba(21, 29, 47, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #3B82F6, #10B981);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .brand h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #34D399;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #10B981;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #10B981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 16px;
+      flex: 1;
+    }
+
+    /* BANNER INFO */
+    .banner-card {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(16, 185, 129, 0.08));
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .banner-text h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .banner-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .btn-test {
+      background: #2563EB;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .btn-test:hover {
+      background: #1D4ED8;
+      transform: translateY(-1px);
+    }
+
+    /* PENDING REQUESTS SECTION */
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .badge-count {
+      background: var(--primary);
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .request-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .empty-state {
+      background: var(--card-bg);
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.7;
+    }
+
+    .empty-state h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .request-card {
+      background: var(--card-bg);
+      border: 2px solid rgba(59, 130, 246, 0.4);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.15);
+      animation: cardPulse 3s infinite;
+      transition: all 0.2s;
+    }
+
+    @keyframes cardPulse {
+      0%, 100% { border-color: rgba(59, 130, 246, 0.4); }
+      50% { border-color: rgba(16, 185, 129, 0.7); box-shadow: 0 0 20px rgba(16, 185, 129, 0.25); }
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 44px;
+      height: 44px;
+      background: #3B82F6;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .user-meta h4 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .user-meta span {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .urgency-badge {
+      background: rgba(239, 68, 68, 0.15);
+      color: #F87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .task-box {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+
+    .task-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #60A5FA;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .task-desc {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-accept {
+      flex: 1;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+      transition: all 0.2s;
+    }
+
+    .btn-accept:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    }
+
+    /* ACTIVE SESSION OVERLAY */
+    .session-view {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      margin-bottom: 32px;
+    }
+
+    .session-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+
+    .session-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .call-active-badge {
+      background: #10B981;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .timer-display {
+      font-family: monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: #34D399;
+    }
+
+    .quick-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .guide-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .guide-btn:hover {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: #3B82F6;
+      transform: translateY(-2px);
+    }
+
+    .guide-btn span {
+      font-size: 20px;
+    }
+
+    .contact-fallbacks {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .btn-wa {
+      flex: 1;
+      background: #25D366;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .btn-wa:hover {
+      background: #1EBE5B;
+    }
+
+    .btn-end {
+      width: 100%;
+      background: #EF4444;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-end:hover {
+      background: #DC2626;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">👁️</div>
+      <div>
+        <h1>NetraVision Cloud</h1>
+        <p>Portal Pendamping & Relawan Visual</p>
+      </div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span id="cloudStatus">Cloud Supabase Aktif</span>
+    </div>
+  </header>
+
+  <div class="container">
+    
+    <!-- BANNER PANDUAN -->
+    <div class="banner-card">
+      <div class="banner-text">
+        <h2>Siap Menerima Panggilan 24/7</h2>
+        <p>Biarkan tab ini tetap terbuka di browser HP atau laptopmu. Begitu pengguna tunanetra menekan tombol bantuan di aplikasi, suara lonceng dan panggilan darurat akan berdering otomatis di sini.</p>
+      </div>
+      <button class="btn-test" onclick="playAlertChime()">
+        🔔 Tes Suara Lonceng
+      </button>
+    </div>
+
+    <!-- ACTIVE SESSION DISPLAY -->
+    <div id="activeSessionView" class="session-view">
+      <div class="session-header">
+        <div class="session-title-wrap">
+          <span class="call-active-badge">PANGGILAN AKTIF</span>
+          <h3 id="activeUserName">Pengguna Netra</h3>
+        </div>
+        <div class="timer-display" id="callDuration">00:00</div>
+      </div>
+
+      <div class="task-box">
+        <div class="task-label">Tugas Bantuan</div>
+        <div class="task-desc" id="activeTaskDesc">-</div>
+      </div>
+
+      <div class="section-title">Panduan Suara Cepat</div>
+      <div class="quick-guide-grid">
+        <button class="guide-btn" onclick="speakGuide('Arahkan kamera sedikit ke kiri')">
+          <span>⬅️</span> Ke Kiri
+        </button>
+        <button class="guide-btn" onclick="speakGuide('Arahkan kamera sedikit ke kanan')">
+          <span>➡️</span> Ke Kanan
+        </button>
+        <button class="guide-btn" onclick="speakGuide('Maju perlahan satu langkah')">
+          <span>⬆️</span> Maju
+        </button>
+        <button class="guide-btn" onclick="speakGuide('Berhenti di situ')">
+          <span>🛑</span> Berhenti
+        </button>
+        <button class="guide-btn" onclick="speakGuide('Dekatkan kamera ke arah objek')">
+          <span>🔍</span> Dekatkan
+        </button>
+        <button class="guide-btn" onclick="speakGuide('Tahan posisi kamera, sedang membaca teks')">
+          <span>📖</span> Baca Teks
+        </button>
+      </div>
+
+      <div class="contact-fallbacks">
+        <a id="btnWaCall" class="btn-wa" href="https://wa.me/" target="_blank">
+          📞 Telepon WhatsApp Langsung
+        </a>
+      </div>
+
+      <button class="btn-end" onclick="finishCurrentSession()">
+        Selesaikan Bantuan Visual
+      </button>
+    </div>
+
+    <!-- PENDING CALLS LIST -->
+    <div class="section-title">
+      <span>Permintaan Masuk Menunggu Relawan</span>
+      <span class="badge-count" id="pendingCount">0</span>
+    </div>
+
+    <div id="requestsList" class="request-list">
+      <div class="empty-state">
+        <div class="empty-icon">🎧</div>
+        <h3>Belum Ada Panggilan Masuk</h3>
+        <p>Menunggu permintaan bantuan dari aplikasi NetraVision tunanetra...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Konfigurasi Supabase Cloud Resmi
+    const SUPABASE_URL = 'https://sipxavvrhgvlbqkazghv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let activeSession = null;
+    let callTimerInterval = null;
+    let callSeconds = 0;
+    const companionId = 'comp_' + Math.floor(Math.random() * 899999 + 100000);
+    const companionName = 'Relawan Netra';
+
+    // Suara Lonceng Panggilan Web Audio API (Mandiri, tanpa file audio luar)
+    function playAlertChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Nada 1: 523.25 Hz (C5)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        gain1.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start();
+        osc1.stop(audioCtx.currentTime + 0.6);
+
+        // Nada 2: 659.25 Hz (E5)
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15);
+        gain2.gain.setValueAtTime(0.35, audioCtx.currentTime + 0.15);
+        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.85);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(audioCtx.currentTime + 0.15);
+        osc2.stop(audioCtx.currentTime + 0.85);
+
+        // Getar perangkat jika browser HP
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200, 100, 300]);
+        }
+      } catch (e) {
+        console.log('Audio chime error:', e);
+      }
+    }
+
+    function speakGuide(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'id-ID';
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Ambil daftar permintaan pending
+    async function loadPendingRequests() {
+      try {
+        const { data, error } = await supabase
+          .from('help_requests')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching requests:', error);
+          return;
+        }
+
+        renderRequests(data || []);
+      } catch (err) {
+        console.error('Connection error:', err);
+      }
+    }
+
+    let lastKnownCount = 0;
+
+    function renderRequests(list) {
+      const listEl = document.getElementById('requestsList');
+      const countEl = document.getElementById('pendingCount');
+      countEl.innerText = list.length;
+
+      // Bunyikan bel jika ada panggilan baru yang masuk
+      if (list.length > lastKnownCount) {
+        playAlertChime();
+      }
+      lastKnownCount = list.length;
+
+      if (list.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🎧</div>
+            <h3>Belum Ada Panggilan Masuk</h3>
+            <p>Menunggu permintaan bantuan dari aplikasi NetraVision tunanetra...</p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = list.map(req => `
+        <div class="request-card" id="card-${req.id}">
+          <div class="card-top">
+            <div class="user-info">
+              <div class="user-avatar">👤</div>
+              <div class="user-meta">
+                <h4>${req.user_name || 'Pengguna NetraVision'}</h4>
+                <span>ID: ${req.id}</span>
+              </div>
+            </div>
+            <span class="urgency-badge">MEMBUTUHKAN BANTUAN</span>
+          </div>
+
+          <div class="task-box">
+            <div class="task-label">Tugas Bantuan</div>
+            <div class="task-desc">${req.description || 'Bantuan navigasi & orientasi visual'}</div>
+          </div>
+
+          <div class="card-actions">
+            <button class="btn-accept" onclick="acceptRequest('${req.id}')">
+              <span>🤝</span> Terima Panggilan Visual
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Terima bantuan (Atomic Update di Supabase)
+    async function acceptRequest(requestId) {
+      try {
+        const { data, error } = await supabase
+          .from('help_requests')
+          .update({
+            status: 'accepted',
+            assigned_companion_id: companionId,
+            assigned_companion_name: companionName,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', requestId)
+          .eq('status', 'pending')
+          .select();
+
+        if (error || !data || data.length === 0) {
+          alert('Permintaan ini sudah diterima oleh relawan lain.');
+          loadPendingRequests();
+          return;
+        }
+
+        const session = data[0];
+        startActiveSession(session);
+      } catch (e) {
+        alert('Gagal menerima permintaan: ' + e.message);
+      }
+    }
+
+    function startActiveSession(session) {
+      activeSession = session;
+      document.getElementById('activeSessionView').style.display = 'block';
+      document.getElementById('activeUserName').innerText = session.user_name || 'Pengguna Netra';
+      document.getElementById('activeTaskDesc').innerText = session.description || 'Bantuan visual aktif';
+      
+      // Setup WhatsApp fallback link
+      const waBtn = document.getElementById('btnWaCall');
+      waBtn.href = 'https://wa.me/?text=' + encodeURIComponent('Halo ' + (session.user_name || 'pengguna Netra') + ', saya ' + companionName + ' dari NetraVision siap membantu.');
+
+      callSeconds = 0;
+      clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        document.getElementById('callDuration').innerText = mins + ':' + secs;
+      }, 1000);
+
+      loadPendingRequests();
+    }
+
+    async function finishCurrentSession() {
+      if (!activeSession) return;
+      if (!confirm('Selesaikan sesi bantuan visual ini?')) return;
+
+      try {
+        await supabase
+          .from('help_requests')
+          .update({
+            status: 'completed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', activeSession.id);
+
+        clearInterval(callTimerInterval);
+        document.getElementById('activeSessionView').style.display = 'none';
+        activeSession = null;
+        loadPendingRequests();
+      } catch (e) {
+        alert('Gagal menyelesaikan sesi: ' + e.message);
+      }
+    }
+
+    // Subscribe ke Supabase Realtime Channel
+    supabase
+      .channel('public:help_requests')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'help_requests' },
+        (payload) => {
+          loadPendingRequests();
+          if (activeSession && payload.new && payload.new.id === activeSession.id) {
+            if (payload.new.status === 'cancelled' || payload.new.status === 'completed') {
+              alert('Sesi telah diakhiri oleh pengguna.');
+              clearInterval(callTimerInterval);
+              document.getElementById('activeSessionView').style.display = 'none';
+              activeSession = null;
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // Polling berkala 2.5 detik sebagai pengaman
+    setInterval(loadPendingRequests, 2500);
+
+    // Initial load
+    loadPendingRequests();
+  </script>
+</body>
+</html>

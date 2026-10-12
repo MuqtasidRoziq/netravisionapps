@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -7,6 +8,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/visual_help_models.dart';
 
 class VisualHelpService extends GetxService {
+  // ====================== SUPABASE CLOUD PILOT ======================
+  static const String supabaseUrl = 'https://sipxavvrhgvlbqkazghv.supabase.co';
+  static const String supabaseAnonKey = 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG';
+  final RxBool useSupabaseCloud = true.obs;
+  Timer? _supabaseWatcherTimer;
+
+  Map<String, String> get _supabaseHeaders => {
+    'apikey': supabaseAnonKey,
+    'Authorization': 'Bearer $supabaseAnonKey',
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation',
+  };
+
   static const String _serverUrlKey = 'netravision_pilot_server_url';
   static const String _userRoleKey = 'netravision_active_role';
   static const String _userIdKey = 'netravision_user_id';
@@ -197,6 +211,57 @@ class VisualHelpService extends GetxService {
     required TaskContext taskContext,
     required RecipientTarget recipientTarget,
   }) async {
+    if (useSupabaseCloud.value) {
+      try {
+        final rng = Random();
+        final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(90) + 10}';
+        final accessKey = 'key_${DateTime.now().millisecondsSinceEpoch % 1000000}_${rng.nextInt(900000) + 100000}';
+        
+        final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests');
+        final targetDesc = (taskContext.targetName != null && taskContext.targetName!.trim().isNotEmpty)
+            ? taskContext.targetName!
+            : taskContext.taskType.label;
+
+        final body = {
+          'id': reqId,
+          'user_id': currentUserId.value,
+          'user_name': currentUserName.value,
+          'mode': recipientTarget.code,
+          'description': targetDesc,
+          'status': 'pending',
+          'access_key': accessKey,
+          'community_id': communityId.value,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        };
+
+        final res = await http.post(
+          uri,
+          headers: _supabaseHeaders,
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 6));
+
+        if (res.statusCode == 201) {
+          final model = VisualHelpRequestModel(
+            id: reqId,
+            accessKey: accessKey,
+            webAssistUrl: '$supabaseUrl/assist?req=$reqId&auth=$accessKey',
+            userId: currentUserId.value,
+            userName: currentUserName.value,
+            taskContext: taskContext,
+            recipientTarget: recipientTarget,
+            communityId: communityId.value,
+            status: HelpSessionState.pending,
+            createdAt: DateTime.now(),
+          );
+          activeRequest.value = model;
+
+          _startSupabaseSessionWatcher(reqId);
+          return model;
+        }
+      } catch (_) {}
+    }
+
     final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests');
     try {
       final res = await http.post(
@@ -233,9 +298,97 @@ class VisualHelpService extends GetxService {
     return null;
   }
 
+  void _startSupabaseSessionWatcher(String reqId) {
+    _supabaseWatcherTimer?.cancel();
+    _supabaseWatcherTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) async {
+      try {
+        final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests?id=eq.$reqId&select=*');
+        final res = await http.get(
+          uri,
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': 'Bearer $supabaseAnonKey',
+          },
+        ).timeout(const Duration(seconds: 4));
+
+        if (res.statusCode == 200) {
+          final list = jsonDecode(res.body) as List<dynamic>;
+          if (list.isEmpty) return;
+          final data = list[0] as Map<String, dynamic>;
+          final status = data['status'] as String?;
+          final companionName = data['assigned_companion_name'] as String? ?? 'Relawan Netra';
+          final companionId = data['assigned_companion_id'] as String?;
+
+          if (status == 'accepted') {
+            timer.cancel();
+            if (activeRequest.value != null) {
+              activeRequest.value!.status = HelpSessionState.accepted;
+              activeRequest.value!.assignedCompanionName = companionName;
+              activeRequest.value!.assignedCompanionId = companionId;
+              activeRequest.refresh();
+            }
+            onSocketEvent?.call({
+              'event': 'request_accepted',
+              'requestId': reqId,
+              'companionName': companionName,
+              'companionId': companionId,
+              'livekitUrl': 'wss://pilot.netravision.internal',
+              'token': null,
+              'request': {
+                'id': reqId,
+                'userId': currentUserId.value,
+                'userName': currentUserName.value,
+                'status': 'accepted',
+                'assignedCompanionName': companionName,
+                'assignedCompanionId': companionId,
+              },
+            });
+          } else if (status == 'completed') {
+            timer.cancel();
+            if (activeRequest.value != null) {
+              activeRequest.value!.status = HelpSessionState.completed;
+              activeRequest.refresh();
+            }
+            onSocketEvent?.call({
+              'event': 'session_ended',
+              'requestId': reqId,
+            });
+          } else if (status == 'cancelled') {
+            timer.cancel();
+            if (activeRequest.value != null) {
+              activeRequest.value!.status = HelpSessionState.cancelled;
+              activeRequest.refresh();
+            }
+            onSocketEvent?.call({
+              'event': 'request_cancelled',
+              'requestId': reqId,
+            });
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
   Future<bool> cancelHelpRequest(String requestId, {String? reason}) async {
-    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/cancel');
+    if (useSupabaseCloud.value) {
+      _supabaseWatcherTimer?.cancel();
+      try {
+        final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests?id=eq.$requestId');
+        await http.patch(
+          uri,
+          headers: _supabaseHeaders,
+          body: jsonEncode({'status': 'cancelled'}),
+        ).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+      if (activeRequest.value?.id == requestId) {
+        activeRequest.value?.status = HelpSessionState.cancelled;
+        activeRequest.refresh();
+      }
+      return true;
+    }
+
     final authKey = activeRequest.value?.accessKey;
+    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/cancel');
     try {
       final res = await http.post(
         uri,
@@ -294,8 +447,25 @@ class VisualHelpService extends GetxService {
   }
 
   Future<bool> completeHelpRequest(String requestId) async {
-    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/complete');
+    if (useSupabaseCloud.value) {
+      _supabaseWatcherTimer?.cancel();
+      try {
+        final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests?id=eq.$requestId');
+        await http.patch(
+          uri,
+          headers: _supabaseHeaders,
+          body: jsonEncode({'status': 'completed'}),
+        ).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+      if (activeRequest.value?.id == requestId) {
+        activeRequest.value?.status = HelpSessionState.completed;
+        activeRequest.refresh();
+      }
+      return true;
+    }
+
     final authKey = activeRequest.value?.accessKey;
+    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/complete');
     try {
       final res = await http.post(
         uri,
