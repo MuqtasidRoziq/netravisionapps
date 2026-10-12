@@ -213,6 +213,47 @@ class VisualHelpService extends GetxService {
 
   // ====================== REST API CALLS ======================
 
+  /// Mengambil token LiveKit dari Supabase Edge Function yang aman,
+  /// dengan graceful fallback ke generator lokal bila Edge Function belum aktif.
+  Future<String> _resolveLiveKitToken({
+    required String roomName,
+    required String identity,
+    required String name,
+    bool canPublish = true,
+  }) async {
+    try {
+      final edgeUri = Uri.parse('$supabaseUrl/functions/v1/generate-livekit-token');
+      final res = await http.post(
+        edgeUri,
+        headers: _supabaseHeaders,
+        body: jsonEncode({
+          'roomName': roomName,
+          'identity': identity,
+          'name': name,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        if (data['token'] != null && (data['token'] as String).isNotEmpty) {
+          return data['token'] as String;
+        }
+      }
+    } catch (_) {
+      // Edge Function belum dideploy atau jaringan bermasalah -> fallback
+    }
+
+    return LiveKitJwt.createToken(
+      apiKey: livekitApiKey,
+      apiSecret: livekitApiSecret,
+      roomName: roomName,
+      identity: identity,
+      name: name,
+      canPublish: canPublish,
+      canSubscribe: true,
+    );
+  }
+
   Future<VisualHelpRequestModel?> createHelpRequest({
     required TaskContext taskContext,
     required RecipientTarget recipientTarget,
@@ -229,23 +270,17 @@ class VisualHelpService extends GetxService {
             : taskContext.taskType.label;
 
         final roomName = 'room_$reqId';
-        final userToken = LiveKitJwt.createToken(
-          apiKey: livekitApiKey,
-          apiSecret: livekitApiSecret,
+        final userToken = await _resolveLiveKitToken(
           roomName: roomName,
           identity: 'usr_${currentUserId.value}',
           name: currentUserName.value,
           canPublish: true,
-          canSubscribe: true,
         );
-        final companionToken = LiveKitJwt.createToken(
-          apiKey: livekitApiKey,
-          apiSecret: livekitApiSecret,
+        final companionToken = await _resolveLiveKitToken(
           roomName: roomName,
           identity: 'comp_volunteer',
           name: 'Relawan Netra',
           canPublish: true,
-          canSubscribe: true,
         );
 
         final body = {
