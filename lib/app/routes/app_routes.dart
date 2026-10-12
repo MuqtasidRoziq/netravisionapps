@@ -5,6 +5,7 @@ abstract class Routes {
   Routes._();
   static const SPLASH = _Paths.SPLASH;
   static const HOME = _Paths.HOME;
+  static const DETECTOR = _Paths.DETECTOR;
   static const ITEM_SEARCH = _Paths.ITEM_SEARCH;
   static const VISUAL_HELP = _Paths.VISUAL_HELP;
   static const VISUAL_HELP_WAITING = _Paths.VISUAL_HELP_WAITING;
