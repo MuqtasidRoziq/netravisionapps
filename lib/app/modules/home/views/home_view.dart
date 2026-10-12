@@ -161,14 +161,14 @@ class HomeView extends GetView<HomeController> {
             ),
             const SizedBox(height: 16),
 
-            // Card 4: Bantuan Relawan (SOS)
-            _buildSosCard(
+            // Card 4: Bantuan Visual
+            _buildVisualHelpCard(
               index: '4',
-              title: '4. Bantuan Relawan / SOS',
-              subtitle: 'Hubungi relawan pendamping darurat',
-              icon: Icons.phone_in_talk_rounded,
-              onTap: () => controller.triggerSos(),
-              accessibilityHint: 'Ketuk dua kali untuk melakukan panggilan darurat ke relawan',
+              title: '4. Bantuan Visual',
+              subtitle: 'Hubungi relawan via kamera & audio',
+              icon: Icons.volunteer_activism_rounded,
+              onTap: () => controller.openVisualHelp(),
+              accessibilityHint: 'Ketuk dua kali untuk membuka menu Bantuan Visual dan relawan pendamping',
             ),
             const SizedBox(height: 24),
           ],
@@ -203,7 +203,7 @@ class HomeView extends GetView<HomeController> {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.lightBlueBorder.withOpacity(0.6), width: 1.5),
+              border: Border.all(color: AppColors.lightBlueBorder.withValues(alpha: 0.6), width: 1.5),
             ),
             child: Row(
               children: [
@@ -272,8 +272,8 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  /// Komponen Kartu Bantuan Darurat / SOS (Merah Aksen Kontras Tinggi)
-  Widget _buildSosCard({
+  /// Komponen Kartu Bantuan Visual (Aksen Biru Kontras Tinggi)
+  Widget _buildVisualHelpCard({
     required String index,
     required String title,
     required String subtitle,
@@ -282,14 +282,14 @@ class HomeView extends GetView<HomeController> {
     required String accessibilityHint,
   }) {
     return Semantics(
-      label: '$title. $subtitle. Panggilan darurat.',
+      label: '$title. $subtitle.',
       hint: accessibilityHint,
       button: true,
       child: Material(
-        color: AppColors.emergencyRed,
+        color: AppColors.primaryBlue,
         borderRadius: BorderRadius.circular(22),
         elevation: 4,
-        shadowColor: AppColors.emergencyRed.withOpacity(0.4),
+        shadowColor: AppColors.primaryBlue.withValues(alpha: 0.35),
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
@@ -302,12 +302,12 @@ class HomeView extends GetView<HomeController> {
             ),
             child: Row(
               children: [
-                // Kotak Ikon SOS
+                // Kotak Ikon Bantuan Visual
                 Container(
                   width: 58,
                   height: 58,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
@@ -336,7 +336,7 @@ class HomeView extends GetView<HomeController> {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -345,7 +345,7 @@ class HomeView extends GetView<HomeController> {
                   ),
                 ),
 
-                // Tombol Panggil
+                // Tombol Panah
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: const BoxDecoration(
@@ -353,9 +353,9 @@ class HomeView extends GetView<HomeController> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.call,
-                    color: AppColors.emergencyRed,
-                    size: 20,
+                    Icons.arrow_forward_ios_rounded,
+                    color: AppColors.primaryBlue,
+                    size: 18,
                   ),
                 ),
               ],

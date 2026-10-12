@@ -5,6 +5,8 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 import '../../../data/models/vision_mode.dart';
 import '../../../data/models/vision_model_config.dart';
+import '../../../data/models/visual_help_models.dart';
+import '../../../routes/app_pages.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/vibration_service.dart';
 import '../../../utils/helpers/danger_speech_policy.dart';
@@ -300,6 +302,44 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       yoloController.resume();
       ttsService.speak('Deteksi dilanjutkan');
     }
+  }
+
+  /// Meminta Bantuan Visual langsung dari aktivitas deteksi aktif
+  void requestVisualHelp() {
+    HapticFeedback.mediumImpact();
+    // 1. Matikan audio dan getaran deteksi saat berpindah
+    ttsService.stop();
+    vibrationService.stop();
+
+    // 2. Jeda deteksi kamera agar tidak bentrok dengan video call
+    yoloController.pause();
+    isPaused.value = true;
+
+    // 3. Susun konteks tugas otomatis sesuai mode
+    TaskType taskType;
+    switch (mode) {
+      case VisionMode.indoor:
+        taskType = TaskType.findObject;
+        break;
+      case VisionMode.currency:
+        taskType = TaskType.readLabel;
+        break;
+      case VisionMode.outdoor:
+        taskType = TaskType.generalHelp;
+        break;
+    }
+
+    final detected = lastDetectedObject.value.isNotEmpty ? lastDetectedObject.value : null;
+
+    final context = TaskContext(
+      taskType: taskType,
+      targetName: detected,
+      unverifiedAiLabel: detected,
+      sourceScreen: 'detector_${mode.name}',
+    );
+
+    ttsService.speak('Membuka menu Bantuan Visual untuk ${taskType.label}');
+    Get.toNamed(Routes.VISUAL_HELP, arguments: context);
   }
 
   @override

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../data/models/vision_mode.dart';
@@ -30,28 +29,11 @@ class HomeController extends GetxController {
     Get.toNamed(Routes.DETECTOR, arguments: mode);
   }
 
-  /// Fitur Darurat / SOS
-  void triggerSos() {
-    HapticFeedback.heavyImpact();
-    _ttsService.speak('Menghubungi kontak darurat dan relawan peduli tunanetra.', isUrgent: true);
-
-    Get.defaultDialog(
-      title: 'Panggilan Darurat',
-      titleStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-      middleText: 'Apakah Anda ingin menghubungkan panggilan suara ke kontak darurat atau relawan terdekat?',
-      middleTextStyle: const TextStyle(fontSize: 16),
-      textConfirm: 'Panggil Relawan',
-      textCancel: 'Batal',
-      confirmTextColor: Colors.white,
-      buttonColor: const Color(0xFFC62828),
-      onConfirm: () {
-        Get.back();
-        _ttsService.speak('Menyambungkan panggilan...');
-      },
-      onCancel: () {
-        _ttsService.speak('Panggilan darurat dibatalkan');
-      },
-    );
+  /// Fitur Bantuan Visual
+  void openVisualHelp() {
+    HapticFeedback.mediumImpact();
+    _ttsService.speak('Membuka menu Bantuan Visual');
+    Get.toNamed(Routes.VISUAL_HELP);
   }
 
   /// Panduan suara pengantar bagi tunanetra
@@ -61,7 +43,7 @@ class HomeController extends GetxController {
       'Panduan NetraVision. Menu satu: Mode Indoor untuk mendeteksi perabotan di dalam rumah. '
       'Menu dua: Mode Outdoor untuk mendeteksi jalan dan rintangan luar ruangan. '
       'Menu tiga: Mode Baca Uang untuk memindai uang rupiah. '
-      'Menu empat: Bantuan Relawan untuk panggilan darurat. '
+      'Menu empat: Bantuan Visual untuk meminta bantuan relawan via kamera dan audio. '
       'Ketuk dua kali menu mana saja untuk mengaktifkannya.',
       isUrgent: true,
     );

@@ -83,6 +83,7 @@ class TtsService extends GetxService {
       if (action == TtsAction.ignore) return;
       _lastSpoken = text;
       _lastTime = now;
+      // ignore: deprecated_member_use
       SemanticsService.announce(text, TextDirection.ltr);
       return;
     }
