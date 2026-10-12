@@ -58,6 +58,14 @@ class VisualHelpController extends GetxController {
   final RxBool isViewingSnapshot = false.obs;
 
   @override
+  void onReady() {
+    super.onReady();
+    ttsService.speak(
+      'Menu Bantuan Visual. Ketuk dua kali di mana saja untuk memanggil relawan, atau pilih kontak keluarga.',
+    );
+  }
+
+  @override
   void onInit() {
     super.onInit();
     _handleIncomingArguments();
