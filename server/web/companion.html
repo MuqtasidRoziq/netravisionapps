@@ -842,12 +842,78 @@
       }
     }
 
+    
+    let livekitRoom = null;
+
+    async function connectLiveKit(url, token) {
+      if (!url || !token) {
+        console.warn('LiveKit URL atau token tidak ditemukan dalam sesi');
+        return;
+      }
+
+      try {
+        const livekitUrl = url || 'wss://netravision-ibcqale8.livekit.cloud';
+        const camStatus = document.getElementById('camStreamStatus');
+        if (camStatus) camStatus.innerText = 'MENYAMBUNGKAN KAMERA...';
+
+        livekitRoom = new LivekitClient.Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+
+        livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          console.log('Track diterima:', track.kind, 'dari participant:', participant.identity);
+          if (track.kind === 'video') {
+            const videoEl = document.getElementById('userRemoteVideo');
+            const placeholder = document.getElementById('videoPlaceholder');
+            track.attach(videoEl);
+            videoEl.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+            if (camStatus) camStatus.innerText = 'LIVE KAMERA (30 FPS)';
+          }
+          if (track.kind === 'audio') {
+            track.attach(); // Audio langsung dari pengguna tunanetra
+          }
+        });
+
+        livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+          track.detach();
+          if (track.kind === 'video') {
+            const videoEl = document.getElementById('userRemoteVideo');
+            const placeholder = document.getElementById('videoPlaceholder');
+            videoEl.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+            if (camStatus) camStatus.innerText = 'KAMERA BERHENTI';
+          }
+        });
+
+        await livekitRoom.connect(livekitUrl, token);
+        console.log('Berhasil terhubung ke LiveKit Room:', livekitRoom.name);
+
+        // Aktifkan mic pendamping jika diizinkan browser
+        try {
+          await livekitRoom.localParticipant.setMicrophoneEnabled(true);
+        } catch (micErr) {
+          console.warn('Izin mikrofon browser tidak diberikan:', micErr);
+        }
+      } catch (err) {
+        console.error('Gagal menyambung ke LiveKit:', err);
+        const camStatus = document.getElementById('camStreamStatus');
+        if (camStatus) camStatus.innerText = 'KAMERA BELUM TERSEDIA';
+      }
+    }
+
     function startActiveSession(session) {
       activeSession = session;
       document.getElementById('activeSessionView').style.display = 'block';
       document.getElementById('activeUserName').innerText = session.user_name || 'Pengguna Netra';
       document.getElementById('activeTaskDesc').innerText = session.description || 'Bantuan visual aktif';
       
+      // Sambungkan streaming kamera LiveKit Cloud
+      if (session.livekit_url && session.companion_token) {
+        connectLiveKit(session.livekit_url, session.companion_token);
+      }
+
       // Setup WhatsApp fallback link
       const waBtn = document.getElementById('btnWaCall');
       waBtn.href = 'https://wa.me/?text=' + encodeURIComponent('Halo ' + (session.user_name || 'pengguna Netra') + ', saya ' + companionName + ' dari NetraVision siap membantu.');
@@ -867,6 +933,13 @@
     async function finishCurrentSession() {
       if (!activeSession) return;
       if (!confirm('Selesaikan sesi bantuan visual ini?')) return;
+
+      if (livekitRoom) {
+        try {
+          livekitRoom.disconnect();
+        } catch (_) {}
+        livekitRoom = null;
+      }
 
       try {
         await sb

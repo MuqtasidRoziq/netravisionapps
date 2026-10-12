@@ -1,3 +1,4 @@
+import '../utils/helpers/livekit_jwt.dart';
 import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
@@ -9,6 +10,11 @@ import '../data/models/visual_help_models.dart';
 
 class VisualHelpService extends GetxService {
   // ====================== SUPABASE CLOUD PILOT ======================
+    // ====================== LIVEKIT CLOUD 24/7 ======================
+  static const String livekitCloudUrl = 'wss://netravision-ibcqale8.livekit.cloud';
+  static const String livekitApiKey = 'APIBJi3QQYe7Ytk';
+  static const String livekitApiSecret = 'eMnuTE46reQZrSNbhVqiRCZuOiGuwyM5yqFKpHIGPDe';
+
   static const String supabaseUrl = 'https://sipxavvrhgvlbqkazghv.supabase.co';
   static const String supabaseAnonKey = 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG';
   final RxBool useSupabaseCloud = true.obs;
@@ -222,6 +228,26 @@ class VisualHelpService extends GetxService {
             ? taskContext.targetName!
             : taskContext.taskType.label;
 
+        final roomName = 'room_$reqId';
+        final userToken = LiveKitJwt.createToken(
+          apiKey: livekitApiKey,
+          apiSecret: livekitApiSecret,
+          roomName: roomName,
+          identity: 'usr_${currentUserId.value}',
+          name: currentUserName.value,
+          canPublish: true,
+          canSubscribe: true,
+        );
+        final companionToken = LiveKitJwt.createToken(
+          apiKey: livekitApiKey,
+          apiSecret: livekitApiSecret,
+          roomName: roomName,
+          identity: 'comp_volunteer',
+          name: 'Relawan Netra',
+          canPublish: true,
+          canSubscribe: true,
+        );
+
         final body = {
           'id': reqId,
           'user_id': currentUserId.value,
@@ -230,6 +256,10 @@ class VisualHelpService extends GetxService {
           'description': targetDesc,
           'status': 'pending',
           'access_key': accessKey,
+          'room_name': roomName,
+          'livekit_url': livekitCloudUrl,
+          'user_token': userToken,
+          'companion_token': companionToken,
           'community_id': communityId.value,
           'created_at': DateTime.now().toUtc().toIso8601String(),
           'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -332,8 +362,9 @@ class VisualHelpService extends GetxService {
               'requestId': reqId,
               'companionName': companionName,
               'companionId': companionId,
-              'livekitUrl': 'wss://pilot.netravision.internal',
-              'token': null,
+              'livekitUrl': data['livekit_url'] as String? ?? livekitCloudUrl,
+              'token': data['user_token'] as String?,
+              'roomName': data['room_name'] as String?,
               'request': {
                 'id': reqId,
                 'userId': currentUserId.value,
