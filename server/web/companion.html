@@ -621,6 +621,8 @@
 
         <div class="video-display-area">
           <video id="userRemoteVideo" autoplay playsinline></video>
+          <audio id="userRemoteAudio" autoplay playsinline></audio>
+
           <div class="video-waiting-placeholder" id="videoPlaceholder">
             <div class="cam-radar-icon">📹</div>
             <h4>Kamera Belakang Pengguna Aktif</h4>
@@ -876,7 +878,20 @@
             }
           }
           if (track.kind === 'audio') {
-            track.attach(); // Audio langsung dari pengguna tunanetra
+            console.log('Audio suara dari pengguna tunanetra diterima. Menyambungkan ke speaker browser...');
+            const audioEl = document.getElementById('userRemoteAudio');
+            if (audioEl) {
+              track.attach(audioEl);
+              audioEl.volume = 1.0;
+              audioEl.play().catch(e => {
+                console.warn('Autoplay audio diblokir browser, mencoba putar kembali:', e);
+              });
+            } else {
+              const el = track.attach();
+              el.id = 'dynamic_remote_audio';
+              document.body.appendChild(el);
+              el.play().catch(() => {});
+            }
           }
         });
 
