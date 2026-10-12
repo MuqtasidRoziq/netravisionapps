@@ -1,14 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 import '../../../data/models/vision_mode.dart';
 import '../../../data/models/vision_model_config.dart';
+import '../../../services/compass_service.dart';
+import '../../../services/directions_service.dart';
+import '../../../services/location_service.dart';
+import '../../../services/places_service.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/vibration_service.dart';
 import '../../../utils/helpers/danger_speech_policy.dart';
 import '../../../utils/helpers/detection_filter.dart';
+import '../../../utils/helpers/geo_math.dart';
+import '../../../utils/helpers/navigation_models.dart';
 import '../../../utils/helpers/object_speech_helper.dart';
 import '../../../utils/helpers/spatial_estimator.dart';
 
@@ -28,6 +38,53 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   final RxString currentStatusText = 'Menyiapkan kamera & model AI...'.obs;
   final RxString lastDetectedObject = ''.obs;
   final RxBool isPaused = false.obs;
+
+  /// Kata kunci barang yang dicari (hanya aktif pada [VisionMode.itemSearch]).
+  String targetItem = '';
+
+  // ====================== Navigasi Mode Jalan (Outdoor) ======================
+  final LocationService locationService = Get.find<LocationService>();
+  final CompassService compassService = Get.find<CompassService>();
+  final DirectionsService directionsService = Get.put(DirectionsService());
+  final PlacesService placesService = Get.put(PlacesService());
+
+  /// True saat mode aktif outdoor (navigasi peta aktif).
+  final RxBool isOutdoor = false.obs;
+
+  /// Posisi GPS terakhir (di-follow kamera peta).
+  final Rx<GeoPoint?> userPosition = Rx<GeoPoint?>(null);
+
+  /// Arah hadap (kompas), untuk panah overlay.
+  final RxDouble userHeading = 0.0.obs;
+
+  /// Lokasi/kopas layanan berfungsi.
+  final RxBool locationAvailable = false.obs;
+
+  /// Polyline rute aktif.
+  final Rx<List<GeoPoint>> routePolyline = Rx<List<GeoPoint>>([]);
+
+  /// Titik tujuan di peta.
+  final Rx<GeoPoint?> destinationPoint = Rx<GeoPoint?>(null);
+
+  /// Peta kecil vs layar penuh.
+  final RxBool mapExpanded = false.obs;
+
+  /// Sedang mendengarkan ucapan tujuan.
+  final RxBool isListeningDestination = false.obs;
+
+  /// Teks status navigasi (banner).
+  final RxString navStatus = ''.obs;
+
+  SpeechToText? _speech;
+  NavigationGuider? _navGuider;
+  StreamSubscription<GeoPoint>? _positionSub;
+  StreamSubscription<double>? _compassSub;
+  Timer? _navTicker;
+  GeoPoint? _lastNavPosition;
+  bool _navPrompted = false;
+  bool _arrivedSpoken = false;
+  bool _sttAvailable = false;
+  bool _navBusy = false;
 
   // Throttle: proses maksimal 2 frame per detik agar CPU & TTS tidak dibanjiri.
   static const _frameIntervalMs = 500;
@@ -68,9 +125,16 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     mode = Get.arguments is VisionMode
         ? Get.arguments as VisionMode
         : VisionMode.indoor;
+    // Ambil kata kunci target barang (hanya untuk mode itemSearch)
+    targetItem = Get.parameters['targetItem'] ?? '';
     // Terapkan segera; YOLOViewController mengingat nilainya dan menyamplikannya
     // ke native saat platform view menempel.
     yoloController.setNumItemsThreshold(_maxNumItems);
+
+    if (mode == VisionMode.outdoor) {
+      isOutdoor.value = true;
+      _setupNavigation();
+    }
   }
 
   @override
@@ -97,10 +161,20 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   /// Dipanggil [YOLOView] setelah model berhasil dimuat/diganti.
   void handleModelLoad(String modelPath, YOLOTask? task) {
-    currentStatusText.value = mode == VisionMode.currency
-        ? 'Arahkan uang ke kamera...'
-        : 'Mencari objek di depan Anda...';
+    if (mode == VisionMode.currency) {
+      currentStatusText.value = 'Arahkan uang ke kamera...';
+    } else if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
+      currentStatusText.value = 'Mencari "$targetItem" di depan Anda...';
+    } else {
+      currentStatusText.value = 'Mencari objek di depan Anda...';
+    }
     ttsService.speak(mode.announcement);
+    if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
+      ttsService.speak('Arahkan kamera untuk mencari $targetItem.');
+    }
+    if (mode == VisionMode.outdoor) {
+      _promptDestination();
+    }
   }
 
   /// Dipanggil [YOLOView] bila model gagal dimuat.
@@ -125,12 +199,26 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   void _processDetectionResults(List<YOLOResult> results) {
     // 1. Saring label yang layak diumumkan + (khusus uang) bentuk kotak yang
     //    memang layak uang (ukuran cukup, tidak terpotong tepi).
-    final validDetections = results
+    var validDetections = results
         .where((r) => ObjectSpeechHelper.shouldAnnounce(r.className, mode))
         .where((r) =>
             mode != VisionMode.currency ||
             DetectionFilter.isPlausibleMoneyBox(r.normalizedBox))
         .toList();
+
+    // 1b. Khusus mode pencarian barang: hanya tampilkan yang cocok target.
+    if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
+      final target = targetItem.toLowerCase();
+      validDetections = validDetections.where((r) {
+        final label = r.className.toLowerCase();
+        // Cocokkan bila label mengandung kata kunci target atau sebaliknya
+        return label.contains(target) ||
+            target.split(' ').any((word) => word.length > 2 && label.contains(word));
+      }).toList();
+      // Jika tidak ada yang cocok, jangan umumkan apa pun
+      if (validDetections.isEmpty) return;
+    }
+
     if (validDetections.isEmpty) return;
 
     // 2. Prioritas: rintangan berbahaya langsung; selain itu ambil deteksi
@@ -250,6 +338,222 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  // ====================== Navigasi (Mode Jalan) ======================
+
+  /// Inisialisasi navigasi: izin lokasi + stream GPS & kompas + ticker.
+  Future<void> _setupNavigation() async {
+    final granted = await locationService.ensurePermission();
+    locationAvailable.value = granted;
+    if (!granted) {
+      navStatus.value = 'Lokasi tidak tersedia';
+      ttsService.speak(
+          'Peringatan: izin lokasi belum aktif. Peta navigasi tidak dapat dipakai.');
+      return;
+    }
+
+    userPosition.value = await locationService.currentPosition();
+
+    _positionSub = locationService.positionStream().listen(
+      (position) {
+        userPosition.value = position;
+        _feedNavigation(position);
+      },
+      onError: (_) {},
+    );
+
+    _compassSub = compassService.headingStream().listen(
+      (heading) => userHeading.value = heading,
+      onError: (_) {},
+    );
+
+    _navTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      final pos = _lastNavPosition;
+      if (pos != null) _feedNavigation(pos);
+    });
+  }
+
+  /// Masukkan posisi ke mesin panduan (dipanggil saat GPS update + tiap detik).
+  void _feedNavigation(GeoPoint position) {
+    _lastNavPosition = position;
+    final guider = _navGuider;
+    if (guider == null) return;
+
+    final tick = guider.tick(position, DateTime.now());
+    if (tick.arrived) {
+      if (!_arrivedSpoken) {
+        _arrivedSpoken = true;
+        navStatus.value = 'Anda telah tiba di tujuan';
+        routePolyline.value = [];
+        final speech = tick.speech ?? 'Anda telah tiba di tujuan';
+        if (mode == VisionMode.outdoor) ttsService.speak(speech);
+      }
+      return;
+    }
+
+    _arrivedSpoken = false;
+    final speech = tick.speech;
+    if (speech != null && speech.isNotEmpty && mode == VisionMode.outdoor) {
+      ttsService.speak(speech);
+    }
+
+    // Banner status disegarkan jarang agar tidak flicker.
+    if (tick.remainingMeters >= 0 &&
+        (navStatus.value.isEmpty || !navStatus.value.startsWith('Rute ke'))) {
+      // Biarkan banner "Rute ke ..." stabil; detail belok dibacakan TTS.
+    }
+  }
+
+  /// Saat model kamera siap & mode jalan: sapa + ajak bicara tujuan.
+  void _promptDestination() {
+    if (_navPrompted || _navBusy) return;
+    _navPrompted = true;
+    navStatus.value = 'Silakan ucapkan tujuan...';
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      if (!isOutdoor.value) return;
+      ttsService.speak('Mode jalan aktif. Silakan bicara, Anda mau ke mana?');
+    });
+    Future.delayed(const Duration(milliseconds: 3600), () {
+      if (isOutdoor.value) startDestinationListening();
+    });
+  }
+
+  /// Mulai mendengarkan ucapan tujuan (dipicu otomatis & tombol mikrofon).
+  Future<void> startDestinationListening() async {
+    if (!isOutdoor.value || _navBusy) return;
+
+    final speech = _speech ??= SpeechToText();
+    if (!_sttAvailable) {
+      _sttAvailable = await speech.initialize();
+      if (!_sttAvailable) {
+        navStatus.value = 'Mikrofon tidak tersedia';
+        ttsService.speak('Mikrofon tidak tersedia di perangkat ini.');
+        return;
+      }
+    }
+    if (isListeningDestination.value) return;
+
+    HapticFeedback.mediumImpact();
+    isListeningDestination.value = true;
+    navStatus.value = 'Mendengarkan tujuan...';
+    ttsService.speak('Silakan ucapkan tujuan Anda.', isUrgent: true);
+
+    await speech.listen(
+      onResult: _onDestinationSpeech,
+      listenOptions: SpeechListenOptions(
+        listenFor: const Duration(seconds: 8),
+        pauseFor: const Duration(seconds: 2),
+        localeId: 'id_ID',
+        listenMode: ListenMode.dictation,
+        cancelOnError: true,
+      ),
+    );
+  }
+
+  void stopDestinationListening() {
+    _speech?.stop();
+    isListeningDestination.value = false;
+  }
+
+  void _onDestinationSpeech(SpeechRecognitionResult result) {
+    if (!result.finalResult || !isOutdoor.value) return;
+    isListeningDestination.value = false;
+    final raw = result.recognizedWords.trim();
+    if (raw.isEmpty) {
+      navStatus.value = 'Tidak ada suara terdeteksi';
+      ttsService.speak(
+          'Tidak ada suara terdeteksi. Ketuk tombol mikrofon untuk mencoba lagi.');
+      return;
+    }
+    final query = extractDestinationQuery(raw);
+    if (query.isEmpty) {
+      ttsService.speak(
+          'Apa tujuan Anda? Coba sebutkan nama atau jenis tempat, misalnya warung.');
+      return;
+    }
+    _routeToQuery(query);
+  }
+
+  /// Terjemahkan kata tujuan → tempat → rute → panduan.
+  Future<void> _routeToQuery(String query) async {
+    if (_navBusy) return;
+    _navBusy = true;
+    try {
+      final origin = userPosition.value;
+      if (origin == null) {
+        navStatus.value = 'Menunggu sinyal GPS...';
+        ttsService.speak('Menunggu sinyal GPS untuk menentukan posisi Anda.');
+        return;
+      }
+
+      navStatus.value = 'Mencari $query...';
+      ttsService.speak('Mencari $query di sekitar Anda.');
+
+      final place = await placesService.searchBest(query: query, center: origin);
+      if (place == null) {
+        navStatus.value = 'Tempat tidak ditemukan';
+        ttsService.speak(
+            "Tidak ditemukan '$query' di sekitar. Coba sebutkan nama atau jenis tempat lain.");
+        return;
+      }
+
+      final placeDist = place.distanceMeters ?? haversineMeters(origin, place.point);
+      final placeName = _cleanPlaceName(place.name);
+      navStatus.value = 'Menuju $placeName';
+      ttsService.speak(
+          'Menuju $placeName, ${formatDistanceMeters(placeDist)}. Membuat rute.');
+      destinationPoint.value = place.point;
+
+      final route = await directionsService.getWalkingRoute(
+        origin: origin,
+        destination: place.point,
+      );
+
+      _navGuider = NavigationGuider(route);
+      _arrivedSpoken = false;
+
+      final overview = route.overviewPoints.isEmpty
+          ? [route.steps.first.start, route.steps.last.end]
+          : route.overviewPoints;
+      routePolyline.value = <GeoPoint>[origin, ...overview];
+      navStatus.value =
+          'Rute ke $placeName, ${formatDistanceMeters(route.totalMeters)}';
+
+      final first =
+          route.steps.isNotEmpty ? route.steps.first.instruction : 'ikuti rute';
+      ttsService.speak(
+          'Rute ditemukan, ${formatDistanceMeters(route.totalMeters)} menuju '
+          '$placeName. ${_capitalize(first)}.');
+    } on PlacesException catch (e) {
+      navStatus.value = e.message;
+      ttsService.speak(e.message);
+    } on DirectionsException catch (e) {
+      navStatus.value = e.message;
+      ttsService.speak(e.message);
+    } catch (_) {
+      navStatus.value = 'Gagal membuat rute';
+      ttsService.speak(
+          'Terjadi kesalahan saat membuat rute. Pastikan internet terhubung dan API Google aktif.');
+    } finally {
+      _navBusy = false;
+    }
+  }
+
+  /// Rapikan nama tempat agar TTS tidak mengulang "warung, Warung".
+  String _cleanPlaceName(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 'tujuan';
+    return trimmed;
+  }
+
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
+
+  void toggleMapExpanded() {
+    mapExpanded.value = !mapExpanded.value;
+  }
+
   void handleScreenTap() {
     HapticFeedback.mediumImpact();
     if (lastDetectedObject.value.isNotEmpty) {
@@ -285,6 +589,10 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
+    _positionSub?.cancel();
+    _compassSub?.cancel();
+    _navTicker?.cancel();
+    stopDestinationListening();
     yoloController.dispose(); // Tutup stream zoom/lens/focus milik controller.
     ttsService.stop();
     vibrationService.stop();

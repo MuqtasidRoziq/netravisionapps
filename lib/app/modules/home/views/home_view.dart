@@ -131,7 +131,7 @@ class HomeView extends GetView<HomeController> {
             // Card 1: Mode Indoor
             _buildMenuCard(
               index: '1',
-              title: '1. Mode Indoor',
+              title: 'Dalam Ruangan',
               subtitle: 'Deteksi rintangan, perabotan & pintu',
               icon: Icons.meeting_room_rounded,
               onTap: () => controller.openMode(VisionMode.indoor),
@@ -142,7 +142,7 @@ class HomeView extends GetView<HomeController> {
             // Card 2: Mode Outdoor
             _buildMenuCard(
               index: '2',
-              title: '2. Mode Outdoor',
+              title: 'Jalan',
               subtitle: 'Navigasi jalan raya, trotoar & bahaya',
               icon: Icons.explore_rounded,
               onTap: () => controller.openMode(VisionMode.outdoor),
@@ -153,7 +153,7 @@ class HomeView extends GetView<HomeController> {
             // Card 3: Mode Baca Uang
             _buildMenuCard(
               index: '3',
-              title: '3. Mode Baca Uang',
+              title: 'Baca Uang',
               subtitle: 'Pindai nominal uang kertas rupiah',
               icon: Icons.payments_rounded,
               onTap: () => controller.openMode(VisionMode.currency),
@@ -161,14 +161,14 @@ class HomeView extends GetView<HomeController> {
             ),
             const SizedBox(height: 16),
 
-            // Card 4: Bantuan Relawan (SOS)
-            _buildSosCard(
+            // Card 4: Cari Barang (Voice Search)
+            _buildMenuCard(
               index: '4',
-              title: '4. Bantuan Relawan / SOS',
-              subtitle: 'Hubungi relawan pendamping darurat',
-              icon: Icons.phone_in_talk_rounded,
-              onTap: () => controller.triggerSos(),
-              accessibilityHint: 'Ketuk dua kali untuk melakukan panggilan darurat ke relawan',
+              title: 'Cari Barang',
+              subtitle: 'Ucapkan nama barang untuk mendeteksinya',
+              icon: Icons.manage_search_rounded,
+              onTap: () => controller.openItemSearch(),
+              accessibilityHint: 'Ketuk dua kali untuk membuka pencarian barang dengan suara',
             ),
             const SizedBox(height: 24),
           ],
@@ -272,97 +272,4 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  /// Komponen Kartu Bantuan Darurat / SOS (Merah Aksen Kontras Tinggi)
-  Widget _buildSosCard({
-    required String index,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required VoidCallback onTap,
-    required String accessibilityHint,
-  }) {
-    return Semantics(
-      label: '$title. $subtitle. Panggilan darurat.',
-      hint: accessibilityHint,
-      button: true,
-      child: Material(
-        color: AppColors.emergencyRed,
-        borderRadius: BorderRadius.circular(22),
-        elevation: 4,
-        shadowColor: AppColors.emergencyRed.withOpacity(0.4),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(22),
-          onTap: onTap,
-          splashColor: Colors.white24,
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white24, width: 1.5),
-            ),
-            child: Row(
-              children: [
-                // Kotak Ikon SOS
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // Teks Judul & Deskripsi
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Tombol Panggil
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.call,
-                    color: AppColors.emergencyRed,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

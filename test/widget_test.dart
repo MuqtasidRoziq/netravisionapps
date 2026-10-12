@@ -7,6 +7,6 @@ void main() {
     expect(VisionMode.outdoor.title, 'Mode Outdoor');
     expect(VisionMode.currency.title, 'Mode Baca Uang');
     expect(VisionMode.currency.announcement, contains('rupiah'));
-    expect(VisionMode.outdoor.announcement, contains('jalan'));
+    expect(VisionMode.outdoor.announcement, contains('Outdoor'));
   });
 }

@@ -38,6 +38,11 @@ dependencies:
   flutter_tts: ^4.2.5
   ultralytics_yolo: ^0.6.16
   vibration: ^3.2.1
+  speech_to_text: ^7.0.0
+  google_maps_flutter: ^2.18.2
+  geolocator: ^14.0.1
+  flutter_compass: ^0.8.1
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -69,9 +74,9 @@ flutter:
     - assets/models/outdoor/labels.txt
     - assets/models/rupiah/rupiah.tflite
     - assets/models/rupiah/labels.txt
-    - assets/models/netra_rupiah.tflite
-    - assets/models/netra_rupiah.pt
-    - assets/models/labels_mapping.json
+    - assets/models/rupiah/netra_rupiah.tflite
+    - assets/models/rupiah/netra_rupiah.pt
+    - assets/models/rupiah/labels_mapping.json
     - assets/labels/netra_rupiah_labels.txt
     - assets/models/indoor/indoor_objects.tflite
     - assets/models/indoor/labels.txt

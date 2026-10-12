@@ -35,6 +35,12 @@ class ObjectSpeechHelper {
     'bukan jalan',
   };
 
+  // Whitelist label untuk Mode Baca Uang: hanya nominal kertas (4–6 digit)
+  // atau koin (coin_<nominal>) yang boleh diumumkan. Label lain — termasuk
+  // fallback "class N" dari model tanpa metadata — tidak boleh lolos sehingga
+  // aplikasi selalu fokus ke uang.
+  static final RegExp _currencyToken = RegExp(r'^\d{4,6}$|^coin_\d+$');
+
   // Kamus konversi nominal uang rupiah ke ucapan yang fasih
   static const Map<String, String> _currencyNames = {
     '1000': 'Uang seribu rupiah',
@@ -56,6 +62,11 @@ class ObjectSpeechHelper {
   static bool shouldAnnounce(String label, VisionMode mode) {
     final clean = label.trim().toLowerCase();
     if (_ignoredLabels.contains(clean)) return false;
+    if (mode == VisionMode.currency) {
+      return _currencyToken.hasMatch(clean);
+    }
+    // Mode itemSearch & indoor & outdoor: semua label non-ignored boleh lolos.
+    // Filter barang spesifik ditangani di DetectorController._processDetectionResults.
     return clean.isNotEmpty;
   }
 

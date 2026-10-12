@@ -6,6 +6,7 @@ abstract class Routes {
   static const SPLASH = _Paths.SPLASH;
   static const HOME = _Paths.HOME;
   static const DETECTOR = _Paths.DETECTOR;
+  static const ITEM_SEARCH = _Paths.ITEM_SEARCH;
 }
 
 abstract class _Paths {
@@ -13,4 +14,5 @@ abstract class _Paths {
   static const SPLASH = '/splash';
   static const HOME = '/home';
   static const DETECTOR = '/detector';
+  static const ITEM_SEARCH = '/item-search';
 }
