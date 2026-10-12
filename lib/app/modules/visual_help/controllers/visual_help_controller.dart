@@ -84,6 +84,13 @@ class VisualHelpController extends GetxController {
       if (args.unverifiedAiLabel != null) {
         unverifiedAiLabel.value = args.unverifiedAiLabel!;
       }
+      // Panggilan Otomatis Khusus Pemicu Darurat SOS
+      if (args.sourceScreen == 'emergency_sos') {
+        recipientTarget.value = RecipientTarget.communityVolunteers;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          submitHelpRequest(sourceScreen: 'emergency_sos');
+        });
+      }
     }
   }
 

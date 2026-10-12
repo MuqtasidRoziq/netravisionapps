@@ -1,3 +1,5 @@
+import '../../../data/models/visual_help_models.dart';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../data/models/vision_mode.dart';
@@ -50,11 +52,59 @@ class HomeController extends GetxController {
     }
   }
 
+  // Status Hitung Mundur Darurat (SOS)
+  final RxBool isSosCountdownActive = false.obs;
+  final RxInt sosCountdownSeconds = 3.obs;
+  Timer? _sosCountdownTimer;
+
   void triggerEmergencySOS() {
+    if (isSosCountdownActive.value) return;
+
+    isSosCountdownActive.value = true;
+    sosCountdownSeconds.value = 3;
     HapticFeedback.heavyImpact();
-    _ttsService.speak('Panggilan darurat bantuan relawan dipicu', isUrgent: true);
-    openVisualHelp();
+
+    _ttsService.speak(
+      'Peringatan darurat aktif. Menghubungi relawan dalam tiga detik. Ketuk layar sekali untuk membatalkan.',
+      isUrgent: true,
+    );
+
+    _sosCountdownTimer?.cancel();
+    _sosCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      sosCountdownSeconds.value--;
+      HapticFeedback.heavyImpact();
+
+      if (sosCountdownSeconds.value <= 0) {
+        timer.cancel();
+        _dispatchSosCall();
+      }
+    });
   }
+
+  void cancelEmergencySOS() {
+    if (!isSosCountdownActive.value) return;
+
+    _sosCountdownTimer?.cancel();
+    isSosCountdownActive.value = false;
+    HapticFeedback.mediumImpact();
+    _ttsService.speak('Panggilan darurat dibatalkan.', isUrgent: true);
+  }
+
+  void _dispatchSosCall() {
+    isSosCountdownActive.value = false;
+    HapticFeedback.heavyImpact();
+    _ttsService.speak('Menghubungkan panggilan darurat sekarang...', isUrgent: true);
+
+    Get.toNamed(
+      Routes.VISUAL_HELP,
+      arguments: const TaskContext(
+        taskType: TaskType.generalHelp,
+        targetName: '🚨 PANGGILAN DARURAT (SOS)',
+        sourceScreen: 'emergency_sos',
+      ),
+    );
+  }
+
 
   final TtsService _ttsService = Get.find<TtsService>();
 

@@ -91,20 +91,36 @@ class HomeView extends GetView<HomeController> {
         ],
       ),
       body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onHorizontalDragEnd: (details) {
-            if (details.primaryVelocity != null) {
-              if (details.primaryVelocity! < -150) {
-                controller.nextMenu();
-              } else if (details.primaryVelocity! > 150) {
-                controller.previousMenu();
-              }
-            }
-          },
-          onDoubleTap: () => controller.activateCurrentMenu(),
-          onLongPress: () => controller.triggerEmergencySOS(),
-          child: ListView(
+        child: Obx(() {
+          final isSosActive = controller.isSosCountdownActive.value;
+          final countdown = controller.sosCountdownSeconds.value;
+
+          return Stack(
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () {
+                  if (isSosActive) controller.cancelEmergencySOS();
+                },
+                onHorizontalDragEnd: (details) {
+                  if (isSosActive) return;
+                  if (details.primaryVelocity != null) {
+                    if (details.primaryVelocity! < -150) {
+                      controller.nextMenu();
+                    } else if (details.primaryVelocity! > 150) {
+                      controller.previousMenu();
+                    }
+                  }
+                },
+                onDoubleTap: () {
+                  if (isSosActive) {
+                    controller.cancelEmergencySOS();
+                  } else {
+                    controller.activateCurrentMenu();
+                  }
+                },
+                onLongPress: () => controller.triggerEmergencySOS(),
+                child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
             // Status Info Banner
@@ -186,7 +202,95 @@ class HomeView extends GetView<HomeController> {
             const SizedBox(height: 24),
           ],
         ),
-        ),
+              ),
+
+              // Overlay Darurat SOS (Tampil saat hitung mundur 3 detik)
+              if (isSosActive)
+                Positioned.fill(
+                  child: Semantics(
+                    label: 'Peringatan Darurat SOS Aktif. Menghubungi relawan dalam $countdown detik. Ketuk layar sekali untuk membatalkan.',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () => controller.cancelEmergencySOS(),
+                      child: Container(
+                        color: AppColors.emergencyRed.withValues(alpha: 0.95),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 110,
+                              height: 110,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$countdown',
+                                  style: const TextStyle(
+                                    color: AppColors.emergencyRed,
+                                    fontSize: 54,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            const Text(
+                              '🚨 PANGGILAN DARURAT',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Menghubungi relawan siaga secara otomatis...\n\nKetuk di mana saja di layar untuk MEMBATALKAN.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 36),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppColors.emergencyRed,
+                                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                              onPressed: () => controller.cancelEmergencySOS(),
+                              icon: const Icon(Icons.cancel_rounded, size: 24),
+                              label: const Text(
+                                'Batalkan Panggilan',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }),
       ),
     );
   }
