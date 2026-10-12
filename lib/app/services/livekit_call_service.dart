@@ -14,6 +14,7 @@ class LiveKitCallService extends GetxService {
   final RxBool isReconnecting = false.obs;
   final RxBool isMicMuted = false.obs;
   final RxBool isCameraPaused = false.obs;
+  final RxBool isScreenShareActive = false.obs;
   final RxString connectionStatusText = 'Belum terhubung'.obs;
 
   // Track video yang aktif
@@ -94,6 +95,7 @@ class LiveKitCallService extends GetxService {
         isConnected.value = false;
         connectionStatusText.value = 'Koneksi terputus';
         localVideoTrack.value = null;
+    isScreenShareActive.value = false;
         remoteVideoTrack.value = null;
       })
       ..on<RoomReconnectingEvent>((event) {
@@ -138,6 +140,18 @@ class LiveKitCallService extends GetxService {
     isMicMuted.value = newState;
   }
 
+
+  Future<void> toggleScreenShare() async {
+    if (_room?.localParticipant == null) return;
+    try {
+      final newState = !isScreenShareActive.value;
+      await _room!.localParticipant!.setScreenShareEnabled(newState);
+      isScreenShareActive.value = newState;
+    } catch (e) {
+      connectionStatusText.value = 'Gagal berbagi layar: $e';
+    }
+  }
+
   Future<void> toggleCamera() async {
     if (_room?.localParticipant == null) return;
     final newState = !isCameraPaused.value;
@@ -174,6 +188,7 @@ class LiveKitCallService extends GetxService {
   Future<void> disconnect() async {
     clearSnapshot();
     localVideoTrack.value = null;
+    isScreenShareActive.value = false;
     remoteVideoTrack.value = null;
 
     try {

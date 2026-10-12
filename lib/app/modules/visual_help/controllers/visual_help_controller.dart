@@ -451,6 +451,24 @@ class VisualHelpController extends GetxController {
     );
   }
 
+
+  Future<void> toggleScreenShare() async {
+    HapticFeedback.mediumImpact();
+    final willShare = !liveKitCallService.isScreenShareActive.value;
+    if (willShare) {
+      ttsService.speak(
+        'Membagikan layar ponsel ke pendamping. Silakan konfirmasi izin rekam layar pada ponsel.',
+        isUrgent: true,
+      );
+    } else {
+      ttsService.speak(
+        'Berbagi layar dihentikan. Kembali ke siaran kamera belakang.',
+        isUrgent: true,
+      );
+    }
+    await liveKitCallService.toggleScreenShare();
+  }
+
   void toggleCamera() {
     HapticFeedback.lightImpact();
     liveKitCallService.toggleCamera();

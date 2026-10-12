@@ -869,7 +869,11 @@
             track.attach(videoEl);
             videoEl.style.display = 'block';
             if (placeholder) placeholder.style.display = 'none';
-            if (camStatus) camStatus.innerText = 'LIVE KAMERA (30 FPS)';
+            if (publication.source === LivekitClient.Track.Source.ScreenShare) {
+              if (camStatus) camStatus.innerText = '📱 LAYAR HP PENGGUNA (SCREEN SHARE LIVE)';
+            } else {
+              if (camStatus) camStatus.innerText = '📹 KAMERA BELAKANG LIVE (30 FPS)';
+            }
           }
           if (track.kind === 'audio') {
             track.attach(); // Audio langsung dari pengguna tunanetra

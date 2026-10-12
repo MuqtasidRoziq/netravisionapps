@@ -197,6 +197,26 @@ class VisualHelpCallView extends GetView<VisualHelpController> {
                   icon: Icon(isCamPaused ? Icons.videocam_off_rounded : Icons.videocam_rounded),
                 ),
               ),
+              // Bagikan Layar HP (Pengguna)
+              Semantics(
+                label: controller.liveKitCallService.isScreenShareActive.value
+                    ? 'Berbagi layar HP aktif. Ketuk untuk mematikan dan kembali ke kamera.'
+                    : 'Bagikan layar ponsel. Ketuk agar pendamping dapat melihat layar ponsel Anda.',
+                button: true,
+                child: IconButton(
+                  iconSize: 32,
+                  style: IconButton.styleFrom(
+                    backgroundColor: controller.liveKitCallService.isScreenShareActive.value
+                        ? Colors.blueAccent
+                        : Colors.white24,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => controller.toggleScreenShare(),
+                  icon: Icon(controller.liveKitCallService.isScreenShareActive.value
+                      ? Icons.screen_share_rounded
+                      : Icons.mobile_screen_share_rounded),
+                ),
+              ),
               // Bacakan Status Audio
               Semantics(
                 label: 'Dengarkan status panggilan',
