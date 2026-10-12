@@ -1097,11 +1097,37 @@
 
     // 2. Panduan Suara Cepat
     function speakGuide(text) {
+      // 1. Kirim langsung via WebRTC Data Channel ke HP tunanetra
+      if (livekitRoom && livekitRoom.state === 'connected') {
+        try {
+          const payload = JSON.stringify({ type: 'tts_guide', text: text });
+          const encoder = new TextEncoder();
+          livekitRoom.localParticipant.publishData(encoder.encode(payload), { reliable: true });
+          console.log('[DataChannel] Terkirim ke ponsel tunanetra:', text);
+        } catch (err) {
+          console.warn('[DataChannel] Gagal kirim pesan ke HP:', err);
+        }
+      }
+
+      // 2. Audio konfirmasi di browser pendamping
       if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'id-ID';
         utterance.rate = 1.0;
         window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function sendHapticBuzz() {
+      if (livekitRoom && livekitRoom.state === 'connected') {
+        try {
+          const payload = JSON.stringify({ type: 'haptic_buzz' });
+          const encoder = new TextEncoder();
+          livekitRoom.localParticipant.publishData(encoder.encode(payload), { reliable: true });
+          console.log('[DataChannel] Peringatan getar terkirim ke ponsel');
+        } catch (err) {
+          console.warn('[DataChannel] Gagal kirim getar:', err);
+        }
       }
     }
 

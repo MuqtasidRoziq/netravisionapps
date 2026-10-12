@@ -6,6 +6,56 @@ import '../../../services/tts_service.dart';
 import '../../detector/controllers/detector_controller.dart';
 
 class HomeController extends GetxController {
+  final RxInt activeMenuIndex = 0.obs;
+
+  final List<String> menuTitles = [
+    'Mode Indoor, mendeteksi perabotan di dalam ruangan',
+    'Mode Outdoor, mendeteksi rintangan dan jalan di luar',
+    'Mode Baca Uang, memindai nominal uang rupiah',
+    'Bantuan Visual, menghubungi relawan atau keluarga',
+  ];
+
+  void nextMenu() {
+    activeMenuIndex.value = (activeMenuIndex.value + 1) % menuTitles.length;
+    HapticFeedback.selectionClick();
+    _announceSelectedMenu();
+  }
+
+  void previousMenu() {
+    activeMenuIndex.value = (activeMenuIndex.value - 1 + menuTitles.length) % menuTitles.length;
+    HapticFeedback.selectionClick();
+    _announceSelectedMenu();
+  }
+
+  void _announceSelectedMenu() {
+    final idx = activeMenuIndex.value;
+    final total = menuTitles.length;
+    _ttsService.speak('Pilihan ${idx + 1} dari $total: ${menuTitles[idx]}. Ketuk dua kali untuk memilih.');
+  }
+
+  void activateCurrentMenu() {
+    switch (activeMenuIndex.value) {
+      case 0:
+        openMode(VisionMode.indoor);
+        break;
+      case 1:
+        openMode(VisionMode.outdoor);
+        break;
+      case 2:
+        openMode(VisionMode.currency);
+        break;
+      case 3:
+        openVisualHelp();
+        break;
+    }
+  }
+
+  void triggerEmergencySOS() {
+    HapticFeedback.heavyImpact();
+    _ttsService.speak('Panggilan darurat bantuan visual dipicu', isUrgent: true);
+    openVisualHelp();
+  }
+
   final TtsService _ttsService = Get.find<TtsService>();
 
   @override

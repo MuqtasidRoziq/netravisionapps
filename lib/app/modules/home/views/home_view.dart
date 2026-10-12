@@ -91,7 +91,20 @@ class HomeView extends GetView<HomeController> {
         ],
       ),
       body: SafeArea(
-        child: ListView(
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragEnd: (details) {
+            if (details.primaryVelocity != null) {
+              if (details.primaryVelocity! < -150) {
+                controller.nextMenu();
+              } else if (details.primaryVelocity! > 150) {
+                controller.previousMenu();
+              }
+            }
+          },
+          onDoubleTap: () => controller.activateCurrentMenu(),
+          onLongPress: () => controller.triggerEmergencySOS(),
+          child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
             // Status Info Banner
@@ -172,6 +185,7 @@ class HomeView extends GetView<HomeController> {
             ),
             const SizedBox(height: 24),
           ],
+        ),
         ),
       ),
     );

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../data/models/visual_help_models.dart';
@@ -117,6 +119,24 @@ class LiveKitCallService extends GetxService {
         if (event.track == remoteVideoTrack.value) {
           remoteVideoTrack.value = null;
           connectionStatusText.value = 'Kamera pengguna terhenti (Hanya Audio)';
+        }
+      })
+      ..on<DataReceivedEvent>((event) {
+        try {
+          final rawText = utf8.decode(event.data);
+          final map = jsonDecode(rawText) as Map<String, dynamic>;
+          final type = map['type'] as String?;
+          if (type == 'tts_guide' && map['text'] != null) {
+            final guideText = map['text'] as String;
+            // Bicara langsung di telinga tunanetra dengan prioritas tinggi
+            Get.find<TtsService>().speak(guideText, isUrgent: true);
+            HapticFeedback.heavyImpact();
+          } else if (type == 'haptic_buzz') {
+            HapticFeedback.heavyImpact();
+            Get.find<TtsService>().speak('Peringatan getar dari pendamping', isUrgent: true);
+          }
+        } catch (e) {
+          // ignore unparseable data packet
         }
       });
   }
