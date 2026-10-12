@@ -2,8 +2,8 @@ import 'dart:io';
 import '../lib/pilot_server.dart';
 
 void main(List<String> args) async {
-  final portStr = Platform.environment['PORT'] ?? '8080';
-  final port = int.tryParse(portStr) ?? 8080;
+  final portStr = args.isNotEmpty ? args[0] : (Platform.environment['PORT'] ?? '8082');
+  final port = int.tryParse(portStr) ?? 8082;
 
   final livekitUrl = Platform.environment['LIVEKIT_URL'] ?? 'wss://pilot.netravision.internal';
   final livekitApiKey = Platform.environment['LIVEKIT_API_KEY'] ?? 'netra_pilot_key';

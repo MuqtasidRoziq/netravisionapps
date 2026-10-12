@@ -1,7 +1,9 @@
 /// Model data dan state machine untuk sesi Bantuan Visual NetraVision V2
+library;
 
 class HelpRequest {
   final String id;
+  final String accessKey;
   final String userId;
   final String userName;
   final String taskType;
@@ -17,14 +19,17 @@ class HelpRequest {
   String? livekitRoom;
   String? userToken;
   String? companionToken;
+  bool isRoomClosed;
   final DateTime createdAt;
   DateTime? acceptedAt;
+  DateTime? connectedAt;
   DateTime? completedAt;
   DateTime? cancelledAt;
   String? cancelReason;
 
   HelpRequest({
     required this.id,
+    required this.accessKey,
     required this.userId,
     required this.userName,
     required this.taskType,
@@ -40,15 +45,17 @@ class HelpRequest {
     this.livekitRoom,
     this.userToken,
     this.companionToken,
+    this.isRoomClosed = false,
     DateTime? createdAt,
     this.acceptedAt,
+    this.connectedAt,
     this.completedAt,
     this.cancelledAt,
     this.cancelReason,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  /// Detail publik yang aman: TIDAK MEMBOCORKAN accessKey, userToken, atau companionToken!
   Map<String, dynamic> toJson({bool forCompanionOffer = false}) {
-    // Sesuai aturan privasi: sebelum diterima, pendamping HANYA melihat konteks minimum
     if (forCompanionOffer) {
       return {
         'id': id,
@@ -59,7 +66,7 @@ class HelpRequest {
         'communityId': communityId,
         'status': status,
         'createdAt': createdAt.toIso8601String(),
-        'requesterAlias': 'Pengguna Komunitas (${userId.substring(0, 4)})',
+        'requesterAlias': 'Pengguna Komunitas (\)',
       };
     }
 
@@ -78,13 +85,37 @@ class HelpRequest {
       'assignedCompanionId': assignedCompanionId,
       'assignedCompanionName': assignedCompanionName,
       'livekitRoom': livekitRoom,
-      'userToken': userToken,
-      'companionToken': companionToken,
+      'isRoomClosed': isRoomClosed,
       'createdAt': createdAt.toIso8601String(),
       'acceptedAt': acceptedAt?.toIso8601String(),
+      'connectedAt': connectedAt?.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
       'cancelledAt': cancelledAt?.toIso8601String(),
       'cancelReason': cancelReason,
+    };
+  }
+
+  /// Khusus untuk respon pembuatan sesi ke pembuat (pengguna tunanetra)
+  Map<String, dynamic> toCreatorResponse({required String webAssistUrl}) {
+    final data = toJson();
+    data['accessKey'] = accessKey;
+    data['webAssistUrl'] = webAssistUrl;
+    if (userToken != null) {
+      data['token'] = userToken;
+    }
+    return data;
+  }
+
+  /// Khusus untuk respon penerimaan sesi ke pendamping terverifikasi
+  Map<String, dynamic> toAcceptorResponse({required String livekitUrl}) {
+    return {
+      'message': 'Permintaan berhasil diterima secara atomik.',
+      'id': id,
+      'status': status,
+      'livekitUrl': livekitUrl,
+      'livekitRoom': livekitRoom,
+      'token': companionToken,
+      'request': toJson(),
     };
   }
 }

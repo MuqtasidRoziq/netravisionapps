@@ -13,7 +13,7 @@ class VisualHelpService extends GetxService {
   static const String _userNameKey = 'netravision_user_name';
 
   // Alamat default: 10.0.2.2 untuk Android emulator, 127.0.0.1 untuk desktop/pengujian lokal
-  final RxString serverBaseUrl = 'http://10.0.2.2:8080'.obs;
+  final RxString serverBaseUrl = 'http://127.0.0.1:8080'.obs;
   final RxString currentRole = 'user'.obs; // 'user' (tunanetra) atau 'companion' (relawan)
   final RxString currentUserId = ''.obs;
   final RxString currentUserName = ''.obs;
@@ -42,9 +42,7 @@ class VisualHelpService extends GetxService {
       serverBaseUrl.value = savedUrl;
     } else {
       // Deteksi platform: jika bukan android/ios (mis. Windows / Linux desktop saat dev), gunakan 127.0.0.1
-      if (!Platform.isAndroid) {
-        serverBaseUrl.value = 'http://127.0.0.1:8080';
-      }
+      serverBaseUrl.value = 'http://127.0.0.1:8080';
     }
 
     currentRole.value = prefs.getString(_userRoleKey) ?? 'user';
@@ -237,12 +235,17 @@ class VisualHelpService extends GetxService {
 
   Future<bool> cancelHelpRequest(String requestId, {String? reason}) async {
     final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/cancel');
+    final authKey = activeRequest.value?.accessKey;
     try {
       final res = await http.post(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (authKey != null) 'X-Auth-Key': authKey,
+        },
         body: jsonEncode({
           'userId': currentUserId.value,
+          if (authKey != null) 'authKey': authKey,
           'reason': reason ?? 'Dibatalkan oleh pengguna',
         }),
       ).timeout(const Duration(seconds: 5));
@@ -292,11 +295,18 @@ class VisualHelpService extends GetxService {
 
   Future<bool> completeHelpRequest(String requestId) async {
     final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/complete');
+    final authKey = activeRequest.value?.accessKey;
     try {
       final res = await http.post(
         uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'userId': currentUserId.value}),
+        headers: {
+          'Content-Type': 'application/json',
+          if (authKey != null) 'X-Auth-Key': authKey,
+        },
+        body: jsonEncode({
+          'userId': currentUserId.value,
+          if (authKey != null) 'authKey': authKey,
+        }),
       ).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {

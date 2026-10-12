@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/models/visual_help_models.dart';
 import '../../../routes/app_pages.dart';
+import '../../../services/contacts_service.dart';
 import '../../../utils/constants/app_colors.dart';
 import '../controllers/visual_help_controller.dart';
 
@@ -165,7 +166,44 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                     ),
                   )
                 else ...[
-                  // Opsi Coba Lagi
+                  // Opsi 1: Panggilan Cepat WhatsApp Kontak Tepercaya jika ada
+                  Builder(
+                    builder: (context) {
+                      final contactsService = Get.isRegistered<ContactsService>()
+                          ? Get.find<ContactsService>()
+                          : null;
+                      final primaryContact = contactsService?.contacts.firstOrNull;
+
+                      if (primaryContact != null) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              onPressed: () => controller.showCallOptionsModal(
+                                phoneNumber: primaryContact.phoneNumber,
+                                contactName: primaryContact.name,
+                              ),
+                              icon: const Icon(Icons.phone_in_talk_rounded, size: 22),
+                              label: Text(
+                                'Telepon ${primaryContact.name} (WA / Seluler)',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+
+                  // Opsi 2: Coba Minta Bantuan Lagi
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -186,7 +224,8 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Opsi Fallback Kontak Tepercaya
+
+                  // Opsi 3: Buka Daftar Kontak Tepercaya
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -196,9 +235,9 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: () => Get.offNamed(Routes.TRUSTED_CONTACTS),
-                      icon: const Icon(Icons.phone_forwarded_rounded, color: AppColors.primaryBlue),
+                      icon: const Icon(Icons.contacts_rounded, color: AppColors.primaryBlue),
                       label: const Text(
-                        'Beralih ke Kontak Tepercaya / WhatsApp',
+                        'Buka Semua Kontak Tepercaya',
                         style: TextStyle(
                           color: AppColors.primaryBlue,
                           fontSize: 15,

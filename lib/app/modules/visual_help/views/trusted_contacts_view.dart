@@ -13,17 +13,8 @@ class TrustedContactsView extends GetView<VisualHelpController> {
     final contactsService = Get.find<ContactsService>();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: const Text(
-          'Kontak Tepercaya & Cadangan',
-          style: TextStyle(
-            color: AppColors.primaryBlue,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Kontak Tepercaya & Panggilan Langsung'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryBlue),
           onPressed: () => Get.back(),
@@ -40,7 +31,7 @@ class TrustedContactsView extends GetView<VisualHelpController> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Banner Penjelasan Fallback
+            // Banner Penjelasan Fallback & Aksesibilitas
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -54,7 +45,7 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Kontak tepercaya dapat dihubungi langsung via Telepon seluler atau WhatsApp jika relawan online tidak tersedia.',
+                      'Pilih "Telepon WA" untuk panggilan suara WhatsApp langsung, "Seluler" untuk telepon pulsa biasa, atau "Chat" untuk mengirim pesan.',
                       style: TextStyle(
                         color: AppColors.primaryBlue,
                         fontSize: 13,
@@ -86,78 +77,134 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                 children: list.map((contact) {
                   return Card(
                     elevation: 2,
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    contact.name,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => controller.showCallOptionsModal(
+                        phoneNumber: contact.phoneNumber,
+                        contactName: contact.name,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        contact.name,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${contact.relationship} • ${contact.phoneNumber}',
+                                        style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${contact.relationship} • ${contact.phoneNumber}',
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.grey),
-                                onPressed: () => contactsService.deleteContact(contact.id),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
+                                ),
+                                IconButton(
+                                  tooltip: 'Hapus kontak',
+                                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.grey),
+                                  onPressed: () => contactsService.deleteContact(contact.id),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
 
-                          // Tombol Cepat: Telepon & WhatsApp
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryBlue,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                            // 3 Tombol Aksi Langsung: Telepon WA, Seluler, Chat
+                            Row(
+                              children: [
+                                // 1. Telepon WhatsApp
+                                Expanded(
+                                  flex: 4,
+                                  child: Semantics(
+                                    label: 'Panggil ${contact.name} via Telepon WhatsApp',
+                                    button: true,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF25D366),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        elevation: 1,
+                                      ),
+                                      onPressed: () => controller.callContactWhatsAppVoice(
+                                        contact.phoneNumber,
+                                        contactName: contact.name,
+                                      ),
+                                      icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
+                                      label: const Text('Telepon WA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ),
                                   ),
-                                  onPressed: () => controller.callContactPhone(contact.phoneNumber),
-                                  icon: const Icon(Icons.phone_rounded, size: 18),
-                                  label: const Text('Telepon', style: TextStyle(fontWeight: FontWeight.bold)),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF25D366),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                const SizedBox(width: 8),
+
+                                // 2. Telepon Seluler (Pulsa Biasa)
+                                Expanded(
+                                  flex: 3,
+                                  child: Semantics(
+                                    label: 'Panggil ${contact.name} via Telepon Seluler',
+                                    button: true,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primaryBlue,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        elevation: 1,
+                                      ),
+                                      onPressed: () => controller.callContactPhone(
+                                        contact.phoneNumber,
+                                        contactName: contact.name,
+                                      ),
+                                      icon: const Icon(Icons.phone_rounded, size: 18),
+                                      label: const Text('Seluler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ),
                                   ),
-                                  onPressed: () => controller.callContactWhatsApp(contact.phoneNumber),
-                                  icon: const Icon(Icons.chat_rounded, size: 18),
-                                  label: const Text('WhatsApp', style: TextStyle(fontWeight: FontWeight.bold)),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 8),
+
+                                // 3. Chat WhatsApp
+                                Expanded(
+                                  flex: 3,
+                                  child: Semantics(
+                                    label: 'Kirim pesan WhatsApp ke ${contact.name}',
+                                    button: true,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF128C7E),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        elevation: 1,
+                                      ),
+                                      onPressed: () => controller.callContactWhatsApp(
+                                        contact.phoneNumber,
+                                        contactName: contact.name,
+                                      ),
+                                      icon: const Icon(Icons.chat_rounded, size: 18),
+                                      label: const Text('Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );

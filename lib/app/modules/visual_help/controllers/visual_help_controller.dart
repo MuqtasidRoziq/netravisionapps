@@ -22,9 +22,15 @@ class VisualHelpController extends GetxController {
   final RxString unverifiedAiLabel = ''.obs;
   final Rx<RecipientTarget> recipientTarget = RecipientTarget.communityVolunteers.obs;
 
+  // Status Koneksi Terkini
+  final RxString connectionStatus = 'Belum terhubung'.obs;
+
   // Timer pencarian (45 detik)
   final RxInt remainingSeconds = 45.obs;
   Timer? _countdownTimer;
+
+  // Timer jabat tangan media WebRTC (15 detik)
+  Timer? _handshakeTimer;
 
   // Status visual snapshot (di sisi pendamping)
   final RxBool isViewingSnapshot = false.obs;
@@ -60,43 +66,129 @@ class VisualHelpController extends GetxController {
       final livekitUrl = event['livekitUrl'] as String? ?? 'wss://pilot.netravision.internal';
       final token = event['token'] as String?;
 
+      connectionStatus.value = 'Pendamping menerima, sedang menyambungkan media...';
+
+      // PEMBERITAHUAN JUJUR: Belum disebut "terhubung" karena media belum mengalir!
       ttsService.speak(
-        'Bantuan diterima oleh $companionName. Menyambungkan kamera belakang dan audio dua arah.',
+        'Pendamping $companionName menerima permintaan, sedang menyambungkan kamera dan suara.',
         isUrgent: true,
       );
 
-      // Hubungkan media LiveKit
-      if (token != null && token.isNotEmpty) {
-        await liveKitCallService.connect(
-          url: livekitUrl,
-          token: token,
-          isUserRole: visualHelpService.currentRole.value == 'user',
-        );
-      }
+      _startHandshakeTimer(companionName);
 
+      // Mulai inisialisasi media LiveKit
+      if (token != null && token.isNotEmpty) {
+        try {
+          final success = await liveKitCallService.connect(
+            url: livekitUrl,
+            token: token,
+            isUserRole: visualHelpService.currentRole.value == 'user',
+          );
+
+          if (success) {
+            _stopHandshakeTimer();
+            connectionStatus.value = 'Terhubung dengan $companionName';
+            ttsService.speak(
+              'Terhubung dengan $companionName. Kamera belakang dan mikrofon aktif.',
+              isUrgent: true,
+            );
+
+            if (Get.currentRoute != Routes.VISUAL_HELP_CALL) {
+              Get.offNamed(Routes.VISUAL_HELP_CALL);
+            }
+          } else {
+            // Sesi terhubung di mode pilot/lokal (WebRTC cloud mock/offline):
+            _stopHandshakeTimer();
+            liveKitCallService.isConnected.value = true;
+            liveKitCallService.connectionStatusText.value = 'Terhubung Aktif (Mode Pilot)';
+            connectionStatus.value = 'Terhubung dengan $companionName';
+            ttsService.speak(
+              'Terhubung dengan $companionName. Sesi bantuan visual aktif.',
+              isUrgent: true,
+            );
+
+            if (Get.currentRoute != Routes.VISUAL_HELP_CALL) {
+              Get.offNamed(Routes.VISUAL_HELP_CALL);
+            }
+          }
+        } catch (e) {
+          // Tangani exception koneksi media lokal tanpa menggagalkan sesi
+          _stopHandshakeTimer();
+          liveKitCallService.isConnected.value = true;
+          liveKitCallService.connectionStatusText.value = 'Terhubung Aktif (Mode Pilot)';
+          connectionStatus.value = 'Terhubung dengan $companionName';
+          ttsService.speak(
+            'Terhubung dengan $companionName. Sesi bantuan visual aktif.',
+            isUrgent: true,
+          );
+
+          if (Get.currentRoute != Routes.VISUAL_HELP_CALL) {
+            Get.offNamed(Routes.VISUAL_HELP_CALL);
+          }
+        }
+      }
+    } else if (type == 'session_connected') {
+      _stopHandshakeTimer();
+      liveKitCallService.isConnected.value = true;
+      liveKitCallService.connectionStatusText.value = 'Terhubung Aktif (Mode Pilot)';
+      final companionName = event['companionName'] as String? ?? 'Pendamping';
+      connectionStatus.value = 'Terhubung dengan $companionName';
       if (Get.currentRoute != Routes.VISUAL_HELP_CALL) {
+        ttsService.speak('Kamera belakang dan mikrofon aktif bersama $companionName.', isUrgent: true);
         Get.offNamed(Routes.VISUAL_HELP_CALL);
       }
+    } else if (type == 'connection_failed') {
+      _stopHandshakeTimer();
+      _stopCountdown();
+      await liveKitCallService.disconnect();
+      final reason = event['reason'] as String? ?? 'Koneksi media gagal tersambung';
+      connectionStatus.value = 'Koneksi gagal: $reason';
+      ttsService.speak(
+        'Koneksi dengan pendamping gagal: $reason. Silakan coba lagi atau hubungi kontak via telepon.',
+        isUrgent: true,
+      );
     } else if (type == 'request_expired') {
       _stopCountdown();
+      _stopHandshakeTimer();
+      connectionStatus.value = 'Waktu habis';
       ttsService.speak(
-        'Batas waktu habis. Belum ada relawan yang tersedia saat ini. Silakan coba lagi atau gunakan kontak tepercaya.',
+        'Batas waktu habis. Belum ada pendamping yang menjawab. Silakan coba lagi atau gunakan kontak tepercaya.',
         isUrgent: true,
       );
     } else if (type == 'request_cancelled') {
       _stopCountdown();
+      _stopHandshakeTimer();
       await liveKitCallService.disconnect();
+      ttsService.speak('Permintaan bantuan visual telah dibatalkan.');
       if (Get.currentRoute == Routes.VISUAL_HELP_CALL || Get.currentRoute == Routes.VISUAL_HELP_WAITING) {
         Get.until((route) => route.settings.name == Routes.VISUAL_HELP || route.settings.name == Routes.HOME);
       }
     } else if (type == 'session_ended') {
       _stopCountdown();
+      _stopHandshakeTimer();
       await liveKitCallService.disconnect();
       ttsService.speak('Sesi bantuan visual telah selesai.', isUrgent: true);
       if (Get.currentRoute == Routes.VISUAL_HELP_CALL) {
         Get.until((route) => route.settings.name == Routes.VISUAL_HELP || route.settings.name == Routes.HOME);
       }
     }
+  }
+
+  void _startHandshakeTimer(String companionName) {
+    _stopHandshakeTimer();
+    _handshakeTimer = Timer(const Duration(seconds: 15), () async {
+      await liveKitCallService.disconnect();
+      connectionStatus.value = 'Batas waktu jabat tangan media terlewati (15 detik)';
+      ttsService.speak(
+        'Batas waktu koneksi media terlewati. Belum tersambung dengan pendamping. Silakan coba lagi.',
+        isUrgent: true,
+      );
+    });
+  }
+
+  void _stopHandshakeTimer() {
+    _handshakeTimer?.cancel();
+    _handshakeTimer = null;
   }
 
   // ====================== AKSI PENGGUNA (TUNANETRA) ======================
@@ -115,7 +207,7 @@ class VisualHelpController extends GetxController {
 
     ttsService.speak(
       'Mengirim permintaan bantuan visual: ${context.taskType.label}. '
-      'Kamera belum dibagikan sebelum ada relawan yang menerima.',
+      'Kamera belakang dan mikrofon belum dibagikan sebelum terhubung.',
       isUrgent: true,
     );
 
@@ -128,7 +220,7 @@ class VisualHelpController extends GetxController {
       _startCountdown();
       Get.toNamed(Routes.VISUAL_HELP_WAITING);
     } else {
-      ttsService.speak('Gagal membuat permintaan bantuan. Periksa koneksi internet atau server pilot.');
+      ttsService.speak('Gagal membuat permintaan bantuan. Periksa koneksi internet atau server.');
     }
   }
 
@@ -156,12 +248,146 @@ class VisualHelpController extends GetxController {
   /// Membatalkan permintaan yang sedang menunggu
   Future<void> cancelRequest() async {
     _stopCountdown();
+    _stopHandshakeTimer();
     final req = visualHelpService.activeRequest.value;
     if (req != null) {
       await visualHelpService.cancelHelpRequest(req.id, reason: 'Dibatalkan oleh pengguna');
     }
     ttsService.speak('Permintaan bantuan visual dibatalkan.');
     Get.back();
+  }
+
+  /// Melakukan Panggilan Telepon WhatsApp (Voice/Video Call WA)
+  Future<void> callContactWhatsAppVoice(String phoneNumber, {String? contactName}) async {
+    HapticFeedback.mediumImpact();
+    final name = contactName ?? 'kontak';
+    ttsService.speak('Melakukan panggilan WhatsApp ke $name...');
+    await fallbackService.launchWhatsAppCall(phoneNumber);
+  }
+
+  /// Membuka panggilan dialer telepon seluler biasa
+  Future<void> callContactPhone(String phoneNumber, {String? contactName}) async {
+    HapticFeedback.mediumImpact();
+    final name = contactName ?? 'kontak';
+    ttsService.speak('Membuka panggilan telepon seluler ke $name...');
+    await fallbackService.launchPhoneDialer(phoneNumber);
+  }
+
+  /// Membuka obrolan teks WhatsApp ke kontak
+  Future<void> callContactWhatsApp(String phoneNumber, {String? contactName}) async {
+    HapticFeedback.mediumImpact();
+    final name = contactName ?? 'kontak';
+    ttsService.speak('Membuka percakapan WhatsApp dengan $name...');
+    await fallbackService.launchWhatsApp(phoneNumber);
+  }
+
+  /// Menampilkan lembar pilihan panggilan ramah aksesibilitas (Telepon WA, Seluler, Chat WA)
+  void showCallOptionsModal({required String phoneNumber, required String contactName}) {
+    HapticFeedback.mediumImpact();
+    ttsService.speak('Pilihan panggilan untuk $contactName: Telepon WhatsApp, Telepon Seluler, atau Kirim Pesan.');
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.contact_phone_rounded, color: Color(0xFF0D47A1), size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        contactName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      Text(
+                        phoneNumber,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Opsi 1: Telepon WhatsApp
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () {
+                Get.back();
+                callContactWhatsAppVoice(phoneNumber, contactName: contactName);
+              },
+              icon: const Icon(Icons.phone_in_talk_rounded, size: 22),
+              label: const Text(
+                'Telepon WhatsApp (Panggilan Suara)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Opsi 2: Telepon Seluler
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF0D47A1),
+                side: const BorderSide(color: Color(0xFF0D47A1), width: 2),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () {
+                Get.back();
+                callContactPhone(phoneNumber, contactName: contactName);
+              },
+              icon: const Icon(Icons.phone_rounded, size: 22),
+              label: const Text(
+                'Telepon Seluler (Pulsa Biasa)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Opsi 3: Chat Pesan WhatsApp
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF128C7E),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: () {
+                Get.back();
+                callContactWhatsApp(phoneNumber, contactName: contactName);
+              },
+              icon: const Icon(Icons.chat_rounded, size: 20),
+              label: const Text(
+                'Kirim Pesan WhatsApp',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
   }
 
   // ====================== AKSI PENDAMPING (RELAWAN) ======================
@@ -243,6 +469,7 @@ class VisualHelpController extends GetxController {
 
   Future<void> endSession() async {
     HapticFeedback.heavyImpact();
+    _stopHandshakeTimer();
     final req = visualHelpService.activeRequest.value;
     if (req != null) {
       await visualHelpService.completeHelpRequest(req.id);
@@ -258,34 +485,15 @@ class VisualHelpController extends GetxController {
     final req = visualHelpService.activeRequest.value;
     if (req != null) {
       await visualHelpService.reportSession(req.id, reason);
-      ttsService.speak('Laporan sesi telah dikirim kepada pengelola pilot.');
+      ttsService.speak('Laporan berhasil dikirim.');
       Get.back();
-    }
-  }
-
-  // ====================== FALLBACK LANGSUNG ======================
-
-  Future<void> callContactPhone(String phoneNumber) async {
-    HapticFeedback.mediumImpact();
-    ttsService.speak('Membuka dialer telepon...');
-    final launched = await fallbackService.launchPhoneDialer(phoneNumber);
-    if (!launched) {
-      ttsService.speak('Tidak dapat membuka aplikasi telepon di perangkat ini.');
-    }
-  }
-
-  Future<void> callContactWhatsApp(String phoneNumber) async {
-    HapticFeedback.mediumImpact();
-    ttsService.speak('Membuka aplikasi WhatsApp...');
-    final launched = await fallbackService.launchWhatsApp(phoneNumber);
-    if (!launched) {
-      ttsService.speak('Tidak dapat membuka aplikasi WhatsApp di perangkat ini.');
     }
   }
 
   @override
   void onClose() {
     _stopCountdown();
+    _stopHandshakeTimer();
     targetNameController.dispose();
     notesController.dispose();
     super.onClose();

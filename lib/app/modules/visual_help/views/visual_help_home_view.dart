@@ -71,26 +71,86 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       children: [
-        // Banner Penjelasan Aksesibel
+        // 1. TOMBOL UTAMA BESAR: Satu Ketukan Ramah Aksesibilitas TalkBack
         Semantics(
-          label: 'Fitur Bantuan Visual menghubungkan Anda dengan pendamping relawan melalui kamera dan percakapan dua arah.',
+          label: 'Minta Bantuan Visual. Mengirim permintaan kepada kontak tepercaya atau relawan. Kamera dan mikrofon belum dibagikan.',
+          hint: 'Ketuk dua kali untuk mengirim permintaan ke pendamping sekarang',
+          button: true,
+          child: Material(
+            color: AppColors.primaryBlue,
+            borderRadius: BorderRadius.circular(22),
+            elevation: 4,
+            shadowColor: AppColors.primaryBlue.withValues(alpha: 0.35),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: () => controller.submitHelpRequest(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 32),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Minta Bantuan Visual',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Hubungi pendamping via kamera & suara',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 2. Banner Privasi Aksesibel
+        Semantics(
+          label: 'Privasi Terlindungi: Kamera belakang dan mikrofon baru akan aktif setelah pendamping menerima permintaan Anda.',
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.lightBlue,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.lightBlueBorder, width: 1.5),
             ),
             child: const Row(
               children: [
-                Icon(Icons.info_outline_rounded, color: AppColors.primaryBlue, size: 28),
-                SizedBox(width: 14),
+                Icon(Icons.lock_outline_rounded, color: AppColors.primaryBlue, size: 24),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Relawan akan membantu melihat benda atau tulisan di hadapan Anda secara langsung.',
+                    'Privasi Terjaga: Kamera belakang dan mikrofon baru akan aktif setelah pendamping menerima permintaan Anda.',
                     style: TextStyle(
                       color: AppColors.primaryBlue,
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -101,96 +161,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
         ),
         const SizedBox(height: 20),
 
-        // Pilih Konteks Tugas
-        const Text(
-          'Pilih Kebutuhan Bantuan:',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        Obx(() => Column(
-          children: TaskType.values.map((type) {
-            final isSelected = controller.selectedTaskType.value == type;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Semantics(
-                label: '${type.label}. ${isSelected ? "Dipilih" : "Ketuk untuk memilih"}',
-                button: true,
-                child: Material(
-                  color: isSelected ? AppColors.primaryBlue : AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  elevation: isSelected ? 3 : 1,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => controller.selectedTaskType.value = type,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isSelected ? AppColors.primaryBlue : AppColors.lightBlueBorder,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _iconForTask(type),
-                            color: isSelected ? Colors.white : AppColors.primaryBlue,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Text(
-                              type.label,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          if (isSelected)
-                            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        )),
-        const SizedBox(height: 12),
-
-        // Input Target Spesifik (Opsional)
-        Semantics(
-          label: 'Input nama target atau benda yang dicari, opsional',
-          child: TextField(
-            controller: controller.targetNameController,
-            decoration: InputDecoration(
-              labelText: 'Nama Target (contoh: Dompet, Obat, Kunci)',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
-              filled: true,
-              fillColor: AppColors.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.lightBlueBorder),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.lightBlueBorder),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Pilihan Penerima (Komunitas vs Kontak Tepercaya)
+        // 3. Pilihan Penerima Bantuan
         const Text(
           'Pilihan Penerima:',
           style: TextStyle(
@@ -222,48 +193,77 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
             ),
           ],
         )),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
-        // TOMBOL UTAMA: Minta Bantuan Visual
-        Semantics(
-          label: 'Minta Bantuan Visual Sekarang',
-          hint: 'Ketuk dua kali untuk mengirim permintaan ke relawan',
-          button: true,
-          child: Material(
-            color: AppColors.primaryBlue,
-            borderRadius: BorderRadius.circular(20),
-            elevation: 4,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => controller.submitHelpRequest(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                alignment: Alignment.center,
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.videocam_rounded, color: Colors.white, size: 28),
-                    SizedBox(width: 12),
-                    Text(
-                      'Minta Bantuan Visual',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+        // 4. Pilih Konteks Tugas (Opsional, Default General Help)
+        const Text(
+          'Kebutuhan Bantuan (Opsional):',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 8),
 
-        // TOMBOL SEKUNDER: Kontak Tepercaya / Fallback Langsung
+        Obx(() => Column(
+          children: TaskType.values.map((type) {
+            final isSelected = controller.selectedTaskType.value == type;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Semantics(
+                label: '${type.label}. ${isSelected ? "Dipilih" : "Ketuk untuk memilih"}',
+                button: true,
+                child: Material(
+                  color: isSelected ? AppColors.surface : AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => controller.selectedTaskType.value = type,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primaryBlue : AppColors.lightBlueBorder.withValues(alpha: 0.5),
+                          width: isSelected ? 2.0 : 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _iconForTask(type),
+                            color: isSelected ? AppColors.primaryBlue : AppColors.textSecondary,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              type.label,
+                              style: TextStyle(
+                                color: isSelected ? AppColors.primaryBlue : AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(Icons.check_circle_rounded, color: AppColors.primaryBlue, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        )),
+        const SizedBox(height: 16),
+
+        // 5. TOMBOL SEKUNDER: Kontak Tepercaya / Fallback Panggilan Langsung
         Semantics(
           label: 'Kelola Kontak Tepercaya dan Panggilan Langsung',
-          hint: 'Ketuk untuk membuka daftar telepon dan WhatsApp darurat',
+          hint: 'Ketuk untuk membuka daftar nomor telepon dan WhatsApp darurat',
           button: true,
           child: OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
@@ -274,10 +274,10 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
             onPressed: () => Get.toNamed(Routes.TRUSTED_CONTACTS),
             icon: const Icon(Icons.phone_in_talk_rounded, color: AppColors.primaryBlue),
             label: const Text(
-              'Kontak Tepercaya / Fallback WhatsApp',
+              'Kontak Tepercaya / Fallback Panggilan',
               style: TextStyle(
                 color: AppColors.primaryBlue,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -369,64 +369,43 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-
-        // Panduan Singkat Relawan
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.lightBlue,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.lightBlueBorder),
-          ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Panduan Pendamping:',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                '• Deskripsikan gambar secara spesifik dan tenang.\n'
-                '• Tanyakan kebutuhan yang ingin diperiksa pengguna.\n'
-                '• Bila gambar buram, minta pengguna memiringkan atau mendekatkan kamera perlahan.\n'
-                '• Jangan menebak jika tulisan tidak terbaca.',
-                style: TextStyle(color: AppColors.primaryBlue, fontSize: 13, height: 1.4),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 20),
 
+        // Daftar Panggilan Masuk
         const Text(
-          'Permintaan Bantuan Masuk:',
+          'Permintaan Masuk:',
           style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
 
-        // Daftar Permintaan Masuk
         Obx(() {
           final requests = controller.visualHelpService.incomingRequests;
           if (requests.isEmpty) {
             return Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(32),
               alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.lightBlueBorder.withValues(alpha: 0.5)),
+              ),
               child: const Column(
                 children: [
                   Icon(Icons.inbox_rounded, size: 48, color: AppColors.textSecondary),
-                  SizedBox(height: 8),
+                  SizedBox(height: 12),
                   Text(
-                    'Belum ada permintaan bantuan saat ini.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    'Belum ada panggilan masuk',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Notifikasi akan muncul saat ada pengguna yang butuh bantuan.',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -434,70 +413,94 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
           }
 
           return Column(
-            children: requests.map((req) {
-              return Card(
-                elevation: 2,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.lightBlue,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(_iconForTask(req.taskContext.taskType), color: AppColors.primaryBlue),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  req.taskContext.taskType.label,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                                if (req.taskContext.targetName != null)
-                                  Text(
-                                    'Target: ${req.taskContext.targetName}',
-                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryBlue,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              onPressed: () => controller.acceptHelpRequest(req.id),
-                              child: const Text('Terima Bantuan', style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
+            children: requests.map((req) => _buildIncomingRequestCard(req)).toList(),
           );
         }),
       ],
+    );
+  }
+
+  Widget _buildIncomingRequestCard(VisualHelpRequestModel req) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primaryBlue, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryBlue.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                req.userName,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.lightBlue,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  req.taskContext.taskType.label,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (req.taskContext.targetName != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Target: ${req.taskContext.targetName}',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+          ],
+          if (req.taskContext.unverifiedAiLabel != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'AI Deteksi: ${req.taskContext.unverifiedAiLabel}',
+              style: const TextStyle(color: AppColors.emergencyRed, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: () => controller.acceptHelpRequest(req.id),
+              icon: const Icon(Icons.call_rounded),
+              label: const Text(
+                'Terima Panggilan Bantuan',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -506,7 +509,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
       case TaskType.findObject:
         return Icons.search_rounded;
       case TaskType.readLabel:
-        return Icons.text_snippet_rounded;
+        return Icons.description_rounded;
       case TaskType.deviceDisplay:
         return Icons.devices_rounded;
       case TaskType.generalHelp:

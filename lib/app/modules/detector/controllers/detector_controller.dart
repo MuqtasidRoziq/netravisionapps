@@ -339,7 +339,16 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     );
 
     ttsService.speak('Membuka menu Bantuan Visual untuk ${taskType.label}');
-    Get.toNamed(Routes.VISUAL_HELP, arguments: context);
+    Get.toNamed(Routes.VISUAL_HELP, arguments: context)?.then((_) {
+      resumeDetection();
+    });
+  }
+
+  /// Memulihkan kembali sesi deteksi kamera dan audio setelah kembali dari bantuan visual
+  void resumeDetection() {
+    isPaused.value = false;
+    yoloController.resume();
+    ttsService.speak('Kamera deteksi diaktifkan kembali');
   }
 
   @override

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetraVision - Portal Relawan & Pendamping</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0D47A1;
+      --primary-light: #E3F2FD;
+      --primary-hover: #1565C0;
+      --success: #25D366;
+      --danger: #E53935;
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #0D47A1, #1976D2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(13, 71, 161, 0.25);
+    }
+
+    .brand-text h1 {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.3px;
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      color: #065F46;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #10B981;
+      border-radius: 50%;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* Container */
+    .container {
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 0 20px;
+      flex: 1;
+      width: 100%;
+    }
+
+    .hero-card {
+      background: linear-gradient(135deg, #0D47A1 0%, #1565C0 100%);
+      color: white;
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 25px -5px rgba(13, 71, 161, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-card h2 {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .hero-card p {
+      font-size: 14px;
+      color: #E2E8F0;
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    /* Section Header */
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-title h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .live-indicator {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Requests List */
+    .requests-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Waiting Empty State */
+    .empty-state {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: 20px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: gentle-bounce 2s infinite ease-in-out;
+    }
+
+    @keyframes gentle-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .empty-state h4 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 450px;
+      margin: 0 auto 20px;
+      line-height: 1.5;
+    }
+
+    /* Request Item Card */
+    .request-card {
+      background: var(--surface);
+      border: 2px solid #BFDBFE;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 4px 16px rgba(13, 71, 161, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: card-appear 0.3s ease-out;
+    }
+
+    @keyframes card-appear {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .user-meta h4 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .user-meta span {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .urgent-badge {
+      background: #FEE2E2;
+      border: 1px solid #FECACA;
+      color: #991B1B;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .task-context-box {
+      background: #F1F5F9;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .task-icon {
+      font-size: 24px;
+    }
+
+    .task-label {
+      font-size: 14px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .task-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .btn-accept {
+      background: linear-gradient(135deg, #0D47A1, #1976D2);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 24px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(13, 71, 161, 0.25);
+      text-decoration: none;
+    }
+
+    .btn-accept:hover {
+      background: linear-gradient(135deg, #1565C0, #1E88E5);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(13, 71, 161, 0.35);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--primary);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg);
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header / Navbar -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-logo">N</div>
+      <div class="brand-text">
+        <h1>NetraVision</h1>
+        <p>Portal Relawan & Pendamping Visual</p>
+      </div>
+    </div>
+    <div class="badge-status">
+      <div class="pulse-dot"></div>
+      <span>Relawan Siap Membantu</span>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <div class="hero-card">
+      <h2>Selamat Datang, Relawan NetraVision</h2>
+      <p>Halaman ini akan otomatis berdering dan menampilkan panggilan bantuan saat pengguna tunanetra menekan tombol "Minta Bantuan Visual" di aplikasi HP mereka.</p>
+    </div>
+
+    <div class="section-title">
+      <h3>Antrean Permintaan Bantuan Visual</h3>
+      <div class="live-indicator">
+        <span id="last-sync">Memperbarui otomatis...</span>
+      </div>
+    </div>
+
+    <!-- Active Incoming Requests -->
+    <div id="requests-container" class="requests-list">
+      <div class="empty-state">
+        <div class="empty-icon">🎧</div>
+        <h4>Belum Ada Panggilan Bantuan Aktif</h4>
+        <p>Buka menu <strong>"4. Bantuan Visual"</strong> di HP Anda lalu tekan <strong>"Minta Bantuan Visual"</strong>. Panggilan akan muncul di sini seketika!</p>
+        <button class="btn-secondary" onclick="triggerTestRequest()">
+          🧪 Buat Simulasi Panggilan Uji Coba
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let knownRequestIds = new Set();
+    let audioCtx = null;
+
+    // Putar bunyi ringtone menggunakan Web Audio API
+    function playChime() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880, now + 0.15);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } catch (_) {}
+    }
+
+    async function pollPendingRequests() {
+      try {
+        const resp = await fetch('/api/help-requests/pending');
+        if (!resp.ok) return;
+
+        const data = await resp.json();
+        const requests = data.requests || [];
+        renderRequests(requests);
+
+        const now = new Date();
+        document.getElementById('last-sync').innerText = 
+          'Tersinkronisasi ' + now.toLocaleTimeString('id-ID');
+      } catch (err) {
+        console.error('Error polling pending requests:', err);
+      }
+    }
+
+    function getTaskLabel(type) {
+      switch (type) {
+        case 'findObject': return { icon: '🔍', label: 'Mencari Benda di Sekitar' };
+        case 'readLabel': return { icon: '📄', label: 'Membaca Label atau Tulisan' };
+        case 'checkDisplay': return { icon: '📱', label: 'Memahami Tampilan Perangkat' };
+        default: return { icon: '👁️', label: 'Bantuan Visual Umum' };
+      }
+    }
+
+    function renderRequests(requests) {
+      const container = document.getElementById('requests-container');
+
+      if (requests.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🎧</div>
+            <h4>Belum Ada Panggilan Bantuan Aktif</h4>
+            <p>Buka menu <strong>"4. Bantuan Visual"</strong> di HP Anda lalu tekan <strong>"Minta Bantuan Visual"</strong>. Panggilan akan muncul di sini seketika!</p>
+            <button class="btn-secondary" onclick="triggerTestRequest()">
+              🧪 Buat Simulasi Panggilan Uji Coba
+            </button>
+          </div>
+        `;
+        knownRequestIds.clear();
+        return;
+      }
+
+      // Mainkan suara jika ada request baru
+      let hasNew = false;
+      requests.forEach(r => {
+        if (!knownRequestIds.has(r.id)) {
+          hasNew = true;
+          knownRequestIds.add(r.id);
+        }
+      });
+      if (hasNew) playChime();
+
+      container.innerHTML = requests.map(req => {
+        const task = getTaskLabel(req.taskType);
+        const assistUrl = '/assist?req=' + encodeURIComponent(req.id) + '&auth=' + encodeURIComponent(req.accessKey);
+
+        return `
+          <div class="request-card">
+            <div class="card-top">
+              <div class="user-info">
+                <div class="user-avatar">${(req.userName || 'P')[0].toUpperCase()}</div>
+                <div class="user-meta">
+                  <h4>${req.userName || 'Pengguna NetraVision'}</h4>
+                  <span>ID: ${req.id}</span>
+                </div>
+              </div>
+              <div class="urgent-badge">
+                <div class="pulse-dot" style="background: #E53935;"></div>
+                Panggilan Masuk
+              </div>
+            </div>
+
+            <div class="task-context-box">
+              <div class="task-icon">${task.icon}</div>
+              <div>
+                <div class="task-label">${task.label}</div>
+                <div class="task-desc">${req.notes || req.taskTarget || 'Membutuhkan pendampingan kamera dan audio langsung.'}</div>
+              </div>
+            </div>
+
+            <a href="${assistUrl}" class="btn-accept">
+              📞 Terima Permintaan & Buka Sesi Bantuan
+            </a>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function triggerTestRequest() {
+      try {
+        const resp = await fetch('/api/help-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: 'user_simulasi_' + Math.floor(Math.random() * 1000),
+            userName: 'Pengguna Simulasi',
+            taskContext: {
+              taskType: 'readLabel',
+              targetName: 'Bungkus Makanan / Obat'
+            },
+            recipientTarget: 'community'
+          })
+        });
+        if (resp.ok) {
+          pollPendingRequests();
+        }
+      } catch (err) {
+        alert('Gagal membuat simulasi: ' + err.message);
+      }
+    }
+
+    setInterval(pollPendingRequests, 1500);
+    pollPendingRequests();
+
+    document.addEventListener('click', () => {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }, { once: true });
+  </script>
+</body>
+</html>

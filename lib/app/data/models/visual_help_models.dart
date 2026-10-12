@@ -191,6 +191,8 @@ class TaskContext {
 /// Model permintaan bantuan visual di sisi klien
 class VisualHelpRequestModel {
   final String id;
+  final String? accessKey;
+  final String? webAssistUrl;
   final String userId;
   final String userName;
   final TaskContext taskContext;
@@ -205,6 +207,8 @@ class VisualHelpRequestModel {
 
   VisualHelpRequestModel({
     required this.id,
+    this.accessKey,
+    this.webAssistUrl,
     required this.userId,
     required this.userName,
     required this.taskContext,
@@ -221,6 +225,8 @@ class VisualHelpRequestModel {
   factory VisualHelpRequestModel.fromJson(Map<String, dynamic> json) {
     return VisualHelpRequestModel(
       id: json['id'] as String,
+      accessKey: json['accessKey'] as String?,
+      webAssistUrl: json['webAssistUrl'] as String?,
       userId: json['userId'] as String? ?? '',
       userName: json['userName'] as String? ?? 'Pengguna Tunanetra',
       taskContext: TaskContext.fromJson(json),
