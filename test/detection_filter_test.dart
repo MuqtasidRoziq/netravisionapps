@@ -56,61 +56,74 @@ void main() {
       );
     });
 
-    test('menerima uang berukuran wajar di tengah bingkai', () {
-      // Luas = 9% frame, tidak menempel tepi.
+    test('menerima uang kertas berukuran wajar di tengah bingkai', () {
+      // Luas = 9.9% frame, rasio ~2.05 (proporsional uang Rupiah asli), di tengah bingkai.
       expect(
         DetectionFilter.isPlausibleMoneyBox(
-          const Rect.fromLTWH(0.3, 0.3, 0.3, 0.3),
+          const Rect.fromLTWH(0.25, 0.35, 0.45, 0.22),
+          label: '5000',
         ),
         isTrue,
       );
     });
 
-    test('menolak objek dengan lebar/tinggi terlalu kecil (< 8% layar)', () {
-      // Tombol keyboard kecil misalnya lebar 0.05
+    test('menolak objek dengan lebar/tinggi terlalu kecil (< 14% sisi pendek)', () {
+      // Tombol keyboard kecil atau noise misalnya lebar 0.08
       expect(
         DetectionFilter.isPlausibleMoneyBox(
-          const Rect.fromLTWH(0.3, 0.3, 0.05, 0.05),
+          const Rect.fromLTWH(0.3, 0.3, 0.08, 0.08),
+          label: '5000',
         ),
         isFalse,
       );
     });
 
-    test('menolak koin lonjong / tombol keyboard (aspect ratio > 1.8)', () {
-      // Objek memanjang: w=0.35, h=0.12 -> rasio 2.9 > 1.8
+    test('menolak koin lonjong / tombol keyboard (aspect ratio > 1.25)', () {
+      // Objek memanjang: w=0.35, h=0.20 -> rasio 1.75 > 1.25
       expect(
         DetectionFilter.isPlausibleMoneyBox(
-          const Rect.fromLTWH(0.2, 0.2, 0.35, 0.12),
+          const Rect.fromLTWH(0.3, 0.3, 0.35, 0.20),
           label: 'coin_1000',
         ),
         isFalse,
       );
     });
 
-    test('menerima koin asli mendekati lingkaran (aspect ratio <= 1.8)', () {
-      // Objek koin: w=0.2, h=0.2 -> rasio 1.0 <= 1.8
+    test('menerima koin asli mendekati lingkaran (aspect ratio 0.85 s/d 1.25)', () {
+      // Objek koin: w=0.25, h=0.25 -> rasio 1.0 (dalam rentang 0.85..1.25)
       expect(
         DetectionFilter.isPlausibleMoneyBox(
-          const Rect.fromLTWH(0.4, 0.4, 0.2, 0.2),
+          const Rect.fromLTWH(0.35, 0.35, 0.25, 0.25),
           label: 'coin_1000',
         ),
         isTrue,
       );
     });
 
-    test('menolak uang kertas sangat pipih / kabel / list meja (aspect ratio > 3.2)', () {
-      // Objek garis sangat panjang: w=0.8, h=0.1 -> rasio 8.0 > 3.2
+    test('menolak uang kertas sangat pipih / kabel / list meja (aspect ratio > 2.65)', () {
+      // Objek garis sangat panjang: w=0.8, h=0.15 -> rasio 5.3 > 2.65
       expect(
         DetectionFilter.isPlausibleMoneyBox(
-          const Rect.fromLTWH(0.1, 0.4, 0.8, 0.1),
+          const Rect.fromLTWH(0.1, 0.4, 0.8, 0.15),
           label: '10000',
         ),
         isFalse,
       );
     });
 
-    test('menerima uang kertas proporsional (aspect ratio <= 3.2)', () {
-      // Uang kertas normal: w=0.5, h=0.25 -> rasio 2.0 <= 3.2
+    test('menolak objek bujur sangkar / laptop / buku / kotak (aspect ratio < 1.35)', () {
+      // Objek bujur sangkar w=0.3, h=0.3 -> rasio 1.0 < 1.35 (bukan uang kertas)
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.3, 0.3, 0.3, 0.3),
+          label: '5000',
+        ),
+        isFalse,
+      );
+    });
+
+    test('menerima uang kertas proporsional (aspect ratio 1.35 s/d 2.65)', () {
+      // Uang kertas normal: w=0.5, h=0.25 -> rasio 2.0 (sesuai uang Rupiah)
       expect(
         DetectionFilter.isPlausibleMoneyBox(
           const Rect.fromLTWH(0.2, 0.3, 0.5, 0.25),
@@ -144,13 +157,34 @@ void main() {
       expect(DetectionFilter.isStable([1, 1], 1), isFalse);
     });
 
-    test('stabil bila classIndex muncul 2 dari 3 frame terakhir', () {
+    test('stabil bila classIndex muncul 2 dari 3 frame terakhir (default)', () {
       expect(DetectionFilter.isStable([1, 1, 2], 1), isTrue);
       expect(DetectionFilter.isStable([3, 1, 1], 1), isTrue);
     });
 
     test('tidak stabil bila hanya 1 dari 3 frame', () {
       expect(DetectionFilter.isStable([1, 2, 3], 1), isFalse);
+    });
+
+    test('mode baca uang stabil bila muncul 3 dari 4 frame', () {
+      expect(
+        DetectionFilter.isStable(
+          [5, 5, 5, 2],
+          5,
+          windowSize: DetectionFilter.currencyTemporalWindowSize,
+          requiredHits: DetectionFilter.currencyTemporalRequiredHits,
+        ),
+        isTrue,
+      );
+      expect(
+        DetectionFilter.isStable(
+          [5, 5, 2, 3],
+          5,
+          windowSize: DetectionFilter.currencyTemporalWindowSize,
+          requiredHits: DetectionFilter.currencyTemporalRequiredHits,
+        ),
+        isFalse,
+      );
     });
   });
 }

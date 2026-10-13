@@ -256,14 +256,23 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         : DetectionFilter.selectBest(validDetections);
 
     // 3. Konfirmasi temporal: label baru hanya diumumkan bila stabil (muncul
-    //    2 dari 3 frame terakhir) agar blip satu frame tidak jadi suara.
+    //    2 dari 3 frame terakhir, atau 3 dari 4 frame khusus Mode Baca Uang)
+    //    agar blip satu frame dan fluktuasi objek acak tidak jadi suara.
     //    Rintangan berbahaya dikecualikan — keselamatan tidak menunggu.
     _recentClassIndices.add(targetDetection.classIndex);
-    if (_recentClassIndices.length > DetectionFilter.temporalWindowSize) {
+    final int windowSize = mode == VisionMode.currency
+        ? DetectionFilter.currencyTemporalWindowSize
+        : DetectionFilter.temporalWindowSize;
+    final int requiredHits = mode == VisionMode.currency
+        ? DetectionFilter.currencyTemporalRequiredHits
+        : DetectionFilter.temporalRequiredHits;
+
+    if (_recentClassIndices.length > windowSize) {
       _recentClassIndices.removeAt(0);
     }
     if (!isDangerous &&
-        !DetectionFilter.isStable(_recentClassIndices, targetDetection.classIndex)) {
+        !DetectionFilter.isStable(_recentClassIndices, targetDetection.classIndex,
+            windowSize: windowSize, requiredHits: requiredHits)) {
       return;
     }
 
