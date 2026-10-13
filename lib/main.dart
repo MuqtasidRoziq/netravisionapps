@@ -10,6 +10,7 @@ import 'app/services/livekit_call_service.dart';
 import 'app/services/tts_service.dart';
 import 'app/services/vibration_service.dart';
 import 'app/services/visual_help_service.dart';
+import 'app/services/currency_ocr_service.dart';
 import 'app/utils/constants/app_colors.dart';
 
 void main() async {
@@ -24,6 +25,7 @@ void main() async {
   Get.put(FallbackService());
   await Get.putAsync(() => VisualHelpService().init());
   Get.put(LiveKitCallService());
+  Get.put(CurrencyOcrService());
 
   runApp(
     GetMaterialApp(

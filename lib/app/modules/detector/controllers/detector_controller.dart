@@ -23,6 +23,7 @@ import '../../../utils/helpers/geo_math.dart';
 import '../../../utils/helpers/navigation_models.dart';
 import '../../../utils/helpers/object_speech_helper.dart';
 import '../../../utils/helpers/spatial_estimator.dart';
+import '../../../services/currency_ocr_service.dart';
 
 
 /// Orkestrasi deteksi NetraVision di atas plugin `ultralytics_yolo`.
@@ -114,6 +115,13 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   final List<int> _recentClassIndices = [];
   int _emptyCurrencyFrames = 0;
 
+  // Verifikasi Angka Nominal (On-Device Google ML Kit OCR)
+  CurrencyOcrService? _currencyOcr;
+  bool _isOcrBusy = false;
+  DateTime _lastOcrScanTime = DateTime.fromMillisecondsSinceEpoch(0);
+  String? _lastOcrVerifiedNominal;
+  DateTime _lastOcrVerifiedTime = DateTime.fromMillisecondsSinceEpoch(0);
+
   /// Konfigurasi model untuk mode aktif (sumber tunggal di
   /// [VisionModelConfig]): path model, task, dan ambang threshold.
   VisionModelConfig get modelConfig => VisionModelConfig.forMode(mode);
@@ -131,6 +139,13 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         : VisionMode.indoor;
     // Ambil kata kunci target barang (hanya untuk mode itemSearch)
     targetItem = Get.parameters['targetItem'] ?? '';
+
+    if (Get.isRegistered<CurrencyOcrService>()) {
+      _currencyOcr = Get.find<CurrencyOcrService>();
+    } else {
+      _currencyOcr = Get.put(CurrencyOcrService());
+    }
+
     // Terapkan segera; YOLOViewController mengingat nilainya dan menyamplikannya
     // ke native saat platform view menempel (mencegah threshold reset ke 0.25).
     yoloController.setThresholds(
@@ -240,6 +255,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         if (_emptyCurrencyFrames >= 4) {
           _lastAnnouncedLabel = '';
           _recentClassIndices.clear();
+          _lastOcrVerifiedNominal = null;
           if (currentStatusText.value != 'Arahkan uang ke kamera...') {
             currentStatusText.value = 'Arahkan uang ke kamera...';
           }
@@ -285,7 +301,26 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       return;
     }
 
-    final String detectedLabel = targetDetection.className;
+    // Khusus Mode Baca Uang: Selalu picu validasi angka nominal via OCR on-device
+    if (mode == VisionMode.currency) {
+      _runCurrencyOcrVerification();
+    }
+
+    final bool hasRecentOcrVerification = mode == VisionMode.currency &&
+        _lastOcrVerifiedNominal != null &&
+        DateTime.now().difference(_lastOcrVerifiedTime).inMilliseconds < 4500;
+
+    // Untuk uang: bila belum ada verifikasi OCR angka, tampilkan status membaca
+    // dan JANGAN biarkan YOLO membacakan nominal yang belum tervalidasi angkanya.
+    if (mode == VisionMode.currency && !hasRecentOcrVerification) {
+      currentStatusText.value = 'Membaca nominal uang...';
+      return;
+    }
+
+    final String detectedLabel =
+        (mode == VisionMode.currency && hasRecentOcrVerification)
+            ? _lastOcrVerifiedNominal!
+            : targetDetection.className;
     lastDetectedObject.value = detectedLabel;
 
     final spatial = (mode == VisionMode.indoor || mode == VisionMode.outdoor)
@@ -296,7 +331,9 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         ObjectSpeechHelper.formatDisplayName(detectedLabel, mode, spatial: spatial);
     currentStatusText.value = isDangerous
         ? '⚠️ $displayName'
-        : 'Terdeteksi: $displayName';
+        : (mode == VisionMode.currency
+            ? 'Terdeteksi: $displayName (Validasi Angka)'
+            : 'Terdeteksi: $displayName');
 
     final speechText =
         ObjectSpeechHelper.formatForTts(detectedLabel, mode, spatial: spatial);
@@ -377,6 +414,59 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     } else {
       // Mode uang: tidak ikut getaran (sesuai permintaan).
       vibrationService.stop();
+    }
+  }
+
+  // ====================== Validasi Nominal Uang (OCR) ======================
+
+  /// Memverifikasi angka nominal uang kertas Rupiah menggunakan Google ML Kit OCR on-device.
+  Future<void> _runCurrencyOcrVerification({bool isUrgent = false}) async {
+    if (_isOcrBusy || _currencyOcr == null || mode != VisionMode.currency) return;
+
+    final now = DateTime.now();
+    if (!isUrgent && now.difference(_lastOcrScanTime).inMilliseconds < 1200) {
+      return;
+    }
+    _lastOcrScanTime = now;
+    _isOcrBusy = true;
+
+    try {
+      final Uint8List? bytes = await yoloController.capturePhoto(withOverlays: false);
+      if (bytes != null && bytes.isNotEmpty) {
+        final String? recognizedNominal = await _currencyOcr?.recognizeRupiah(bytes);
+        if (recognizedNominal != null) {
+          _lastOcrVerifiedNominal = recognizedNominal;
+          _lastOcrVerifiedTime = DateTime.now();
+          _announceVerifiedRupiah(recognizedNominal, isUrgent: isUrgent);
+        } else if (isUrgent) {
+          ttsService.speak(
+            'Angka nominal belum terbaca jelas. Ratakan dan dekatkan uang ke kamera.',
+            isUrgent: true,
+          );
+        }
+      }
+    } catch (_) {
+      // Abaikan bila kamera sedang pergantian frame
+    } finally {
+      _isOcrBusy = false;
+    }
+  }
+
+  void _announceVerifiedRupiah(String nominal, {bool isUrgent = false}) {
+    lastDetectedObject.value = nominal;
+    final displayName = ObjectSpeechHelper.formatDisplayName(nominal, mode);
+    currentStatusText.value = 'Terdeteksi: $displayName (Validasi Angka)';
+
+    final speechText = ObjectSpeechHelper.formatForTts(nominal, mode);
+    final now = DateTime.now();
+    final bool changed = nominal != _lastAnnouncedLabel;
+    final bool cooldownPassed =
+        now.difference(_lastAnnounceTime).inMilliseconds >= 2500;
+
+    if (isUrgent || changed || cooldownPassed) {
+      _lastAnnouncedLabel = nominal;
+      _lastAnnounceTime = now;
+      ttsService.speak(speechText, isUrgent: true);
     }
   }
 
@@ -598,22 +688,24 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   void handleScreenTap() {
     HapticFeedback.mediumImpact();
+    if (mode == VisionMode.currency) {
+      if (_lastOcrVerifiedNominal != null &&
+          DateTime.now().difference(_lastOcrVerifiedTime).inMilliseconds < 5000) {
+        final speech =
+            ObjectSpeechHelper.formatForTts(_lastOcrVerifiedNominal!, mode);
+        ttsService.speak(speech, isUrgent: true);
+      }
+      _runCurrencyOcrVerification(isUrgent: true);
+      return;
+    }
+
     if (lastDetectedObject.value.isNotEmpty) {
       final speech =
           ObjectSpeechHelper.formatForTts(lastDetectedObject.value, mode);
-      if (mode == VisionMode.currency) {
-        ttsService.speak(speech, isUrgent: true);
-      } else {
-        ttsService.speak('Objek di depan: $speech', isUrgent: true);
-      }
+      ttsService.speak('Objek di depan: $speech', isUrgent: true);
     } else {
-      if (mode == VisionMode.currency) {
-        ttsService.speak('Belum ada uang terdeteksi di depan kamera.',
-            isUrgent: true);
-      } else {
-        ttsService.speak('Belum ada objek terdeteksi di depan Anda.',
-            isUrgent: true);
-      }
+      ttsService.speak('Belum ada objek terdeteksi di depan Anda.',
+          isUrgent: true);
     }
   }
 
