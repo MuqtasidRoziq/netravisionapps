@@ -96,7 +96,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                       onTap: () => controller.handleVolunteerButtonTap(),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(28),
                           border: Border.all(
@@ -104,70 +104,75 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                             width: isSelected ? 3.5 : 0,
                           ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 86,
-                              height: 86,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.videocam_rounded,
-                                color: Colors.white,
-                                size: 48,
-                              ),
-                            ),
-                            const SizedBox(height: 22),
-                            const Text(
-                              'PANGGIL RELAWAN',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 25,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            const Text(
-                              'Hubungi relawan terdekat sekarang.\nKamera dan suara otomatis terhubung.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 1.35,
-                              ),
-                            ),
-                            if (isSelected) ...[
-                              const SizedBox(height: 14),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                width: 76,
+                                height: 76,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  shape: BoxShape.circle,
                                 ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.touch_app_rounded, color: AppColors.primaryBlue, size: 18),
-                                    SizedBox(width: 6),
-                                    Text(
-                                      'Ketuk sekali lagi untuk memanggil',
-                                      style: TextStyle(
-                                        color: AppColors.primaryBlue,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
+                                child: const Icon(
+                                  Icons.videocam_rounded,
+                                  color: Colors.white,
+                                  size: 42,
                                 ),
                               ),
+                              const SizedBox(height: 14),
+                              const Text(
+                                'PANGGIL RELAWAN',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Hubungi relawan terdekat sekarang.\nKamera dan suara otomatis terhubung.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.35,
+                                ),
+                              ),
+                              if (isSelected) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.touch_app_rounded, color: AppColors.primaryBlue, size: 18),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Ketuk sekali lagi untuk memanggil',
+                                        style: TextStyle(
+                                          color: AppColors.primaryBlue,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -206,24 +211,26 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                             width: isSelected ? 2.5 : 1.5,
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 58,
-                              height: 58,
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primaryBlue : AppColors.lightBlue,
-                                borderRadius: BorderRadius.circular(16),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 58,
+                                height: 58,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppColors.primaryBlue : AppColors.lightBlue,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Icon(
+                                  Icons.family_restroom_rounded,
+                                  color: isSelected ? Colors.white : AppColors.primaryBlue,
+                                  size: 32,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.family_restroom_rounded,
-                                color: isSelected ? Colors.white : AppColors.primaryBlue,
-                                size: 32,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
+                              const SizedBox(width: 16),
+                              Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -248,13 +255,14 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                                   ),
                                 ],
                               ),
-                            ),
-                            Icon(
-                              isSelected ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
-                              color: AppColors.primaryBlue,
-                              size: 18,
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Icon(
+                                isSelected ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
+                                color: AppColors.primaryBlue,
+                                size: 18,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

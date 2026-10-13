@@ -405,12 +405,16 @@ class HomeView extends GetView<HomeController> {
                           children: [
                             Icon(Icons.touch_app_rounded, color: AppColors.primaryBlue, size: 16),
                             SizedBox(width: 4),
-                            Text(
-                              'Ketuk sekali lagi untuk masuk',
-                              style: TextStyle(
-                                color: AppColors.primaryBlue,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
+                            Expanded(
+                              child: Text(
+                                'Ketuk sekali lagi untuk masuk',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.primaryBlue,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ],
@@ -524,12 +528,16 @@ class HomeView extends GetView<HomeController> {
                           children: [
                             Icon(Icons.touch_app_rounded, color: Colors.white, size: 16),
                             SizedBox(width: 4),
-                            Text(
-                              'Ketuk sekali lagi untuk memanggil',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
+                            Expanded(
+                              child: Text(
+                                'Ketuk sekali lagi untuk memanggil',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ],
