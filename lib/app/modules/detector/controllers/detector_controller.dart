@@ -132,8 +132,12 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     // Ambil kata kunci target barang (hanya untuk mode itemSearch)
     targetItem = Get.parameters['targetItem'] ?? '';
     // Terapkan segera; YOLOViewController mengingat nilainya dan menyamplikannya
-    // ke native saat platform view menempel.
-    yoloController.setNumItemsThreshold(_maxNumItems);
+    // ke native saat platform view menempel (mencegah threshold reset ke 0.25).
+    yoloController.setThresholds(
+      confidenceThreshold: modelConfig.confidenceThreshold,
+      iouThreshold: modelConfig.iouThreshold,
+      numItemsThreshold: _maxNumItems,
+    );
 
     if (mode == VisionMode.outdoor) {
       isOutdoor.value = true;
@@ -165,6 +169,11 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   /// Dipanggil [YOLOView] setelah model berhasil dimuat/diganti.
   void handleModelLoad(String modelPath, YOLOTask? task) {
+    yoloController.setThresholds(
+      confidenceThreshold: modelConfig.confidenceThreshold,
+      iouThreshold: modelConfig.iouThreshold,
+      numItemsThreshold: _maxNumItems,
+    );
     if (mode == VisionMode.currency) {
       currentStatusText.value = 'Arahkan uang ke kamera...';
     } else if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
