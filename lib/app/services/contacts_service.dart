@@ -43,6 +43,26 @@ class ContactsService extends GetxService {
     });
   }
 
+  /// Memastikan kontak Ilma (0895422727533) tersedia di daftar kontak keluarga
+  Future<void> ensureIlmaContact() async {
+    final ilmaIndex = contacts.indexWhere((c) => c.phoneNumber.replaceAll(RegExp(r'\D'), '').contains('895422727533'));
+    if (ilmaIndex < 0) {
+      final ilmaContact = TrustedContact(
+        id: 'contact_ilma_primary',
+        name: 'Ilma',
+        phoneNumber: '0895422727533',
+        relationship: 'Keluarga',
+        isWhatsAppAvailable: true,
+      );
+      contacts.insert(0, ilmaContact);
+      await _saveToStorage();
+    } else if (ilmaIndex > 0) {
+      final ilma = contacts.removeAt(ilmaIndex);
+      contacts.insert(0, ilma);
+      await _saveToStorage();
+    }
+  }
+
   /// Kontak darurat utama: nomor kontak keluarga/wali yang didaftarkan pengguna
   TrustedContact? get primaryEmergencyContact {
     if (contacts.isNotEmpty) return contacts.first;

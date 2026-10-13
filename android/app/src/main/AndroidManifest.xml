@@ -53,11 +53,11 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
-        <!-- Layanan Aksesibilitas untuk Auto-Klik Panggilan WhatsApp & Kirim Pesan Darurat -->
+        <!-- Layanan Aksesibilitas Native untuk Auto-Klik Panggilan WhatsApp & Kirim Pesan Darurat -->
         <service 
-            android:name="slayer.accessibility.service.flutter_accessibility_service.AccessibilityListener" 
+            android:name="com.netravision.apps.NetraAccessibilityService" 
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" 
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>

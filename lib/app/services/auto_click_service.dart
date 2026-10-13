@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter_accessibility_service/accessibility_event.dart';
 import 'package:flutter_accessibility_service/constants.dart';
 import 'package:flutter_accessibility_service/flutter_accessibility_service.dart';
@@ -8,6 +9,7 @@ enum AutoClickAction { none, videoCall, sendChat }
 
 /// Service untuk menangani auto-klik otomatis saat WhatsApp terbuka (VC WA / Kirim Chat)
 class AutoClickService extends GetxService {
+  static const MethodChannel _nativeChannel = MethodChannel('com.netravision.apps/whatsapp');
   final RxBool isAccessibilityGranted = false.obs;
   AutoClickAction _pendingAction = AutoClickAction.none;
   DateTime? _actionArmTime;
@@ -23,6 +25,11 @@ class AutoClickService extends GetxService {
   /// Memeriksa apakah Layanan Aksesibilitas NetraVision sudah aktif di Pengaturan Android
   Future<bool> checkPermission() async {
     try {
+      final nativeRunning = await _nativeChannel.invokeMethod<bool>('isAccessibilityRunning');
+      if (nativeRunning == true) {
+        isAccessibilityGranted.value = true;
+        return true;
+      }
       final granted = await FlutterAccessibilityService.isAccessibilityPermissionEnabled();
       isAccessibilityGranted.value = granted;
       return granted;
@@ -42,6 +49,11 @@ class AutoClickService extends GetxService {
   void armAutoClick(AutoClickAction action) {
     _pendingAction = action;
     _actionArmTime = DateTime.now();
+
+    final actStr = action == AutoClickAction.videoCall ? 'video_call' : 'send_chat';
+    try {
+      _nativeChannel.invokeMethod('armAutoClick', {'action': actStr});
+    } catch (_) {}
   }
 
   /// Membatalkan mode siap auto-klik

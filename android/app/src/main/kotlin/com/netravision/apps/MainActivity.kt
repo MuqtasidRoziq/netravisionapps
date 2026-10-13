@@ -47,6 +47,14 @@ class MainActivity : FlutterFragmentActivity() {
                         val success = triggerWhatsAppCall(phoneNumber, contactName, isVideo = false)
                         result.success(success)
                     }
+                    "armAutoClick" -> {
+                        val action = call.argument<String>("action") ?: "video_call"
+                        NetraAccessibilityService.arm(action)
+                        result.success(true)
+                    }
+                    "isAccessibilityRunning" -> {
+                        result.success(NetraAccessibilityService.isServiceRunning())
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -60,10 +68,16 @@ class MainActivity : FlutterFragmentActivity() {
             return false
         }
 
-        val mimeType = if (isVideo) {
-            "vnd.android.cursor.item/vnd.com.whatsapp.video.call"
+        val mimeTypes = if (isVideo) {
+            arrayOf(
+                "vnd.android.cursor.item/vnd.com.whatsapp.video.call",
+                "vnd.android.cursor.item/vnd.com.whatsapp.w4b.video.call"
+            )
         } else {
-            "vnd.android.cursor.item/vnd.com.whatsapp.voip.call"
+            arrayOf(
+                "vnd.android.cursor.item/vnd.com.whatsapp.voip.call",
+                "vnd.android.cursor.item/vnd.com.whatsapp.w4b.voip.call"
+            )
         }
 
         var clean = phoneNumber.replace(Regex("[^0-9]"), "")
@@ -75,16 +89,19 @@ class MainActivity : FlutterFragmentActivity() {
         val suffix = if (clean.length >= 8) clean.substring(clean.length - 8) else clean
 
         var dataId: Long? = null
+        var matchedMimeType = mimeTypes[0]
+
         try {
             val cursor = contentResolver.query(
                 ContactsContract.Data.CONTENT_URI,
                 arrayOf(
                     ContactsContract.Data._ID,
                     ContactsContract.Data.DATA1,
-                    ContactsContract.Data.DISPLAY_NAME
+                    ContactsContract.Data.DISPLAY_NAME,
+                    ContactsContract.Data.MIMETYPE
                 ),
-                "${ContactsContract.Data.MIMETYPE} = ?",
-                arrayOf(mimeType),
+                "${ContactsContract.Data.MIMETYPE} IN (?, ?)",
+                mimeTypes,
                 null
             )
 
@@ -93,6 +110,7 @@ class MainActivity : FlutterFragmentActivity() {
                     val id = it.getLong(it.getColumnIndexOrThrow(ContactsContract.Data._ID))
                     val data1 = it.getString(it.getColumnIndexOrThrow(ContactsContract.Data.DATA1)) ?: ""
                     val displayName = it.getString(it.getColumnIndexOrThrow(ContactsContract.Data.DISPLAY_NAME)) ?: ""
+                    val mime = it.getString(it.getColumnIndexOrThrow(ContactsContract.Data.MIMETYPE)) ?: mimeTypes[0]
 
                     val cleanData1 = data1.replace(Regex("[^0-9]"), "")
                     val isNumberMatch = (suffix.isNotEmpty() && cleanData1.contains(suffix)) ||
@@ -102,7 +120,8 @@ class MainActivity : FlutterFragmentActivity() {
 
                     if (isNumberMatch || isNameMatch) {
                         dataId = id
-                        Log.d(TAG, "MATCH FOUND! id=$id, data1=$data1, name=$displayName")
+                        matchedMimeType = mime
+                        Log.d(TAG, "MATCH FOUND! id=$id, data1=$data1, name=$displayName, mime=$mime")
                         break
                     }
                 }
@@ -116,17 +135,23 @@ class MainActivity : FlutterFragmentActivity() {
                 } catch (e: Exception) {
                     false
                 }
-                val pkg = if (isStandardInstalled) "com.whatsapp" else "com.whatsapp.w4b"
+                val pkg = if (matchedMimeType.contains(".w4b.")) {
+                    "com.whatsapp.w4b"
+                } else if (isStandardInstalled) {
+                    "com.whatsapp"
+                } else {
+                    "com.whatsapp.w4b"
+                }
 
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(
                         Uri.parse("content://com.android.contacts/data/$dataId"),
-                        mimeType
+                        matchedMimeType
                     )
                     setPackage(pkg)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-                Log.d(TAG, "Launching WhatsApp Direct Call intent for dataId=$dataId")
+                Log.d(TAG, "Launching WhatsApp Direct Call intent for dataId=$dataId, pkg=$pkg")
                 startActivity(intent)
                 return true
             } else {
