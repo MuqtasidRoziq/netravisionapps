@@ -75,7 +75,39 @@ class NetraAccessibilityService : AccessibilityService() {
                     "videocall"
                 )
                 if (searchAndClick(root, targetKeywords)) {
-                    Log.d(TAG, "Successfully triggered Video Call click!")
+                    Log.d(TAG, "Successfully triggered Video Call click! Watching for call screen or dialog...")
+                    pendingAction = "confirm_call"
+                    armTime = System.currentTimeMillis()
+                }
+            }
+            "voice_call" -> {
+                val targetKeywords = listOf(
+                    "telepon suara",
+                    "panggilan suara",
+                    "voice call",
+                    "voice_call",
+                    "audio call"
+                )
+                if (searchAndClick(root, targetKeywords)) {
+                    Log.d(TAG, "Successfully triggered Voice Call click! Watching for call screen or dialog...")
+                    pendingAction = "confirm_call"
+                    armTime = System.currentTimeMillis()
+                }
+            }
+            "confirm_call" -> {
+                // If call screen is already active or ringing, we are done
+                val callKeywords = listOf("call_screen", "call_grid", "tidak dijawab", "memanggil", "berdering", "calling", "ringing", "selesai")
+                if (containsAny(root, callKeywords)) {
+                    Log.d(TAG, "Call is active! Disarming.")
+                    disarm()
+                    return
+                }
+                // Confirmation dialog button (e.g. "Panggil", "Call", "Mulai Panggilan")
+                val confirmKeywords = listOf("panggil", "call", "mulai panggilan")
+                if (searchAndClick(root, confirmKeywords)) {
+                    Log.d(TAG, "Confirmed call dialog!")
+                    disarm()
+                } else if (System.currentTimeMillis() - armTime > 3500L) {
                     disarm()
                 }
             }
@@ -89,6 +121,22 @@ class NetraAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun containsAny(node: AccessibilityNodeInfo, keywords: List<String>): Boolean {
+        val desc = node.contentDescription?.toString()?.lowercase() ?: ""
+        val text = node.text?.toString()?.lowercase() ?: ""
+        val id = node.viewIdResourceName?.lowercase() ?: ""
+
+        for (kw in keywords) {
+            if (desc.contains(kw) || text.contains(kw) || id.contains(kw)) return true
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            if (containsAny(child, keywords)) return true
+        }
+        return false
+    }
+
     private fun searchAndClick(node: AccessibilityNodeInfo, keywords: List<String>): Boolean {
         val desc = node.contentDescription?.toString()?.lowercase() ?: ""
         val text = node.text?.toString()?.lowercase() ?: ""
@@ -97,24 +145,23 @@ class NetraAccessibilityService : AccessibilityService() {
         for (kw in keywords) {
             if (desc.contains(kw) || text.contains(kw) || id.contains(kw)) {
                 Log.d(TAG, "Found target view: desc='$desc', text='$text', id='$id'")
-                if (node.isClickable && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                    Log.d(TAG, "Performed ACTION_CLICK on target node directly")
-                    return true
-                }
-                var parent = node.parent
-                while (parent != null) {
-                    if (parent.isClickable && parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                        Log.d(TAG, "Performed ACTION_CLICK on parent node")
-                        return true
-                    }
-                    parent = parent.parent
-                }
                 val rect = Rect()
                 node.getBoundsInScreen(rect)
                 if (!rect.isEmpty) {
                     dispatchTapGesture(rect.centerX().toFloat(), rect.centerY().toFloat())
-                    return true
                 }
+                if (node.isClickable) {
+                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                }
+                var parent = node.parent
+                while (parent != null) {
+                    if (parent.isClickable) {
+                        parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        break
+                    }
+                    parent = parent.parent
+                }
+                return true
             }
         }
 

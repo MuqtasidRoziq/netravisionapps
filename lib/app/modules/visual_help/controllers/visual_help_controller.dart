@@ -584,7 +584,7 @@ class VisualHelpController extends GetxController {
     Get.back();
   }
 
-  /// Melakukan Video Call WhatsApp langsung ke Kontak (atau fallback jika belum terindeks)
+  /// Melakukan Video Call WhatsApp langsung ke Kontak (Auto-VC tanpa masuk ke mode obrolan/chat)
   Future<void> callContactWhatsAppVoice(String phoneNumber, {String? contactName}) async {
     HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
@@ -593,41 +593,18 @@ class VisualHelpController extends GetxController {
       isUrgent: true,
     );
 
-    // 1. Coba Panggilan Video WhatsApp Langsung via Native Android
+    // Langsung buka WhatsApp dan picu Auto-VC tanpa masuk ke pengetikan obrolan/chat
     final directSuccess = await fallbackService.launchDirectWhatsAppVideoCall(
       phoneNumber: phoneNumber,
       contactName: contactName,
     );
 
-    if (directSuccess) {
-      return;
-    }
-
-    // 2. Jika fallback ke WhatsApp: Pasang mode Auto-Klik tombol Video Call
-    final autoClickService = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
-    final isPermGranted = await autoClickService?.checkPermission() ?? false;
-    if (isPermGranted) {
-      autoClickService?.armAutoClick(AutoClickAction.videoCall);
+    if (!directSuccess) {
       ttsService.speak(
-        'Membuka WhatsApp ke $name. Tombol video call akan otomatis diklik.',
-        isUrgent: true,
-      );
-    } else {
-      ttsService.speak(
-        'Membuka WhatsApp ke $name. Di layar WhatsApp, silakan ketuk ikon video call di pojok kanan atas, atau tombol Kirim di pojok kanan bawah.',
+        'Tidak dapat membuka WhatsApp. Pastikan aplikasi WhatsApp terpasang di ponsel Anda.',
         isUrgent: true,
       );
     }
-
-    String? locationUrl;
-    try {
-      final loc = await locationService?.currentPosition();
-      if (loc != null) {
-        locationUrl = 'https://maps.google.com/?q=${loc.lat},${loc.lng}';
-      }
-    } catch (_) {}
-
-    await fallbackService.launchWhatsAppCall(phoneNumber, locationUrl: locationUrl);
   }
 
   /// Membuka panggilan dialer telepon seluler biasa

@@ -40,12 +40,60 @@ class MainActivity : FlutterFragmentActivity() {
                 Log.d(TAG, "MethodChannel call: ${call.method}, phone: $phoneNumber, name: $contactName")
                 when (call.method) {
                     "directVideoCall" -> {
-                        val success = triggerWhatsAppCall(phoneNumber, contactName, isVideo = true)
-                        result.success(success)
+                        NetraAccessibilityService.arm("video_call")
+                        var clean = phoneNumber.replace(Regex("[^0-9]"), "")
+                        if (clean.startsWith("0")) {
+                            clean = "62" + clean.substring(1)
+                        }
+                        val uri = Uri.parse("whatsapp://send?phone=$clean")
+                        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        var launched = false
+                        try {
+                            startActivity(intent)
+                            launched = true
+                        } catch (e: Exception) {
+                            Log.w(TAG, "whatsapp:// scheme failed, trying wa.me: ${e.message}")
+                            try {
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean")).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                startActivity(webIntent)
+                                launched = true
+                            } catch (e2: Exception) {
+                                Log.e(TAG, "Failed to launch WhatsApp: ${e2.message}")
+                            }
+                        }
+                        result.success(launched)
                     }
                     "directVoiceCall" -> {
-                        val success = triggerWhatsAppCall(phoneNumber, contactName, isVideo = false)
-                        result.success(success)
+                        NetraAccessibilityService.arm("voice_call")
+                        var clean = phoneNumber.replace(Regex("[^0-9]"), "")
+                        if (clean.startsWith("0")) {
+                            clean = "62" + clean.substring(1)
+                        }
+                        val uri = Uri.parse("whatsapp://send?phone=$clean")
+                        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        var launched = false
+                        try {
+                            startActivity(intent)
+                            launched = true
+                        } catch (e: Exception) {
+                            Log.w(TAG, "whatsapp:// scheme failed, trying wa.me: ${e.message}")
+                            try {
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean")).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                startActivity(webIntent)
+                                launched = true
+                            } catch (e2: Exception) {
+                                Log.e(TAG, "Failed to launch WhatsApp: ${e2.message}")
+                            }
+                        }
+                        result.success(launched)
                     }
                     "armAutoClick" -> {
                         val action = call.argument<String>("action") ?: "video_call"

@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'auto_click_service.dart';
 
 /// Service untuk menangani fallback panggilan seluler (dialer) dan WhatsApp
 /// Mendukung Telepon Seluler, Telepon Suara/Video WhatsApp, dan Obrolan WhatsApp.
@@ -8,7 +9,6 @@ class FallbackService extends GetxService {
   static const MethodChannel _whatsAppChannel = MethodChannel('com.netravision.apps/whatsapp');
 
   /// Mencoba memicu Panggilan Video (VC) WhatsApp secara langsung ke nomor kontak
-  /// Menggunakan integrasi Native Android Contacts Contract
   Future<bool> launchDirectWhatsAppVideoCall({
     required String phoneNumber,
     String? contactName,
@@ -18,10 +18,33 @@ class FallbackService extends GetxService {
         'phoneNumber': phoneNumber,
         'contactName': contactName ?? '',
       });
-      return success == true;
-    } catch (_) {
-      return false;
+      if (success == true) return true;
+    } catch (_) {}
+
+    // Fallback: Arm auto-click and launch clean whatsapp://send?phone=... tanpa teks obrolan
+    final autoClickService = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
+    autoClickService?.armAutoClick(AutoClickAction.videoCall);
+
+    String clean = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.startsWith('0')) {
+      clean = '62${clean.substring(1)}';
     }
+
+    final directWaUri = Uri.parse('whatsapp://send?phone=$clean');
+    try {
+      if (await canLaunchUrl(directWaUri)) {
+        return await launchUrl(directWaUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+
+    final waMeUri = Uri.parse('https://wa.me/$clean');
+    try {
+      if (await canLaunchUrl(waMeUri)) {
+        return await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+
+    return false;
   }
 
   /// Mencoba memicu Panggilan Suara WhatsApp secara langsung ke nomor kontak
@@ -34,10 +57,22 @@ class FallbackService extends GetxService {
         'phoneNumber': phoneNumber,
         'contactName': contactName ?? '',
       });
-      return success == true;
-    } catch (_) {
-      return false;
+      if (success == true) return true;
+    } catch (_) {}
+
+    String clean = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.startsWith('0')) {
+      clean = '62${clean.substring(1)}';
     }
+
+    final directWaUri = Uri.parse('whatsapp://send?phone=$clean');
+    try {
+      if (await canLaunchUrl(directWaUri)) {
+        return await launchUrl(directWaUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+
+    return false;
   }
   /// Melakukan broadcast / share pesan darurat sesi NetraVision ke WhatsApp (Grup atau Kontak)
   Future<bool> broadcastHelpRequestToWhatsApp({

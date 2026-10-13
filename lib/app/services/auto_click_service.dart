@@ -86,10 +86,12 @@ class AutoClickService extends GetxService {
   Future<void> _handleWhatsAppEvent(AccessibilityEvent event) async {
     if (_pendingAction == AutoClickAction.videoCall) {
       await _searchAndClick(event, [
-        'video call',
+        'telepon video',
         'panggilan video',
+        'video call',
         'video_call',
         'panggilan_video',
+        'videocall',
         'video',
       ]);
     } else if (_pendingAction == AutoClickAction.sendChat) {
