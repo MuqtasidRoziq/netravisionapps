@@ -98,6 +98,8 @@ class HomeController extends GetxController {
   }
 
   void activateMenuIndex(int index) {
+    _selectionTimer?.cancel();
+    selectedMenuIndex.value = -1;
     switch (index) {
       case 0:
         openMode(VisionMode.indoor);

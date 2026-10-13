@@ -1,4 +1,3 @@
-import '../utils/helpers/livekit_jwt.dart';
 import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
@@ -464,11 +463,11 @@ class VisualHelpService extends GetxService {
         uri,
         headers: {
           'Content-Type': 'application/json',
-          if (authKey != null) 'X-Auth-Key': authKey,
+          'X-Auth-Key': ?authKey,
         },
         body: jsonEncode({
           'userId': currentUserId.value,
-          if (authKey != null) 'authKey': authKey,
+          'authKey': ?authKey,
           'reason': reason ?? 'Dibatalkan oleh pengguna',
         }),
       ).timeout(const Duration(seconds: 5));
@@ -541,11 +540,11 @@ class VisualHelpService extends GetxService {
         uri,
         headers: {
           'Content-Type': 'application/json',
-          if (authKey != null) 'X-Auth-Key': authKey,
+          'X-Auth-Key': ?authKey,
         },
         body: jsonEncode({
           'userId': currentUserId.value,
-          if (authKey != null) 'authKey': authKey,
+          'authKey': ?authKey,
         }),
       ).timeout(const Duration(seconds: 5));
 

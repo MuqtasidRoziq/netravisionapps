@@ -61,16 +61,24 @@ class VisualHelpController extends GetxController {
   void onReady() {
     super.onReady();
     ttsService.speak(
-      'Menu Bantuan Visual. Ketuk dua kali di mana saja untuk memanggil relawan bantuan umum, atau pilih kontak keluarga.',
+      'Menu Bantuan Relawan. Ada dua pilihan: Bantuan Visual Umum dan Panggil Kontak Terpercaya. Ketuk tombol sekali untuk mendengar fungsi, ketuk dua kali untuk memilih.',
     );
   }
 
+  bool _hasSpokenTrustedIntro = false;
+
   /// Penjelasan suara ramah saat masuk ke halaman Kontak Tepercaya
   void speakTrustedContactsIntro() {
+    if (_hasSpokenTrustedIntro) return;
+    _hasSpokenTrustedIntro = true;
     ttsService.speak(
       'Halaman Kontak Tepercaya. Jika nomor belum tersimpan atau Anda kesulitan mengetik, minta bantuan keluarga atau orang terdekat untuk mengisikan nomor WhatsApp atau telepon pada tombol Tambah Kontak.',
       isUrgent: true,
     );
+  }
+
+  void resetTrustedContactsIntro() {
+    _hasSpokenTrustedIntro = false;
   }
 
   // Indeks tombol yang sedang dipilih pada ketukan pertama: 0 (Relawan), 1 (Keluarga), -1 (belum ada)
@@ -113,6 +121,7 @@ class VisualHelpController extends GetxController {
       // Ketukan ke-2: Buka halaman kontak
       _buttonSelectionTimer?.cancel();
       selectedButtonIndex.value = -1;
+      resetTrustedContactsIntro();
       HapticFeedback.heavyImpact();
       Get.toNamed(Routes.TRUSTED_CONTACTS);
     } else {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../data/models/vision_mode.dart';
 import '../../../utils/constants/app_colors.dart';
 import '../controllers/home_controller.dart';
 
@@ -110,13 +109,6 @@ class HomeView extends GetView<HomeController> {
                     } else if (details.primaryVelocity! > 150) {
                       controller.previousMenu();
                     }
-                  }
-                },
-                onDoubleTap: () {
-                  if (isSosActive) {
-                    controller.cancelEmergencySOS();
-                  } else {
-                    controller.activateCurrentMenu();
                   }
                 },
                 onLongPress: () => controller.triggerEmergencySOS(),
@@ -351,7 +343,9 @@ class HomeView extends GetView<HomeController> {
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
           splashColor: AppColors.lightBlue,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
@@ -472,7 +466,9 @@ class HomeView extends GetView<HomeController> {
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
           splashColor: Colors.white24,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),

@@ -8,7 +8,7 @@ void main() {
   group('VisionModelConfig mapping model ↔ fitur', () {
     test('Mode Baca Uang memakai model rupiah dengan task detect', () {
       final config = VisionModelConfig.forMode(VisionMode.currency);
-      expect(config.modelPath, 'assets/models/rupiah/rupiah.tflite');
+      expect(config.modelPath, 'assets/models/rupiah/best.tflite');
       expect(config.task, YOLOTask.detect);
     });
 

@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import '../../../data/models/visual_help_models.dart';
-import '../../../routes/app_pages.dart';
 import '../../../utils/constants/app_colors.dart';
 import '../controllers/visual_help_controller.dart';
 
@@ -75,16 +72,9 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
   // ====================== TAMPILAN PENGGUNA TUNANETRA ULTRA-SIMPLE ======================
 
   Widget _buildSimplifiedUserView(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onDoubleTap: () {
-        HapticFeedback.heavyImpact();
-        controller.recipientTarget.value = RecipientTarget.communityVolunteers;
-        controller.submitHelpRequest();
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
           children: [
             // 1. KARTU RAKSASA HERO (62% Layar): Panggil Relawan Sekarang
             Expanded(
@@ -296,8 +286,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   // ====================== TAMPILAN PENDAMPING RELAWAN ======================
@@ -336,7 +325,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
               ),
               Obx(() => Switch(
                 value: controller.visualHelpService.isCompanionAvailable.value,
-                activeColor: AppColors.primaryBlue,
+                activeThumbColor: AppColors.primaryBlue,
                 onChanged: (val) => controller.visualHelpService.toggleCompanionAvailability(val),
               )),
             ],
