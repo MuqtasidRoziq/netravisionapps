@@ -8,8 +8,7 @@ class ApiKeys {
   /// Dipakai untuk Maps SDK Android (manifest, via env) DAN untuk panggilan
   /// Directions/Places dari sisi Dart. Bisa satu kunci dengan semua API
   /// diaktifkan, atau dipisah dengan dua var sendiri.
-  static const String _defaultDevKey =
-      'AIzaSyDIyjTQ6bWlANdiM7JlW1JKZ9PpfAO5kUU';
+  static const String _defaultDevKey = '';
 
   static const String _rawKey = String.fromEnvironment(
     'MAPS_API_KEY',

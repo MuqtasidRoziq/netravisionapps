@@ -36,18 +36,21 @@ class ContactsService extends GetxService {
       await prefs.remove(_legacyPhoneKey);
     }
 
-    // Jika kontak masih kosong, inisialisasi kontak default sebagai contoh
-    if (contacts.isEmpty) {
-      final defaultContact = TrustedContact(
-        id: 'contact_${DateTime.now().millisecondsSinceEpoch}',
-        name: 'Keluarga / Wali Terdekat',
-        phoneNumber: '081234567890',
-        relationship: 'Keluarga',
-        isWhatsAppAvailable: true,
-      );
-      await addContact(defaultContact);
-    }
+    // Bersihkan kontak fiktif dummy atau 112 jika ada dari versi sebelumnya
+    contacts.removeWhere((c) {
+      final digits = c.phoneNumber.replaceAll(RegExp(r'\D'), '');
+      return digits == '081234567890' || digits == '112';
+    });
   }
+
+  /// Kontak darurat utama: nomor kontak keluarga/wali yang didaftarkan pengguna
+  TrustedContact? get primaryEmergencyContact {
+    if (contacts.isNotEmpty) return contacts.first;
+    return null;
+  }
+
+  /// True jika pengguna sudah mendaftarkan kontak keluarga pribadi
+  bool get hasFamilyContact => contacts.isNotEmpty;
 
   Future<void> addContact(TrustedContact contact) async {
     contacts.add(contact);

@@ -11,12 +11,13 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('Inisialisasi kontak memberikan setidaknya 1 kontak default jika penyimpanan kosong', () async {
+    test('Inisialisasi kontak bersih tanpa nomor palsu jika penyimpanan kosong', () async {
       final service = ContactsService();
       await service.init();
 
-      expect(service.contacts.length, greaterThanOrEqualTo(1));
-      expect(service.contacts.first.name, contains('Keluarga'));
+      expect(service.contacts.isEmpty, true);
+      expect(service.primaryEmergencyContact, isNull);
+      expect(service.hasFamilyContact, false);
     });
 
     test('Menambah, memperbarui, dan menghapus kontak tepercaya', () async {

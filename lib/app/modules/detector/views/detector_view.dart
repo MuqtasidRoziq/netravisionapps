@@ -39,6 +39,7 @@ class DetectorView extends GetView<DetectorController> {
                     HapticFeedback.lightImpact();
                     controller.handleScreenTap();
                   },
+                  onLongPress: () => controller.triggerEmergencySOS(),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       return Stack(
@@ -130,6 +131,74 @@ class DetectorView extends GetView<DetectorController> {
                     child: NavigationMapEmbed(controller: controller),
                   ),
                 ),
+
+              // 5. Overlay Darurat SOS (Tampil saat hitung mundur 5 detik)
+              if (controller.isSosCountdownActive.value)
+                Positioned.fill(
+                  child: Semantics(
+                    label:
+                        'Peringatan Darurat SOS Aktif. Menghubungi bantuan dalam ${controller.sosCountdownSeconds.value} detik. Ketuk layar sekali untuk membatalkan.',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () => controller.cancelEmergencySOS(),
+                      child: Container(
+                        color: AppColors.emergencyRed.withValues(alpha: 0.95),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 110,
+                              height: 110,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${controller.sosCountdownSeconds.value}',
+                                  style: const TextStyle(
+                                    color: AppColors.emergencyRed,
+                                    fontSize: 54,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            const Text(
+                              '🚨 PANGGILAN DARURAT',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Ketuk layar di mana saja untuk membatalkan.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -193,30 +262,73 @@ class DetectorView extends GetView<DetectorController> {
             ),
           ),
         ),
-        Semantics(
-          label: controller.isPaused.value ? 'Lanjutkan Deteksi' : 'Jeda Deteksi',
-          button: true,
-          child: Material(
-            color: controller.isPaused.value
-                ? AppColors.yellowAccent
-                : Colors.black.withValues(alpha: 0.65),
-            borderRadius: BorderRadius.circular(16),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                controller.togglePause();
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Icon(
-                  controller.isPaused.value ? Icons.play_arrow : Icons.pause,
-                  color: controller.isPaused.value ? Colors.black : Colors.white,
-                  size: 26,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Tombol Darurat SOS di Layar Kamera
+            Semantics(
+              label: 'Panggilan Darurat SOS',
+              hint: 'Ketuk untuk memicu peringatan darurat lima detik',
+              button: true,
+              child: Material(
+                color: AppColors.emergencyRed,
+                borderRadius: BorderRadius.circular(16),
+                elevation: 4,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    HapticFeedback.heavyImpact();
+                    controller.triggerEmergencySOS();
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
+                        SizedBox(width: 4),
+                        Text(
+                          'SOS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
+            const SizedBox(width: 8),
+            Semantics(
+              label: controller.isPaused.value ? 'Lanjutkan Deteksi' : 'Jeda Deteksi',
+              button: true,
+              child: Material(
+                color: controller.isPaused.value
+                    ? AppColors.yellowAccent
+                    : Colors.black.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    controller.togglePause();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(
+                      controller.isPaused.value ? Icons.play_arrow : Icons.pause,
+                      color: controller.isPaused.value ? Colors.black : Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

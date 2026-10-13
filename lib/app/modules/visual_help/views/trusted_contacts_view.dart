@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/models/visual_help_models.dart';
+import '../../../services/auto_click_service.dart';
 import '../../../services/contacts_service.dart';
 import '../../../utils/constants/app_colors.dart';
 import '../controllers/visual_help_controller.dart';
@@ -19,67 +20,147 @@ class TrustedContactsView extends GetView<VisualHelpController> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kontak Keluarga & Darurat'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryBlue),
-          onPressed: () => Get.back(),
-        ),
+        leading: Obx(() {
+          final isSelected = controller.selectedContactActionKey.value == 'back_to_menu';
+          return Semantics(
+            label: 'Kembali ke Menu Bantuan Relawan. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk kembali." : "Ketuk dua kali untuk mendengar fungsi dan kembali."}',
+            hint: isSelected ? 'Ketuk dua kali untuk kembali' : 'Ketuk dua kali untuk mendengar fungsi',
+            button: true,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryBlue),
+              onPressed: () => controller.handleContactsBackButtonTap(),
+            ),
+          );
+        }),
         actions: [
-          IconButton(
-            tooltip: 'Tambah Kontak',
-            icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primaryBlue),
-            onPressed: () => _showAddContactDialog(context, contactsService),
-          ),
+          Obx(() {
+            final isSelected = controller.selectedContactActionKey.value == 'add_contact';
+            return Semantics(
+              label: 'Tambah Kontak Baru. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka formulir." : "Ketuk dua kali untuk mendengar penjelasan dan membuka formulir."}',
+              hint: isSelected ? 'Ketuk dua kali untuk membuka formulir' : 'Ketuk dua kali untuk mendengar fungsi',
+              button: true,
+              child: IconButton(
+                tooltip: 'Tambah Kontak',
+                icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primaryBlue),
+                onPressed: () => controller.handleAddContactButtonTap(
+                  () => _showAddContactDialog(context, contactsService),
+                ),
+              ),
+            );
+          }),
         ],
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Banner Panduan Pengisian oleh Orang Terdekat
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.lightBlue,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.25), width: 1.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            // Banner Status Layanan Auto-Klik Aksesibilitas
+            Obx(() {
+              final autoClick = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
+              final isEnabled = autoClick?.isAccessibilityGranted.value ?? false;
+              if (isEnabled) return const SizedBox.shrink();
+
+              return Semantics(
+                label: 'Perhatian: Layanan Auto-Klik WhatsApp belum aktif. Ketuk untuk membuka menu Pengaturan Aksesibilitas ponsel dan mengaktifkannya.',
+                button: true,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFFB300), width: 1.5),
+                  ),
+                  child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBlue.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.volunteer_activism_rounded, color: AppColors.primaryBlue, size: 22),
-                      ),
+                      const Icon(Icons.touch_app_rounded, color: Color(0xFFF57C00), size: 24),
                       const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Panduan Pengisian Nomor',
-                          style: TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Auto-Klik WhatsApp Belum Aktif',
+                              style: TextStyle(
+                                color: Color(0xFFE65100),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Aktifkan Layanan Aksesibilitas NetraVision agar video call & pesan WA otomatis tertekan tanpa perlu meraba layar.',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF5D4037)),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFF57C00),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () {
+                                autoClick?.requestPermission();
+                              },
+                              child: const Text('Aktifkan Sekarang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Minta bantuan keluarga atau orang terdekat untuk mengetikkan nomor WhatsApp dan telepon Anda di sini melalui tombol "Tambah Kontak" (+) di atas agar siap dihubungi kapan saja.',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                      height: 1.45,
-                      fontWeight: FontWeight.w500,
+                ),
+              );
+            }),
+            // Banner Panduan Pengisian oleh Orang Terdekat
+            Semantics(
+              label: 'Panduan: Minta bantuan keluarga atau orang terdekat untuk mengetikkan nomor WhatsApp dan telepon Anda di sini melalui tombol Tambah Kontak di atas agar siap dihubungi kapan saja.',
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.lightBlue,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.25), width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.volunteer_activism_rounded, color: AppColors.primaryBlue, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Panduan Pengisian Nomor',
+                            style: TextStyle(
+                              color: AppColors.primaryBlue,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Minta bantuan keluarga atau orang terdekat untuk mengetikkan nomor WhatsApp dan telepon Anda di sini melalui tombol "Tambah Kontak" (+) di atas agar siap dihubungi kapan saja.',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        height: 1.45,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -127,23 +208,39 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      Obx(() {
+                        final isSelected = controller.selectedContactActionKey.value == 'add_contact';
+                        return Semantics(
+                          label: 'Minta Orang Terdekat Isi Nomor Baru. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka formulir." : "Ketuk dua kali untuk mendengar penjelasan dan membuka formulir."}',
+                          hint: isSelected ? 'Ketuk dua kali untuk membuka formulir' : 'Ketuk dua kali untuk mendengar penjelasan',
+                          button: true,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryBlue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: isSelected
+                                      ? const BorderSide(color: AppColors.yellowAccent, width: 3)
+                                      : BorderSide.none,
+                                ),
+                                elevation: isSelected ? 4 : 1,
+                              ),
+                              onPressed: () => controller.handleAddContactButtonTap(
+                                () => _showAddContactDialog(context, contactsService),
+                              ),
+                              icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
+                              label: Text(
+                                isSelected ? 'Konfirmasi Buka Formulir' : 'Minta Orang Terdekat Isi Nomor',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                            ),
                           ),
-                          onPressed: () => _showAddContactDialog(context, contactsService),
-                          icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
-                          label: const Text(
-                            'Minta Orang Terdekat Isi Nomor',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
+                        );
+                      }),
                     ],
                   ),
                 );
@@ -151,139 +248,192 @@ class TrustedContactsView extends GetView<VisualHelpController> {
 
               return Column(
                 children: list.map((contact) {
-                  return Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => controller.showCallOptionsModal(
-                        phoneNumber: contact.phoneNumber,
-                        contactName: contact.name,
+                  return Obx(() {
+                    final isCardSelected = controller.selectedContactActionKey.value == 'card_${contact.id}';
+                    return Card(
+                      elevation: isCardSelected ? 4 : 2,
+                      margin: const EdgeInsets.only(bottom: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: isCardSelected
+                            ? const BorderSide(color: AppColors.primaryBlue, width: 2.5)
+                            : BorderSide.none,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => controller.handleContactCardTap(contact),
+                        child: Semantics(
+                          label: 'Kontak ${contact.name}, ${contact.relationship}, nomor ${contact.phoneNumber}. ${isCardSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka menu pilihan panggilan." : "Ketuk dua kali untuk mendengar info dan membuka menu pilihan."}',
+                          hint: 'Ketuk dua kali untuk membuka pilihan panggilan',
+                          button: true,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        contact.name,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textPrimary,
-                                        ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            contact.name,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${contact.relationship} • ${contact.phoneNumber}',
+                                            style: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${contact.relationship} • ${contact.phoneNumber}',
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 14,
+                                    ),
+                                    Obx(() {
+                                      final isDeleteSelected =
+                                          controller.selectedContactActionKey.value == 'delete_${contact.id}';
+                                      return Semantics(
+                                        label: 'Hapus kontak ${contact.name}. ${isDeleteSelected ? "Sedang dipilih. Ketuk dua kali untuk menghapus kontak." : "Ketuk dua kali untuk konfirmasi hapus."}',
+                                        hint: isDeleteSelected ? 'Ketuk dua kali untuk menghapus' : 'Ketuk dua kali untuk konfirmasi hapus',
+                                        button: true,
+                                        child: IconButton(
+                                          tooltip: 'Hapus kontak',
+                                          icon: Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: isDeleteSelected ? AppColors.emergencyRed : Colors.grey,
+                                            size: isDeleteSelected ? 28 : 24,
+                                          ),
+                                          onPressed: () => controller.handleDeleteContactTap(contact),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      );
+                                    }),
+                                  ],
                                 ),
-                                IconButton(
-                                  tooltip: 'Hapus kontak',
-                                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.grey),
-                                  onPressed: () => contactsService.deleteContact(contact.id),
+                                const SizedBox(height: 14),
+
+                                // 3 Tombol Aksi Langsung: 1. Telepon Seluler (Langsung), 2. Telepon WA, 3. Chat
+                                Row(
+                                  children: [
+                                    // 1. Telepon Seluler (Panggilan Langsung Tanpa Chat)
+                                    Expanded(
+                                      flex: 4,
+                                      child: Obx(() {
+                                        final isPhoneSelected =
+                                            controller.selectedContactActionKey.value == 'phone_${contact.id}';
+                                        return Semantics(
+                                          label: 'Panggil ${contact.name} via Telepon Seluler langsung tanpa chat. ${isPhoneSelected ? "Sedang dipilih. Ketuk dua kali untuk memanggil langsung." : "Ketuk dua kali untuk mendengar penjelasan dan memanggil."}',
+                                          hint: isPhoneSelected ? 'Ketuk dua kali untuk memanggil langsung' : 'Ketuk dua kali untuk mendengar penjelasan',
+                                          button: true,
+                                          child: ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.primaryBlue,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                side: isPhoneSelected
+                                                    ? const BorderSide(color: Colors.white, width: 2.5)
+                                                    : BorderSide.none,
+                                              ),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              elevation: isPhoneSelected ? 4 : 1,
+                                            ),
+                                            onPressed: () => controller.handleContactPhoneTap(contact),
+                                            icon: const Icon(Icons.phone_rounded, size: 18),
+                                            label: Text(
+                                              isPhoneSelected ? 'Panggil' : 'Telepon',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(width: 8),
+
+                                    // 2. VC WhatsApp (Video Call Langsung ke Keluarga)
+                                    Expanded(
+                                      flex: 4,
+                                      child: Obx(() {
+                                        final isWaSelected =
+                                            controller.selectedContactActionKey.value == 'wa_voice_${contact.id}';
+                                        return Semantics(
+                                          label: 'Panggil ${contact.name} via Video Call WhatsApp langsung. ${isWaSelected ? "Sedang dipilih. Ketuk dua kali untuk memulai panggilan video." : "Ketuk dua kali untuk mendengar penjelasan dan memulai video call."}',
+                                          hint: isWaSelected ? 'Ketuk dua kali untuk memulai video call' : 'Ketuk dua kali untuk mendengar penjelasan',
+                                          button: true,
+                                          child: ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF25D366),
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                side: isWaSelected
+                                                    ? const BorderSide(color: Colors.white, width: 2.5)
+                                                    : BorderSide.none,
+                                              ),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              elevation: isWaSelected ? 4 : 1,
+                                            ),
+                                            onPressed: () => controller.handleContactWhatsAppVoiceTap(contact),
+                                            icon: const Icon(Icons.videocam_rounded, size: 20),
+                                            label: Text(
+                                              isWaSelected ? 'Panggil VC' : 'VC WA',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(width: 8),
+
+                                    // 3. Chat WhatsApp
+                                    Expanded(
+                                      flex: 3,
+                                      child: Obx(() {
+                                        final isChatSelected =
+                                            controller.selectedContactActionKey.value == 'chat_${contact.id}';
+                                        return Semantics(
+                                          label: 'Kirim pesan WhatsApp ke ${contact.name}. ${isChatSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka pesan." : "Ketuk dua kali untuk mendengar penjelasan dan membuka pesan."}',
+                                          hint: isChatSelected ? 'Ketuk dua kali untuk membuka pesan' : 'Ketuk dua kali untuk mendengar penjelasan',
+                                          button: true,
+                                          child: ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF128C7E),
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                side: isChatSelected
+                                                    ? const BorderSide(color: Colors.white, width: 2.5)
+                                                    : BorderSide.none,
+                                              ),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              elevation: isChatSelected ? 4 : 1,
+                                            ),
+                                            onPressed: () => controller.handleContactChatTap(contact),
+                                            icon: const Icon(Icons.chat_rounded, size: 18),
+                                            label: Text(
+                                              isChatSelected ? 'Buka Chat' : 'Chat',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14),
-
-                            // 3 Tombol Aksi Langsung: Telepon WA, Seluler, Chat
-                            Row(
-                              children: [
-                                // 1. Telepon WhatsApp
-                                Expanded(
-                                  flex: 4,
-                                  child: Semantics(
-                                    label: 'Panggil ${contact.name} via Telepon WhatsApp',
-                                    button: true,
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF25D366),
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        elevation: 1,
-                                      ),
-                                      onPressed: () => controller.callContactWhatsAppVoice(
-                                        contact.phoneNumber,
-                                        contactName: contact.name,
-                                      ),
-                                      icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
-                                      label: const Text('Telepon WA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-
-                                // 2. Telepon Seluler (Pulsa Biasa)
-                                Expanded(
-                                  flex: 3,
-                                  child: Semantics(
-                                    label: 'Panggil ${contact.name} via Telepon Seluler',
-                                    button: true,
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primaryBlue,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        elevation: 1,
-                                      ),
-                                      onPressed: () => controller.callContactPhone(
-                                        contact.phoneNumber,
-                                        contactName: contact.name,
-                                      ),
-                                      icon: const Icon(Icons.phone_rounded, size: 18),
-                                      label: const Text('Seluler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-
-                                // 3. Chat WhatsApp
-                                Expanded(
-                                  flex: 3,
-                                  child: Semantics(
-                                    label: 'Kirim pesan WhatsApp ke ${contact.name}',
-                                    button: true,
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF128C7E),
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        elevation: 1,
-                                      ),
-                                      onPressed: () => controller.callContactWhatsApp(
-                                        contact.phoneNumber,
-                                        contactName: contact.name,
-                                      ),
-                                      icon: const Icon(Icons.chat_rounded, size: 18),
-                                      label: const Text('Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
+                    );
+                  });
                 }).toList(),
               );
             }),
@@ -335,34 +485,46 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                 ],
               ),
             ),
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nama Lengkap Kontak',
-                hintText: 'Misal: Ibu Ani, Kak Budi',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_rounded),
+            Semantics(
+              label: 'Kolom teks: Nama Lengkap Kontak. Ketik nama orang terdekat atau keluarga.',
+              textField: true,
+              child: TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Lengkap Kontak',
+                  hintText: 'Misal: Ibu Ani, Kak Budi',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person_rounded),
+                ),
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Nomor Telepon / WhatsApp',
-                hintText: 'Misal: 081234567890',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone_rounded),
+            Semantics(
+              label: 'Kolom teks: Nomor Telepon atau WhatsApp. Masukkan nomor kontak aktif.',
+              textField: true,
+              child: TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Nomor Telepon / WhatsApp',
+                  hintText: 'Misal: 081234567890',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone_rounded),
+                ),
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: relCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Hubungan',
-                hintText: 'Misal: Keluarga, Wali, Teman',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.favorite_rounded),
+            Semantics(
+              label: 'Kolom teks: Hubungan keluarga atau kerabat.',
+              textField: true,
+              child: TextField(
+                controller: relCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Hubungan',
+                  hintText: 'Misal: Keluarga, Wali, Teman',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.favorite_rounded),
+                ),
               ),
             ),
           ],

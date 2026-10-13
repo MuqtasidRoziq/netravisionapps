@@ -1,19 +1,60 @@
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Service untuk menangani fallback panggilan seluler (dialer) dan WhatsApp
 /// Mendukung Telepon Seluler, Telepon Suara/Video WhatsApp, dan Obrolan WhatsApp.
 class FallbackService extends GetxService {
+  static const MethodChannel _whatsAppChannel = MethodChannel('com.netravision.apps/whatsapp');
+
+  /// Mencoba memicu Panggilan Video (VC) WhatsApp secara langsung ke nomor kontak
+  /// Menggunakan integrasi Native Android Contacts Contract
+  Future<bool> launchDirectWhatsAppVideoCall({
+    required String phoneNumber,
+    String? contactName,
+  }) async {
+    try {
+      final success = await _whatsAppChannel.invokeMethod<bool>('directVideoCall', {
+        'phoneNumber': phoneNumber,
+        'contactName': contactName ?? '',
+      });
+      return success == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Mencoba memicu Panggilan Suara WhatsApp secara langsung ke nomor kontak
+  Future<bool> launchDirectWhatsAppVoiceCall({
+    required String phoneNumber,
+    String? contactName,
+  }) async {
+    try {
+      final success = await _whatsAppChannel.invokeMethod<bool>('directVoiceCall', {
+        'phoneNumber': phoneNumber,
+        'contactName': contactName ?? '',
+      });
+      return success == true;
+    } catch (_) {
+      return false;
+    }
+  }
   /// Melakukan broadcast / share pesan darurat sesi NetraVision ke WhatsApp (Grup atau Kontak)
   Future<bool> broadcastHelpRequestToWhatsApp({
     required String requestId,
     required String userName,
     required String taskDescription,
     String? targetPhone,
+    String? locationUrl,
   }) async {
+    final locText = (locationUrl != null && locationUrl.isNotEmpty)
+        ? '\n📍 *Lokasi GPS Terkini:* $locationUrl\n'
+        : '';
+
     final message = '🚨 *PANGGILAN BANTUAN NETRAVISION*\n'
         '👤 *Pengguna:* $userName\n'
-        '🎯 *Kebutuhan:* $taskDescription\n\n'
+        '🎯 *Kebutuhan:* $taskDescription\n'
+        '$locText\n'
         '👉 *Klik tautan ini untuk menjawab panggilan langsung:*\n'
         'https://netravision-portal.vercel.app/?session=$requestId';
 
@@ -42,7 +83,7 @@ class FallbackService extends GetxService {
     return false;
   }
 
-  /// Membuka dialer telepon seluler perangkat
+  /// Membuka dialer telepon seluler perangkat (paling andal untuk kondisi darurat)
   Future<bool> launchPhoneDialer(String phoneNumber) async {
     final clean = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
     final uri = Uri.parse('tel:$clean');
@@ -56,26 +97,24 @@ class FallbackService extends GetxService {
     return false;
   }
 
-  /// Membuka PANGGILAN TELEPON WHATSAPP (Voice/Video Call WA)
-  Future<bool> launchWhatsAppCall(String phoneNumber) async {
+  /// Membuka pesan darurat WhatsApp langsung ke nomor kontak keluarga/wali
+  /// Berisi permintaan panggilan telepon segera dan tautan lokasi Google Maps
+  Future<bool> launchWhatsAppCall(String phoneNumber, {String? locationUrl}) async {
     String clean = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
     if (clean.startsWith('0')) {
       clean = '62${clean.substring(1)}';
     }
 
-    final message = 'Halo, saya membutuhkan bantuan visual mendesak dari NetraVision. Mohon telepon saya melalui Panggilan Suara atau Video WhatsApp sekarang.';
+    final locText = (locationUrl != null && locationUrl.isNotEmpty)
+        ? '\n📍 *Lokasi GPS Terkini:* $locationUrl'
+        : '';
+
+    final message = '🚨 *PANGGILAN DARURAT NETRAVISION (SOS)*\n'
+        'Halo, saya pengguna tunanetra membutuhkan bantuan visual mendesak.$locText\n\n'
+        'Mohon segera hubungi saya melalui Panggilan Suara / Telepon sekarang!';
     final encodedMsg = Uri.encodeComponent(message);
 
-    // 1. Coba deep-link panggilan langsung WhatsApp
-    final callUri = Uri.parse('whatsapp://call?phone=$clean');
-    try {
-      if (await canLaunchUrl(callUri)) {
-        final success = await launchUrl(callUri, mode: LaunchMode.externalApplication);
-        if (success) return true;
-      }
-    } catch (_) {}
-
-    // 2. Buka kontak WhatsApp langsung via skema whatsapp:// dengan pesan darurat siap panggil
+    // Buka kontak WhatsApp langsung dengan template pesan darurat terisi
     final directWaUri = Uri.parse('whatsapp://send?phone=$clean&text=$encodedMsg');
     try {
       if (await canLaunchUrl(directWaUri)) {
@@ -84,11 +123,34 @@ class FallbackService extends GetxService {
       }
     } catch (_) {}
 
-    // 3. Fallback: Buka kontak WhatsApp via browser wa.me
+    // Fallback via browser wa.me
     final waUri = Uri.parse('https://wa.me/$clean?text=$encodedMsg');
     try {
       if (await canLaunchUrl(waUri)) {
         return await launchUrl(waUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  /// Mengirim SMS darurat (bekerja tanpa kuota internet)
+  Future<bool> sendEmergencySms({
+    required String phoneNumber,
+    String? locationUrl,
+    String? customMessage,
+  }) async {
+    final clean = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    final locText = (locationUrl != null && locationUrl.isNotEmpty)
+        ? ' Lokasi: $locationUrl'
+        : '';
+    final message = customMessage ??
+        '🚨 DARURAT NETRAVISION: Saya membutuhkan bantuan mendesak.$locText';
+    final encoded = Uri.encodeComponent(message);
+
+    final uri = Uri.parse('sms:$clean?body=$encoded');
+    try {
+      if (await canLaunchUrl(uri)) {
+        return await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {}
     return false;

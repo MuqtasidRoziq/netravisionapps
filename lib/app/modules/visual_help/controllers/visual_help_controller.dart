@@ -4,14 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../data/models/visual_help_models.dart';
 import '../../../routes/app_pages.dart';
+import '../../../services/auto_click_service.dart';
+import '../../../services/contacts_service.dart';
 import '../../../services/fallback_service.dart';
 import '../../../services/livekit_call_service.dart';
+import '../../../services/location_service.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/visual_help_service.dart';
 
 class VisualHelpController extends GetxController {
   /// Mengirim pesan broadcast panggilan ke grup relawan WhatsApp
-  void broadcastRequestToWhatsApp() {
+  void broadcastRequestToWhatsApp() async {
     final req = visualHelpService.activeRequest.value;
     final reqId = req?.id ?? '';
     final targetName = (req?.taskContext.targetName != null && req!.taskContext.targetName!.isNotEmpty)
@@ -21,14 +24,26 @@ class VisualHelpController extends GetxController {
         ? visualHelpService.currentUserName.value
         : 'Pengguna Netra';
 
-    HapticFeedback.mediumImpact();
-    ttsService.speak('Membuka WhatsApp untuk mengirim notifikasi ke relawan');
+    String? locationUrl;
+    try {
+      final loc = await locationService?.currentPosition();
+      if (loc != null) {
+        locationUrl = 'https://maps.google.com/?q=${loc.lat},${loc.lng}';
+      }
+    } catch (_) {}
+
+    HapticFeedback.heavyImpact();
+    ttsService.speak(
+      'Membuka WhatsApp untuk broadcast ke relawan. Silakan pilih kontak atau grup relawan lalu ketuk tombol Kirim di pojok kanan bawah WhatsApp.',
+      isUrgent: true,
+    );
 
     final fallbackService = Get.find<FallbackService>();
     fallbackService.broadcastHelpRequestToWhatsApp(
       requestId: reqId,
       userName: userName,
       taskDescription: targetName,
+      locationUrl: locationUrl,
     );
   }
 
@@ -36,6 +51,9 @@ class VisualHelpController extends GetxController {
   final LiveKitCallService liveKitCallService = Get.find<LiveKitCallService>();
   final FallbackService fallbackService = Get.find<FallbackService>();
   final TtsService ttsService = Get.find<TtsService>();
+  ContactsService get contactsService => Get.find<ContactsService>();
+  LocationService? get locationService =>
+      Get.isRegistered<LocationService>() ? Get.find<LocationService>() : null;
 
   // Input Konteks Tugas
   final Rx<TaskType> selectedTaskType = TaskType.generalHelp.obs;
@@ -71,10 +89,20 @@ class VisualHelpController extends GetxController {
   void speakTrustedContactsIntro() {
     if (_hasSpokenTrustedIntro) return;
     _hasSpokenTrustedIntro = true;
-    ttsService.speak(
-      'Halaman Kontak Tepercaya. Jika nomor belum tersimpan atau Anda kesulitan mengetik, minta bantuan keluarga atau orang terdekat untuk mengisikan nomor WhatsApp atau telepon pada tombol Tambah Kontak.',
-      isUrgent: true,
-    );
+    final list = contactsService.contacts;
+    if (list.isNotEmpty) {
+      final count = list.length;
+      final names = list.map((c) => c.name).take(3).join(', ');
+      ttsService.speak(
+        'Halaman Kontak Keluarga. Tersedia $count kontak tersimpan: $names. Setiap tombol menggunakan sistem dua kali ketuk: ketuk sekali untuk mendengar fungsi, ketuk sekali lagi untuk memilih.',
+        isUrgent: true,
+      );
+    } else {
+      ttsService.speak(
+        'Halaman Kontak Keluarga. Belum ada nomor keluarga yang tersimpan. Silakan ketuk tombol Tambah Kontak dua kali untuk meminta keluarga mengisi nomor mereka.',
+        isUrgent: true,
+      );
+    }
   }
 
   void resetTrustedContactsIntro() {
@@ -147,6 +175,129 @@ class VisualHelpController extends GetxController {
       'Formulir tambah kontak dibuka. Silakan minta keluarga atau orang terdekat untuk mengetikkan nama dan nomor telepon atau WhatsApp.',
       isUrgent: true,
     );
+  }
+
+  // ====================== SISTEM DUA KALI KETUK KONTAK KELUARGA ======================
+  final RxString selectedContactActionKey = ''.obs;
+  Timer? _contactActionTimer;
+
+  void resetContactActionSelection() {
+    _contactActionTimer?.cancel();
+    selectedContactActionKey.value = '';
+  }
+
+  void _armContactAction(String key, String explanation) {
+    selectedContactActionKey.value = key;
+    HapticFeedback.mediumImpact();
+    ttsService.speak('$explanation Ketuk sekali lagi untuk memilih.', isUrgent: true);
+    _contactActionTimer?.cancel();
+    _contactActionTimer = Timer(const Duration(seconds: 6), () {
+      if (selectedContactActionKey.value == key) {
+        selectedContactActionKey.value = '';
+      }
+    });
+  }
+
+  /// Menangani ketukan tombol VC WhatsApp (Pola 2 Ketukan):
+  void handleContactWhatsAppVoiceTap(TrustedContact contact) {
+    final key = 'wa_voice_${contact.id}';
+    if (selectedContactActionKey.value == key) {
+      resetContactActionSelection();
+      callContactWhatsAppVoice(contact.phoneNumber, contactName: contact.name);
+    } else {
+      _armContactAction(
+        key,
+        'Tombol Video Call WhatsApp ke ${contact.name}. Langsung memulai panggilan video WhatsApp ke keluarga. Sangat praktis untuk bertatap muka.',
+      );
+    }
+  }
+
+  /// Menangani ketukan tombol Telepon Seluler (Pola 2 Ketukan):
+  void handleContactPhoneTap(TrustedContact contact) {
+    final key = 'phone_${contact.id}';
+    if (selectedContactActionKey.value == key) {
+      resetContactActionSelection();
+      callContactPhone(contact.phoneNumber, contactName: contact.name);
+    } else {
+      _armContactAction(
+        key,
+        'Tombol Telepon Langsung ke ${contact.name}. Panggilan telepon seluler langsung tanpa masuk ke chat. Sangat andal untuk darurat.',
+      );
+    }
+  }
+
+  /// Menangani ketukan tombol Chat WA (Pola 2 Ketukan):
+  void handleContactChatTap(TrustedContact contact) {
+    final key = 'chat_${contact.id}';
+    if (selectedContactActionKey.value == key) {
+      resetContactActionSelection();
+      callContactWhatsApp(contact.phoneNumber, contactName: contact.name);
+    } else {
+      _armContactAction(
+        key,
+        'Tombol Chat WhatsApp ke ${contact.name}. Membuka ruang obrolan teks bantuan.',
+      );
+    }
+  }
+
+  /// Menangani ketukan kartu kontak (Pola 2 Ketukan):
+  void handleContactCardTap(TrustedContact contact) {
+    final key = 'card_${contact.id}';
+    if (selectedContactActionKey.value == key) {
+      resetContactActionSelection();
+      showCallOptionsModal(phoneNumber: contact.phoneNumber, contactName: contact.name);
+    } else {
+      _armContactAction(
+        key,
+        'Kartu Kontak ${contact.name}, ${contact.relationship}, nomor ${contact.phoneNumber}. Membuka menu lengkap pilihan panggilan.',
+      );
+    }
+  }
+
+  /// Menangani ketukan tombol Hapus Kontak (Pola 2 Ketukan):
+  void handleDeleteContactTap(TrustedContact contact) {
+    final key = 'delete_${contact.id}';
+    if (selectedContactActionKey.value == key) {
+      resetContactActionSelection();
+      contactsService.deleteContact(contact.id);
+      HapticFeedback.heavyImpact();
+      ttsService.speak('Kontak ${contact.name} berhasil dihapus.', isUrgent: true);
+    } else {
+      _armContactAction(
+        key,
+        'Tombol Hapus kontak ${contact.name}. Tindakan ini akan menghapus kontak dari daftar.',
+      );
+    }
+  }
+
+  /// Menangani ketukan tombol Tambah Kontak (Pola 2 Ketukan):
+  void handleAddContactButtonTap(VoidCallback onOpenDialog) {
+    final key = 'add_contact';
+    if (selectedContactActionKey.value == key) {
+      resetContactActionSelection();
+      HapticFeedback.heavyImpact();
+      onOpenDialog();
+    } else {
+      _armContactAction(
+        key,
+        'Tombol Tambah Kontak. Minta keluarga atau orang terdekat untuk mengetikkan nama dan nomor telepon baru.',
+      );
+    }
+  }
+
+  /// Menangani ketukan tombol Kembali di halaman kontak (Pola 2 Ketukan):
+  void handleContactsBackButtonTap() {
+    final key = 'back_to_menu';
+    if (selectedContactActionKey.value == key) {
+      resetContactActionSelection();
+      HapticFeedback.mediumImpact();
+      Get.back();
+    } else {
+      _armContactAction(
+        key,
+        'Tombol Kembali. Menutup halaman kontak keluarga dan kembali ke Menu Bantuan Relawan.',
+      );
+    }
   }
 
   @override
@@ -318,11 +469,23 @@ class VisualHelpController extends GetxController {
   Future<void> submitHelpRequest({String sourceScreen = 'visual_help'}) async {
     HapticFeedback.heavyImpact();
 
+    // Sertakan lokasi GPS otomatis jika ini panggilan SOS darurat
+    String? resolvedNotes = notesController.text.trim().isEmpty ? null : notesController.text.trim();
+    if (sourceScreen == 'emergency_sos' && (resolvedNotes == null || !resolvedNotes.contains('https://maps.google.com'))) {
+      try {
+        final loc = await locationService?.currentPosition();
+        if (loc != null) {
+          final mapsLink = 'Lokasi GPS: https://maps.google.com/?q=${loc.lat},${loc.lng}';
+          resolvedNotes = resolvedNotes != null ? '$resolvedNotes\n$mapsLink' : mapsLink;
+        }
+      } catch (_) {}
+    }
+
     final context = TaskContext(
       taskType: selectedTaskType.value,
       targetName: targetNameController.text.trim().isEmpty ? null : targetNameController.text.trim(),
       unverifiedAiLabel: unverifiedAiLabel.value.isEmpty ? null : unverifiedAiLabel.value,
-      notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+      notes: resolvedNotes,
       sourceScreen: sourceScreen,
     );
 
@@ -338,14 +501,31 @@ class VisualHelpController extends GetxController {
     );
 
     if (req != null) {
-      _startCountdown();
+      _startCountdown(isSosCall: sourceScreen == 'emergency_sos');
       Get.toNamed(Routes.VISUAL_HELP_WAITING);
     } else {
-      ttsService.speak('Gagal membuat permintaan bantuan. Periksa koneksi internet atau server.');
+      // Fallback otomatis jika SOS gagal terhubung ke server cloud
+      if (sourceScreen == 'emergency_sos') {
+        final primary = contactsService.primaryEmergencyContact;
+        if (primary != null) {
+          ttsService.speak(
+            'Koneksi server tidak tersedia. Mengalihkan ke panggilan telepon ${primary.name}...',
+            isUrgent: true,
+          );
+          await fallbackService.launchPhoneDialer(primary.phoneNumber);
+        } else {
+          ttsService.speak(
+            'Koneksi server tidak tersedia dan belum ada kontak keluarga yang didaftarkan. Silakan tambahkan nomor keluarga di menu kontak tepercaya.',
+            isUrgent: true,
+          );
+        }
+      } else {
+        ttsService.speak('Gagal membuat permintaan bantuan. Periksa koneksi internet atau server.');
+      }
     }
   }
 
-  void _startCountdown() {
+  void _startCountdown({bool isSosCall = false}) {
     _stopCountdown();
     remainingSeconds.value = 45;
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -353,10 +533,26 @@ class VisualHelpController extends GetxController {
         remainingSeconds.value--;
       } else {
         _stopCountdown();
-        ttsService.speak(
-          'Belum ada relawan yang menjawab dalam 45 detik. Anda dapat mencoba lagi atau menghubungi kontak langsung.',
-          isUrgent: true,
-        );
+        if (isSosCall || targetNameController.text.contains('DARURAT')) {
+          final primary = contactsService.primaryEmergencyContact;
+          if (primary != null) {
+            ttsService.speak(
+              'Relawan belum menjawab dalam 45 detik. Mengalihkan ke panggilan telepon ${primary.name}...',
+              isUrgent: true,
+            );
+            fallbackService.launchPhoneDialer(primary.phoneNumber);
+          } else {
+            ttsService.speak(
+              'Belum ada relawan yang menjawab dalam 45 detik. Silakan coba lagi atau hubungi keluarga Anda.',
+              isUrgent: true,
+            );
+          }
+        } else {
+          ttsService.speak(
+            'Belum ada relawan yang menjawab dalam 45 detik. Anda dapat mencoba lagi atau menghubungi kontak langsung.',
+            isUrgent: true,
+          );
+        }
       }
     });
   }
@@ -378,27 +574,82 @@ class VisualHelpController extends GetxController {
     Get.back();
   }
 
-  /// Melakukan Panggilan Telepon WhatsApp (Voice/Video Call WA)
+  /// Melakukan Video Call WhatsApp langsung ke Kontak (atau fallback jika belum terindeks)
   Future<void> callContactWhatsAppVoice(String phoneNumber, {String? contactName}) async {
-    HapticFeedback.mediumImpact();
+    HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
-    ttsService.speak('Melakukan panggilan WhatsApp ke $name...');
-    await fallbackService.launchWhatsAppCall(phoneNumber);
+    ttsService.speak(
+      'Menghubungi video call WhatsApp ke $name sekarang...',
+      isUrgent: true,
+    );
+
+    // 1. Coba Panggilan Video WhatsApp Langsung via Native Android
+    final directSuccess = await fallbackService.launchDirectWhatsAppVideoCall(
+      phoneNumber: phoneNumber,
+      contactName: contactName,
+    );
+
+    if (directSuccess) {
+      return;
+    }
+
+    // 2. Jika fallback ke WhatsApp: Pasang mode Auto-Klik tombol Video Call
+    final autoClickService = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
+    final isPermGranted = await autoClickService?.checkPermission() ?? false;
+    if (isPermGranted) {
+      autoClickService?.armAutoClick(AutoClickAction.videoCall);
+      ttsService.speak(
+        'Membuka WhatsApp ke $name. Tombol video call akan otomatis diklik.',
+        isUrgent: true,
+      );
+    } else {
+      ttsService.speak(
+        'Membuka WhatsApp ke $name. Di layar WhatsApp, silakan ketuk ikon video call di pojok kanan atas, atau tombol Kirim di pojok kanan bawah.',
+        isUrgent: true,
+      );
+    }
+
+    String? locationUrl;
+    try {
+      final loc = await locationService?.currentPosition();
+      if (loc != null) {
+        locationUrl = 'https://maps.google.com/?q=${loc.lat},${loc.lng}';
+      }
+    } catch (_) {}
+
+    await fallbackService.launchWhatsAppCall(phoneNumber, locationUrl: locationUrl);
   }
 
   /// Membuka panggilan dialer telepon seluler biasa
   Future<void> callContactPhone(String phoneNumber, {String? contactName}) async {
-    HapticFeedback.mediumImpact();
+    HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
-    ttsService.speak('Membuka panggilan telepon seluler ke $name...');
+    ttsService.speak(
+      'Membuka telepon seluler ke $name. Layar panggilan ponsel akan terbuka. Langkah selanjutnya: ketuk tombol panggil di layar ponsel untuk mulai tersambung.',
+      isUrgent: true,
+    );
     await fallbackService.launchPhoneDialer(phoneNumber);
   }
 
   /// Membuka obrolan teks WhatsApp ke kontak
   Future<void> callContactWhatsApp(String phoneNumber, {String? contactName}) async {
-    HapticFeedback.mediumImpact();
+    HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
-    ttsService.speak('Membuka percakapan WhatsApp dengan $name...');
+
+    final autoClickService = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
+    final isPermGranted = await autoClickService?.checkPermission() ?? false;
+    if (isPermGranted) {
+      autoClickService?.armAutoClick(AutoClickAction.sendChat);
+      ttsService.speak(
+        'Membuka chat WhatsApp ke $name. Pesan darurat akan otomatis terkirim.',
+        isUrgent: true,
+      );
+    } else {
+      ttsService.speak(
+        'Membuka chat WhatsApp ke $name. Pesan bantuan sudah tertulis di kolom pesan. Langkah selanjutnya: setelah WhatsApp terbuka, cari dan ketuk tombol Kirim di pojok kanan bawah layar.',
+        isUrgent: true,
+      );
+    }
     await fallbackService.launchWhatsApp(phoneNumber);
   }
 
@@ -448,60 +699,77 @@ class VisualHelpController extends GetxController {
             ),
             const SizedBox(height: 20),
 
-            // Opsi 1: Telepon WhatsApp
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: () {
-                Get.back();
-                callContactWhatsAppVoice(phoneNumber, contactName: contactName);
-              },
-              icon: const Icon(Icons.phone_in_talk_rounded, size: 22),
-              label: const Text(
-                'Telepon WhatsApp (Panggilan Suara)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            // Opsi 1: Telepon Seluler Langsung (Paling Cepat - Tanpa Chat)
+            Semantics(
+              label: 'Telepon Langsung ke $contactName. Panggilan telepon seluler langsung tanpa melalui chat WhatsApp.',
+              hint: 'Ketuk dua kali untuk menelepon langsung',
+              button: true,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D47A1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: () {
+                  Get.back();
+                  callContactPhone(phoneNumber, contactName: contactName);
+                },
+                icon: const Icon(Icons.phone_rounded, size: 22),
+                label: const Text(
+                  'Telepon Langsung (Pulsa - Tanpa Chat)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
             const SizedBox(height: 12),
 
-            // Opsi 2: Telepon Seluler
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF0D47A1),
-                side: const BorderSide(color: Color(0xFF0D47A1), width: 2),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: () {
-                Get.back();
-                callContactPhone(phoneNumber, contactName: contactName);
-              },
-              icon: const Icon(Icons.phone_rounded, size: 22),
-              label: const Text(
-                'Telepon Seluler (Pulsa Biasa)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            // Opsi 2: VC WhatsApp Langsung
+            Semantics(
+              label: 'Panggilan Video Call WhatsApp ke $contactName. Langsung memulai panggilan video WhatsApp.',
+              hint: 'Ketuk dua kali untuk memulai video call WhatsApp',
+              button: true,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: () {
+                  Get.back();
+                  callContactWhatsAppVoice(phoneNumber, contactName: contactName);
+                },
+                icon: const Icon(Icons.videocam_rounded, size: 24),
+                label: const Text(
+                  'VC WhatsApp (Video Call Langsung)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
             const SizedBox(height: 12),
 
             // Opsi 3: Chat Pesan WhatsApp
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF128C7E),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              onPressed: () {
-                Get.back();
-                callContactWhatsApp(phoneNumber, contactName: contactName);
-              },
-              icon: const Icon(Icons.chat_rounded, size: 20),
-              label: const Text(
-                'Kirim Pesan WhatsApp',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            Semantics(
+              label: 'Kirim pesan teks obrolan WhatsApp ke $contactName.',
+              hint: 'Ketuk dua kali untuk membuka obrolan pesan',
+              button: true,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF128C7E),
+                  side: const BorderSide(color: Color(0xFF128C7E), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: () {
+                  Get.back();
+                  callContactWhatsApp(phoneNumber, contactName: contactName);
+                },
+                icon: const Icon(Icons.chat_rounded, size: 20),
+                label: const Text(
+                  'Kirim Pesan Obrolan WhatsApp',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -632,6 +900,7 @@ class VisualHelpController extends GetxController {
   @override
   void onClose() {
     _buttonSelectionTimer?.cancel();
+    _contactActionTimer?.cancel();
     _stopCountdown();
     _stopHandshakeTimer();
     targetNameController.dispose();

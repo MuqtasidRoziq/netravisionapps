@@ -826,6 +826,72 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     });
   }
 
+  // Status Hitung Mundur Darurat (SOS) dari Layar Deteksi Kamera
+  final RxBool isSosCountdownActive = false.obs;
+  final RxInt sosCountdownSeconds = 5.obs;
+  Timer? _sosCountdownTimer;
+
+  void triggerEmergencySOS() {
+    if (isSosCountdownActive.value) return;
+
+    isSosCountdownActive.value = true;
+    sosCountdownSeconds.value = 5;
+    HapticFeedback.heavyImpact();
+
+    ttsService.speak(
+      'Peringatan darurat aktif. Ketuk layar untuk membatalkan.',
+      isUrgent: true,
+    );
+
+    _sosCountdownTimer?.cancel();
+    _sosCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      sosCountdownSeconds.value--;
+      HapticFeedback.heavyImpact();
+
+      if (sosCountdownSeconds.value > 0) {
+        ttsService.speak('${sosCountdownSeconds.value}', isUrgent: true);
+      } else {
+        timer.cancel();
+        _dispatchSosCall();
+      }
+    });
+  }
+
+  void cancelEmergencySOS() {
+    if (!isSosCountdownActive.value) return;
+
+    _sosCountdownTimer?.cancel();
+    isSosCountdownActive.value = false;
+    HapticFeedback.mediumImpact();
+    ttsService.speak('Panggilan darurat dibatalkan.', isUrgent: true);
+  }
+
+  void _dispatchSosCall() async {
+    isSosCountdownActive.value = false;
+    HapticFeedback.heavyImpact();
+    ttsService.speak('Menghubungkan panggilan darurat sekarang...', isUrgent: true);
+
+    String? locationNotes;
+    try {
+      final geo = userPosition.value ?? await locationService.currentPosition();
+      if (geo != null) {
+        locationNotes = 'Lokasi: https://maps.google.com/?q=${geo.lat},${geo.lng}';
+      }
+    } catch (_) {}
+
+    Get.toNamed(
+      Routes.VISUAL_HELP,
+      arguments: TaskContext(
+        taskType: TaskType.generalHelp,
+        targetName: '🚨 PANGGILAN DARURAT (SOS)',
+        sourceScreen: 'emergency_sos',
+        notes: locationNotes,
+      ),
+    )?.then((_) {
+      resumeDetection();
+    });
+  }
+
   /// Memulihkan kembali sesi deteksi kamera dan audio setelah kembali dari bantuan visual
   void resumeDetection() {
     isPaused.value = false;
@@ -839,6 +905,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   @override
   void onClose() {
+    _sosCountdownTimer?.cancel();
     _currencyOcrTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();

@@ -227,11 +227,11 @@ class HomeView extends GetView<HomeController> {
         ),
               ),
 
-              // Overlay Darurat SOS (Tampil saat hitung mundur 3 detik)
+              // Overlay Darurat SOS (Tampil saat hitung mundur 5 detik)
               if (isSosActive)
                 Positioned.fill(
                   child: Semantics(
-                    label: 'Peringatan Darurat SOS Aktif. Menghubungi relawan dalam $countdown detik. Ketuk layar sekali untuk membatalkan.',
+                    label: 'Peringatan Darurat SOS Aktif. Menghubungi bantuan dalam $countdown detik. Ketuk layar sekali untuk membatalkan.',
                     button: true,
                     child: GestureDetector(
                       onTap: () => controller.cancelEmergencySOS(),

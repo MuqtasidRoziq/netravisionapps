@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../data/models/vision_mode.dart';
 import '../../../routes/app_pages.dart';
+import '../../../services/location_service.dart';
 import '../../../services/tts_service.dart';
 import '../../detector/controllers/detector_controller.dart';
 
@@ -126,18 +127,18 @@ class HomeController extends GetxController {
 
   // Status Hitung Mundur Darurat (SOS)
   final RxBool isSosCountdownActive = false.obs;
-  final RxInt sosCountdownSeconds = 3.obs;
+  final RxInt sosCountdownSeconds = 5.obs;
   Timer? _sosCountdownTimer;
 
   void triggerEmergencySOS() {
     if (isSosCountdownActive.value) return;
 
     isSosCountdownActive.value = true;
-    sosCountdownSeconds.value = 3;
+    sosCountdownSeconds.value = 5;
     HapticFeedback.heavyImpact();
 
     _ttsService.speak(
-      'Peringatan darurat aktif. Menghubungi relawan dalam tiga detik. Ketuk layar sekali untuk membatalkan.',
+      'Peringatan darurat aktif. Ketuk layar untuk membatalkan.',
       isUrgent: true,
     );
 
@@ -146,7 +147,9 @@ class HomeController extends GetxController {
       sosCountdownSeconds.value--;
       HapticFeedback.heavyImpact();
 
-      if (sosCountdownSeconds.value <= 0) {
+      if (sosCountdownSeconds.value > 0) {
+        _ttsService.speak('${sosCountdownSeconds.value}', isUrgent: true);
+      } else {
         timer.cancel();
         _dispatchSosCall();
       }
@@ -162,17 +165,28 @@ class HomeController extends GetxController {
     _ttsService.speak('Panggilan darurat dibatalkan.', isUrgent: true);
   }
 
-  void _dispatchSosCall() {
+  void _dispatchSosCall() async {
     isSosCountdownActive.value = false;
     HapticFeedback.heavyImpact();
     _ttsService.speak('Menghubungkan panggilan darurat sekarang...', isUrgent: true);
 
+    String? locationNotes;
+    try {
+      if (Get.isRegistered<LocationService>()) {
+        final loc = await Get.find<LocationService>().currentPosition();
+        if (loc != null) {
+          locationNotes = 'Lokasi: https://maps.google.com/?q=${loc.lat},${loc.lng}';
+        }
+      }
+    } catch (_) {}
+
     Get.toNamed(
       Routes.VISUAL_HELP,
-      arguments: const TaskContext(
+      arguments: TaskContext(
         taskType: TaskType.generalHelp,
         targetName: '🚨 PANGGILAN DARURAT (SOS)',
         sourceScreen: 'emergency_sos',
+        notes: locationNotes,
       ),
     );
   }

@@ -11,6 +11,7 @@ import 'app/services/tts_service.dart';
 import 'app/services/vibration_service.dart';
 import 'app/services/visual_help_service.dart';
 import 'app/services/currency_ocr_service.dart';
+import 'app/services/auto_click_service.dart';
 import 'app/utils/constants/app_colors.dart';
 
 void main() async {
@@ -23,6 +24,7 @@ void main() async {
   await Get.putAsync(() async => CompassService());
   await Get.putAsync(() => ContactsService().init());
   Get.put(FallbackService());
+  Get.put(AutoClickService());
   await Get.putAsync(() => VisualHelpService().init());
   Get.put(LiveKitCallService());
   Get.put(CurrencyOcrService());

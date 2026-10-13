@@ -17,14 +17,14 @@ void main() {
       Get.reset();
     });
 
-    test('Pemicuan triggerEmergencySOS mengaktifkan countdown 3 detik', () {
+    test('Pemicuan triggerEmergencySOS mengaktifkan countdown 5 detik', () {
       expect(homeController.isSosCountdownActive.value, false);
-      expect(homeController.sosCountdownSeconds.value, 3);
+      expect(homeController.sosCountdownSeconds.value, 5);
 
       homeController.triggerEmergencySOS();
 
       expect(homeController.isSosCountdownActive.value, true);
-      expect(homeController.sosCountdownSeconds.value, 3);
+      expect(homeController.sosCountdownSeconds.value, 5);
     });
 
     test('Ketukan pengguna membatalkan panggilan darurat sebelum waktu habis', () {
