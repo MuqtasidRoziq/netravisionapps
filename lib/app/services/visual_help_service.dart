@@ -275,23 +275,25 @@ class VisualHelpService extends GetxService {
           canPublish: true,
         );
 
+        final phone = () {
+          try {
+            if (Get.isRegistered<ContactsService>()) {
+              final cs = Get.find<ContactsService>();
+              if (cs.contacts.isNotEmpty) {
+                return cs.contacts.first.phoneNumber;
+              }
+            }
+          } catch (_) {}
+          return '';
+        }();
+        final fullDesc = phone.isNotEmpty ? '$targetDesc ($phone)' : targetDesc;
+
         final body = {
           'id': reqId,
           'user_id': currentUserId.value,
           'user_name': currentUserName.value,
           'mode': recipientTarget.code,
-          'user_phone': () {
-            try {
-              if (Get.isRegistered<ContactsService>()) {
-                final cs = Get.find<ContactsService>();
-                if (cs.contacts.isNotEmpty) {
-                  return cs.contacts.first.phoneNumber;
-                }
-              }
-            } catch (_) {}
-            return '';
-          }(),
-          'description': targetDesc,
+          'description': fullDesc,
           'status': 'pending',
           'access_key': accessKey,
           'room_name': roomName,

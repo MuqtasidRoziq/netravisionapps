@@ -113,17 +113,22 @@ class VisualHelpController extends GetxController {
   final RxInt selectedButtonIndex = (-1).obs;
   Timer? _buttonSelectionTimer;
 
+  /// Langsung memanggil relawan (panggilan langsung atau ketukan kedua)
+  void callVolunteersDirectly() {
+    _buttonSelectionTimer?.cancel();
+    selectedButtonIndex.value = -1;
+    HapticFeedback.heavyImpact();
+    recipientTarget.value = RecipientTarget.communityVolunteers;
+    submitHelpRequest();
+  }
+
   /// Menangani ketukan tombol Panggil Relawan:
   /// - Ketukan 1: Memberi penjelasan fitur singkat dan jelas.
   /// - Ketukan 2: Mengirim permintaan dan memanggil relawan.
   void handleVolunteerButtonTap() {
     if (selectedButtonIndex.value == 0) {
       // Ketukan ke-2: Langsung panggil relawan
-      _buttonSelectionTimer?.cancel();
-      selectedButtonIndex.value = -1;
-      HapticFeedback.heavyImpact();
-      recipientTarget.value = RecipientTarget.communityVolunteers;
-      submitHelpRequest();
+      callVolunteersDirectly();
     } else {
       // Ketukan ke-1: Jelaskan fitur dan tandai seleksi
       selectedButtonIndex.value = 0;
@@ -141,17 +146,22 @@ class VisualHelpController extends GetxController {
     }
   }
 
+  /// Langsung membuka kontak keluarga (pembukaan langsung atau ketukan kedua)
+  void openContactsDirectly() {
+    _buttonSelectionTimer?.cancel();
+    selectedButtonIndex.value = -1;
+    resetTrustedContactsIntro();
+    HapticFeedback.heavyImpact();
+    Get.toNamed(Routes.TRUSTED_CONTACTS);
+  }
+
   /// Menangani ketukan tombol Kontak Keluarga:
   /// - Ketukan 1: Memberi penjelasan fitur singkat dan jelas.
   /// - Ketukan 2: Membuka daftar kontak tepercaya keluarga.
   void handleContactsButtonTap() {
     if (selectedButtonIndex.value == 1) {
       // Ketukan ke-2: Buka halaman kontak
-      _buttonSelectionTimer?.cancel();
-      selectedButtonIndex.value = -1;
-      resetTrustedContactsIntro();
-      HapticFeedback.heavyImpact();
-      Get.toNamed(Routes.TRUSTED_CONTACTS);
+      openContactsDirectly();
     } else {
       // Ketukan ke-1: Jelaskan fitur dan tandai seleksi
       selectedButtonIndex.value = 1;

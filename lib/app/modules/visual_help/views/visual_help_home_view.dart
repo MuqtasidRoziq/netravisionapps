@@ -94,6 +94,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(28),
                       onTap: () => controller.handleVolunteerButtonTap(),
+                      onDoubleTap: () => controller.callVolunteersDirectly(),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -201,6 +202,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(24),
                       onTap: () => controller.handleContactsButtonTap(),
+                      onDoubleTap: () => controller.openContactsDirectly(),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
