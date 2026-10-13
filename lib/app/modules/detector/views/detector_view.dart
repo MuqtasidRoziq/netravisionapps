@@ -39,55 +39,62 @@ class DetectorView extends GetView<DetectorController> {
                     HapticFeedback.lightImpact();
                     controller.handleScreenTap();
                   },
-                  behavior: HitTestBehavior.opaque,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      YOLOView(
-                        modelPath: controller.modelConfig.modelPath,
-                        task: controller.modelConfig.task,
-                        controller: controller.yoloController,
-                        cameraResolution: '720p',
-                        // Batasi inferensi native ke 10 fps: HP low-end tidak
-                        // kepanasan & kamera terasa jauh lebih responsif.
-                        // Pengumuman tetap fokus karena Dart sudah men-throttle
-                        // ke ±2 fps via DetectorController.
-                        streamingConfig: const YOLOStreamingConfig(
-                          inferenceFrequency: 10,
-                        ),
-                        useGpu: true,
-                        confidenceThreshold:
-                            controller.modelConfig.confidenceThreshold,
-                        iouThreshold: controller.modelConfig.iouThreshold,
-                        onResult: controller.handleResults,
-                        onModelLoad: controller.handleModelLoad,
-                        onModelError: controller.handleModelError,
-                      ),
-
-                      // Overlay status jeda.
-                      if (controller.isPaused.value)
-                        Container(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          child: const Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.pause_circle_filled,
-                                    size: 72, color: Colors.white),
-                                SizedBox(height: 12),
-                                Text(
-                                  'Deteksi Dijeda',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          YOLOView(
+                            modelPath: controller.modelConfig.modelPath,
+                            task: controller.modelConfig.task,
+                            controller: controller.yoloController,
+                            cameraResolution: '720p',
+                            // Batasi inferensi native ke 10 fps: HP low-end tidak
+                            // kepanasan & kamera terasa jauh lebih responsif.
+                            // Pengumuman tetap fokus karena Dart sudah men-throttle
+                            // ke ±2 fps via DetectorController.
+                            streamingConfig: const YOLOStreamingConfig(
+                              inferenceFrequency: 10,
                             ),
+                            useGpu: true,
+                            confidenceThreshold:
+                                controller.modelConfig.confidenceThreshold,
+                            iouThreshold: controller.modelConfig.iouThreshold,
+                            onResult: controller.handleResults,
+                            onModelLoad: controller.handleModelLoad,
+                            onModelError: controller.handleModelError,
                           ),
-                        ),
-                    ],
+
+                          // Bounding box tervalidasi presisi untuk Mode Baca Uang
+                          if (controller.mode == VisionMode.currency)
+                            _buildCustomDetectionBox(constraints),
+
+                          // Overlay status jeda.
+                          if (controller.isPaused.value)
+                            Container(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              child: const Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.pause_circle_filled,
+                                        size: 72, color: Colors.white),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      'Deteksi Dijeda',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -314,5 +321,51 @@ class DetectorView extends GetView<DetectorController> {
         ),
       ],
     );
+  }
+
+  Widget _buildCustomDetectionBox(BoxConstraints constraints) {
+    return Obx(() {
+      final box = controller.activeDetectionBox.value;
+      if (box == null || box.isEmpty) return const SizedBox.shrink();
+
+      final left = (box.left * constraints.maxWidth).clamp(0.0, constraints.maxWidth - 20);
+      final top = (box.top * constraints.maxHeight).clamp(0.0, constraints.maxHeight - 20);
+      final width = (box.width * constraints.maxWidth).clamp(20.0, constraints.maxWidth - left);
+      final height = (box.height * constraints.maxHeight).clamp(20.0, constraints.maxHeight - top);
+
+      return Positioned(
+        left: left,
+        top: top,
+        width: width,
+        height: height,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.greenAccent, width: 3),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.shade700,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(5),
+                  bottomRight: Radius.circular(8),
+                ),
+              ),
+              child: Text(
+                '${controller.activeDetectionLabel.value} (Tervalidasi)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }

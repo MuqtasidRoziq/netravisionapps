@@ -42,6 +42,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   final RxString currentStatusText = 'Menyiapkan kamera & model AI...'.obs;
   final RxString lastDetectedObject = ''.obs;
   final RxBool isPaused = false.obs;
+  final Rx<Rect?> activeDetectionBox = Rx<Rect?>(null);
+  final RxString activeDetectionLabel = ''.obs;
 
   /// Kata kunci barang yang dicari (hanya aktif pada [VisionMode.itemSearch]).
   String targetItem = '';
@@ -266,12 +268,16 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
 
     if (validDetections.isEmpty) {
+      activeDetectionBox.value = null;
+      activeDetectionLabel.value = '';
       if (mode == VisionMode.currency) {
         _emptyCurrencyFrames++;
         if (_emptyCurrencyFrames >= 4) {
           _lastAnnouncedLabel = '';
           _recentClassIndices.clear();
           _lastOcrVerifiedNominal = null;
+          activeDetectionBox.value = null;
+          activeDetectionLabel.value = '';
           if (currentStatusText.value != 'Arahkan uang ke kamera...') {
             currentStatusText.value = 'Arahkan uang ke kamera...';
           }
@@ -330,6 +336,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     // dan JANGAN biarkan YOLO membacakan nominal yang belum tervalidasi angkanya.
     if (mode == VisionMode.currency && !hasRecentOcrVerification) {
       currentStatusText.value = 'Membaca nominal uang...';
+      activeDetectionBox.value = null;
+      activeDetectionLabel.value = '';
       return;
     }
 
@@ -338,6 +346,15 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
             ? _lastOcrVerifiedNominal!
             : targetDetection.className;
     lastDetectedObject.value = detectedLabel;
+
+    if (mode == VisionMode.currency && hasRecentOcrVerification) {
+      activeDetectionBox.value = targetDetection.normalizedBox;
+      activeDetectionLabel.value =
+          ObjectSpeechHelper.formatDisplayName(detectedLabel, mode);
+    } else {
+      activeDetectionBox.value = null;
+      activeDetectionLabel.value = '';
+    }
 
     final spatial = (mode == VisionMode.indoor || mode == VisionMode.outdoor)
         ? SpatialEstimator.of(targetDetection)
