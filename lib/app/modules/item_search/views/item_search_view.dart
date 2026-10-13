@@ -141,7 +141,7 @@ class ItemSearchView extends GetView<ItemSearchController> {
               Obx(() {
                 final listening = controller.isListening.value;
                 return Semantics(
-                  label: listening ? 'Sedang mendengarkan. Ketuk untuk berhenti.' : 'Ketuk dua kali untuk mulai berbicara dan mencari barang',
+                  label: listening ? 'Sedang mendengarkan. Ketuk untuk berhenti.' : 'Tombol mikrofon. Ketuk untuk mulai berbicara.',
                   button: true,
                   child: GestureDetector(
                     onTap: listening ? controller.stopListening : controller.startListening,

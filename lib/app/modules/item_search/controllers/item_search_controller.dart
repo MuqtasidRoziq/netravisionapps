@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
@@ -12,8 +13,9 @@ import '../../detector/controllers/detector_controller.dart';
 ///
 /// Alur:
 /// 1. User menekan tombol mikrofon.
-/// 2. STT mendengarkan dan mengekstrak kata kunci barang.
-/// 3. Controller membuka DetectorView dalam mode [VisionMode.search]
+/// 2. Suara speaker/TTS dihentikan segera agar tidak bocor masuk ke mic.
+/// 3. STT mendengarkan suara user dan mengekstrak kata kunci murni (misal: "cangkir").
+/// 4. Controller membuka DetectorView dalam mode [VisionMode.itemSearch]
 ///    sambil meneruskan kata kunci yang diekstrak.
 class ItemSearchController extends GetxController {
   final TtsService _ttsService = Get.find<TtsService>();
@@ -25,10 +27,50 @@ class ItemSearchController extends GetxController {
   final RxString extractedItem = ''.obs;
   final RxString statusMessage = 'Ketuk mikrofon lalu ucapkan nama barang'.obs;
 
+  /// Daftar label objek yang didukung (model indoor COCO 80 kelas)
+  static const List<String> supportedItems = [
+    'cangkir', 'botol', 'kursi', 'sofa', 'meja makan', 'tempat tidur',
+    'ponsel', 'laptop', 'televisi', 'tetikus', 'remot', 'keyboard',
+    'buku', 'jam', 'vas', 'gunting', 'boneka beruang', 'pengering rambut',
+    'sikat gigi', 'tas punggung', 'payung', 'tas tangan', 'koper',
+    'garpu', 'pisau', 'sendok', 'mangkuk', 'kulkas', 'microwave',
+    'oven', 'pemanggang roti', 'wastafel', 'sepeda', 'sepeda motor',
+    'mobil', 'kucing', 'anjing', 'pisang', 'apel', 'roti isi', 'jeruk',
+    'brokoli', 'wortel', 'sosis', 'pizza', 'donat', 'kue',
+  ];
+
+  /// Pemetaan sinonim umum ke label model AI
+  static const Map<String, String> synonymMap = {
+    'gelas': 'cangkir',
+    'mug': 'cangkir',
+    'cangkir kopi': 'cangkir',
+    'cangkir teh': 'cangkir',
+    'cangki': 'cangkir',
+    'hp': 'ponsel',
+    'handphone': 'ponsel',
+    'smartphone': 'ponsel',
+    'telepon': 'ponsel',
+    'tumbler': 'botol',
+    'botol minum': 'botol',
+    'mouse': 'tetikus',
+    'tv': 'televisi',
+    'kasur': 'tempat tidur',
+    'ransel': 'tas punggung',
+    'tas': 'tas punggung',
+  };
+
   @override
   void onInit() {
     super.onInit();
     _initSpeech();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    _ttsService.speak(
+      'Halaman Cari Barang. Ketuk tombol mikrofon di tengah, lalu sebutkan nama barang yang ingin dicari, misalnya cangkir atau botol.',
+    );
   }
 
   Future<void> _initSpeech() async {
@@ -56,11 +98,16 @@ class ItemSearchController extends GetxController {
     }
     if (isListening.value) return;
 
-    HapticFeedback.mediumImpact();
+    // 1. Matikan audio TTS segera agar suara speaker tidak masuk ke mikrofon
+    await _ttsService.stop();
+
+    HapticFeedback.heavyImpact();
     recognizedText.value = '';
     extractedItem.value = '';
-    statusMessage.value = 'Sedang mendengarkan...';
-    _ttsService.speak('Silakan ucapkan nama barang yang ingin dicari.', isUrgent: true);
+    statusMessage.value = 'Mendengarkan... Silakan sebutkan nama barang.';
+
+    // 2. Beri jeda 250ms agar speaker HP benar-benar senyap sebelum mic merekam
+    await Future.delayed(const Duration(milliseconds: 250));
 
     isListening.value = true;
     await _speech.listen(
@@ -93,7 +140,7 @@ class ItemSearchController extends GetxController {
         _ttsService.speak('Tidak ada suara terdeteksi. Silakan coba lagi.');
         return;
       }
-      final item = _extractItemKeyword(raw);
+      final item = extractItemKeyword(raw);
       extractedItem.value = item;
       statusMessage.value = 'Mencari: $item';
       _ttsService.speak('Mencari $item. Membuka kamera deteksi.', isUrgent: true);
@@ -110,30 +157,81 @@ class ItemSearchController extends GetxController {
     }
   }
 
-  /// Ekstrak kata kunci barang dari kalimat user.
+  /// Ekstrak kata kunci barang dari kalimat user secara akurat dan bersih.
   ///
-  /// Contoh input: "tolong carikan saya botol minum"
-  /// Output: "botol minum"
-  String _extractItemKeyword(String sentence) {
-    final lower = sentence.toLowerCase();
+  /// Contoh:
+  /// - "cari cangkir" -> "cangkir"
+  /// - "mencari ucapkan nama barang cangkir" -> "cangkir"
+  /// - "tolong carikan saya botol minum dong" -> "botol"
+  static String extractItemKeyword(String sentence) {
+    String text = sentence.toLowerCase().trim();
 
-    // Hapus frase perintah umum yang tidak relevan
-    final prefixPatterns = [
-      RegExp(r'^(tolong\s+)?(carikan|cari|temukan|cek|cari tahu)\s+(saya\s+)?'),
-      RegExp(r'^(saya\s+)?(mau|ingin|minta)\s+(cari|mencari|temukan)\s+'),
-      RegExp(r'^(di mana|dimana|ada gak|ada tidak)\s+(ada\s+)?'),
-      RegExp(r'^(apakah\s+)?ada\s+'),
+    // Hapus tanda baca
+    text = text.replaceAll(RegExp(r'[^\w\s]'), ' ');
+
+    // 1. Hapus frasa prompt sistem/TalkBack yang mungkin bocor ke mikrofon
+    final systemPhrases = [
+      'silakan ucapkan nama barang yang ingin dicari',
+      'silakan ucapkan nama barang',
+      'ucapkan nama barang yang ingin dicari',
+      'ucapkan nama barang',
+      'yang ingin dicari',
+      'ingin dicari',
+      'nama barang',
+      'ketuk untuk berhenti',
+      'ketuk mikrofon',
+      'sedang mendengarkan',
+      'mulai berbicara',
     ];
-
-    String cleaned = lower;
-    for (final pattern in prefixPatterns) {
-      cleaned = cleaned.replaceFirst(pattern, '').trim();
+    for (final phrase in systemPhrases) {
+      text = text.replaceAll(phrase, ' ');
     }
 
-    // Ambil maksimal 4 kata pertama sebagai kata kunci item
-    final words = cleaned.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(4).toList();
-    if (words.isEmpty) return sentence.trim();
-    return words.join(' ');
+    // 2. Hapus kata awalan perintah
+    final prefixPatterns = [
+      RegExp(r'\b(tolong\s+)?(carikan|cariin|mencari|cari|temukan|cek|lihat|tengok)\b'),
+      RegExp(r'\b(saya\s+)?(mau|ingin|minta|butuh)\s+(cari|mencari|temukan|lihat)?\b'),
+      RegExp(r'\b(di\s*mana|dimana|ada\s*gak|ada\s*tidak|apakah\s*ada|mana)\b'),
+      RegExp(r'\b(tolong|bisa|coba|saya)\b'),
+    ];
+    for (final pattern in prefixPatterns) {
+      text = text.replaceAll(pattern, ' ');
+    }
+
+    // 3. Hapus kata akhiran pemanis kalimat (dong, ya, nih, deh, dsb.)
+    final suffixPatterns = [
+      RegExp(r'\b(dong|ya|sih|deh|nih|lah|nya)\b'),
+    ];
+    for (final pattern in suffixPatterns) {
+      text = text.replaceAll(pattern, ' ');
+    }
+
+    // Bersihkan spasi ganda
+    text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    // 4. Periksa apakah ada kata kunci yang cocok dengan sinonim
+    for (final entry in synonymMap.entries) {
+      final regex = RegExp(r'\b' + RegExp.escape(entry.key) + r'\b');
+      if (regex.hasMatch(text)) {
+        return entry.value;
+      }
+    }
+
+    // 5. Periksa apakah ada kata kunci yang persis cocok dengan supportedItems
+    for (final item in supportedItems) {
+      final regex = RegExp(r'\b' + RegExp.escape(item) + r'\b');
+      if (regex.hasMatch(text)) {
+        return item;
+      }
+    }
+
+    // 6. Jika tidak ada di daftar khusus, ambil kata yang tersisa (maksimal 2 kata pertama)
+    final words = text.split(' ').where((w) => w.isNotEmpty).take(2).toList();
+    if (words.isNotEmpty) {
+      return words.join(' ');
+    }
+
+    return sentence.trim();
   }
 
   void _handleSttError(String error) {
