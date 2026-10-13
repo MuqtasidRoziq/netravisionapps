@@ -158,58 +158,78 @@ class HomeView extends GetView<HomeController> {
             ),
 
             // Card 1: Mode Indoor
-            _buildMenuCard(
-              index: '1',
+            Obx(() => _buildMenuCard(
+              index: 0,
+              numberLabel: '1',
               title: '1. Mode Dalam Ruangan',
               subtitle: 'Deteksi rintangan, perabotan & pintu',
               icon: Icons.meeting_room_rounded,
-              onTap: () => controller.openMode(VisionMode.indoor),
-              accessibilityHint: 'Ketuk dua kali untuk membuka kamera deteksi perabotan dalam ruangan',
-            ),
+              isSelected: controller.selectedMenuIndex.value == 0,
+              onTap: () => controller.handleMenuTap(0),
+              accessibilityHint: controller.selectedMenuIndex.value == 0
+                  ? 'Ketuk dua kali untuk masuk ke kamera deteksi dalam ruangan'
+                  : 'Ketuk dua kali untuk mendengarkan penjelasan fitur dan memilih',
+            )),
             const SizedBox(height: 16),
 
             // Card 2: Mode Outdoor
-            _buildMenuCard(
-              index: '2',
+            Obx(() => _buildMenuCard(
+              index: 1,
+              numberLabel: '2',
               title: '2. Mode Luar Ruangan',
               subtitle: 'Navigasi jalan raya, trotoar & bahaya',
               icon: Icons.explore_rounded,
-              onTap: () => controller.openMode(VisionMode.outdoor),
-              accessibilityHint: 'Ketuk dua kali untuk membuka kamera navigasi jalan luar ruangan',
-            ),
+              isSelected: controller.selectedMenuIndex.value == 1,
+              onTap: () => controller.handleMenuTap(1),
+              accessibilityHint: controller.selectedMenuIndex.value == 1
+                  ? 'Ketuk dua kali untuk masuk ke kamera navigasi luar ruangan'
+                  : 'Ketuk dua kali untuk mendengarkan penjelasan fitur dan memilih',
+            )),
             const SizedBox(height: 16),
 
             // Card 3: Mode Baca Uang
-            _buildMenuCard(
-              index: '3',
+            Obx(() => _buildMenuCard(
+              index: 2,
+              numberLabel: '3',
               title: '3. Mode Baca Uang',
               subtitle: 'Pindai nominal uang kertas rupiah',
               icon: Icons.payments_rounded,
-              onTap: () => controller.openMode(VisionMode.currency),
-              accessibilityHint: 'Ketuk dua kali untuk membuka kamera pembaca uang rupiah',
-            ),
+              isSelected: controller.selectedMenuIndex.value == 2,
+              onTap: () => controller.handleMenuTap(2),
+              accessibilityHint: controller.selectedMenuIndex.value == 2
+                  ? 'Ketuk dua kali untuk masuk ke kamera pembaca uang rupiah'
+                  : 'Ketuk dua kali untuk mendengarkan penjelasan fitur dan memilih',
+            )),
             const SizedBox(height: 16),
 
             // Card 4: Cari Barang (Voice Search)
-            _buildMenuCard(
-              index: '4',
+            Obx(() => _buildMenuCard(
+              index: 3,
+              numberLabel: '4',
               title: '4. Cari Barang',
               subtitle: 'Ucapkan nama barang untuk mendeteksinya',
               icon: Icons.manage_search_rounded,
-              onTap: () => controller.openItemSearch(),
-              accessibilityHint: 'Ketuk dua kali untuk membuka pencarian barang dengan suara',
-            ),
+              isSelected: controller.selectedMenuIndex.value == 3,
+              onTap: () => controller.handleMenuTap(3),
+              accessibilityHint: controller.selectedMenuIndex.value == 3
+                  ? 'Ketuk dua kali untuk masuk ke pencarian barang dengan suara'
+                  : 'Ketuk dua kali untuk mendengarkan penjelasan fitur dan memilih',
+            )),
             const SizedBox(height: 16),
 
             // Card 5: Bantuan Visual
-            _buildVisualHelpCard(
-              index: '5',
+            Obx(() => _buildVisualHelpCard(
+              index: 4,
+              numberLabel: '5',
               title: '5. Bantuan Relawan',
               subtitle: 'Panggilan langsung ke pendamping manusia',
               icon: Icons.volunteer_activism_rounded,
-              onTap: () => controller.openVisualHelp(),
-              accessibilityHint: 'Ketuk dua kali untuk membuka menu Bantuan Relawan dan pendamping manusia',
-            ),
+              isSelected: controller.selectedMenuIndex.value == 4,
+              onTap: () => controller.handleMenuTap(4),
+              accessibilityHint: controller.selectedMenuIndex.value == 4
+                  ? 'Ketuk dua kali untuk memanggil pendamping manusia'
+                  : 'Ketuk dua kali untuk mendengarkan penjelasan fitur dan memilih',
+            )),
             const SizedBox(height: 24),
           ],
         ),
@@ -306,24 +326,27 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  /// Komponen Kartu Menu Standar (Desain Putih-Biru Kontras Tinggi)
+  /// Komponen Kartu Menu Standar (Desain Putih-Biru Kontras Tinggi dengan Dukungan 2 Ketukan)
   Widget _buildMenuCard({
-    required String index,
+    required int index,
+    required String numberLabel,
     required String title,
     required String subtitle,
     required IconData icon,
+    required bool isSelected,
     required VoidCallback onTap,
     required String accessibilityHint,
   }) {
     return Semantics(
-      label: '$title. $subtitle.',
+      label: '$title. $subtitle. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk masuk." : "Ketuk dua kali untuk mendengarkan penjelasan fitur."}',
       hint: accessibilityHint,
       button: true,
+      selected: isSelected,
       child: Material(
-        color: AppColors.surface,
+        color: isSelected ? AppColors.lightBlue.withValues(alpha: 0.45) : AppColors.surface,
         borderRadius: BorderRadius.circular(22),
-        elevation: 2,
-        shadowColor: AppColors.cardShadow,
+        elevation: isSelected ? 4 : 2,
+        shadowColor: isSelected ? AppColors.primaryBlue.withValues(alpha: 0.25) : AppColors.cardShadow,
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
@@ -332,7 +355,10 @@ class HomeView extends GetView<HomeController> {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.lightBlueBorder.withValues(alpha: 0.6), width: 1.5),
+              border: Border.all(
+                color: isSelected ? AppColors.primaryBlue : AppColors.lightBlueBorder.withValues(alpha: 0.6),
+                width: isSelected ? 2.5 : 1.5,
+              ),
             ),
             child: Row(
               children: [
@@ -341,13 +367,16 @@ class HomeView extends GetView<HomeController> {
                   width: 58,
                   height: 58,
                   decoration: BoxDecoration(
-                    color: AppColors.lightBlue,
+                    color: isSelected ? AppColors.primaryBlue : AppColors.lightBlue,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.lightBlueBorder, width: 1.5),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primaryBlue : AppColors.lightBlueBorder,
+                      width: 1.5,
+                    ),
                   ),
                   child: Icon(
                     icon,
-                    color: AppColors.primaryBlue,
+                    color: isSelected ? Colors.white : AppColors.primaryBlue,
                     size: 32,
                   ),
                 ),
@@ -376,20 +405,37 @@ class HomeView extends GetView<HomeController> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                      if (isSelected) ...[
+                        const SizedBox(height: 8),
+                        const Row(
+                          children: [
+                            Icon(Icons.touch_app_rounded, color: AppColors.primaryBlue, size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'Ketuk sekali lagi untuk masuk',
+                              style: TextStyle(
+                                color: AppColors.primaryBlue,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
 
-                // Panah Navigasi
+                // Panah Navigasi / Status
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: isSelected ? AppColors.primaryBlue : AppColors.background,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: AppColors.primaryBlue,
+                  child: Icon(
+                    isSelected ? Icons.check_rounded : Icons.arrow_forward_ios_rounded,
+                    color: isSelected ? Colors.white : AppColors.primaryBlue,
                     size: 18,
                   ),
                 ),
@@ -401,24 +447,27 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  /// Komponen Kartu Bantuan Visual (Aksen Biru Kontras Tinggi)
+  /// Komponen Kartu Bantuan Visual (Aksen Biru Kontras Tinggi dengan Dukungan 2 Ketukan)
   Widget _buildVisualHelpCard({
-    required String index,
+    required int index,
+    required String numberLabel,
     required String title,
     required String subtitle,
     required IconData icon,
+    required bool isSelected,
     required VoidCallback onTap,
     required String accessibilityHint,
   }) {
     return Semantics(
-      label: '$title. $subtitle.',
+      label: '$title. $subtitle. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk memanggil." : "Ketuk dua kali untuk mendengarkan penjelasan fitur."}',
       hint: accessibilityHint,
       button: true,
+      selected: isSelected,
       child: Material(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.circular(22),
-        elevation: 4,
-        shadowColor: AppColors.primaryBlue.withValues(alpha: 0.35),
+        elevation: isSelected ? 6 : 4,
+        shadowColor: AppColors.primaryBlue.withValues(alpha: 0.4),
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
@@ -427,7 +476,10 @@ class HomeView extends GetView<HomeController> {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white24, width: 1.5),
+              border: Border.all(
+                color: isSelected ? Colors.white : Colors.white24,
+                width: isSelected ? 3.0 : 1.5,
+              ),
             ),
             child: Row(
               children: [
@@ -470,19 +522,36 @@ class HomeView extends GetView<HomeController> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                      if (isSelected) ...[
+                        const SizedBox(height: 8),
+                        const Row(
+                          children: [
+                            Icon(Icons.touch_app_rounded, color: Colors.white, size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'Ketuk sekali lagi untuk memanggil',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
 
-                // Tombol Panah
+                // Tombol Panah / Cek
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.arrow_forward_ios_rounded,
+                  child: Icon(
+                    isSelected ? Icons.check_rounded : Icons.arrow_forward_ios_rounded,
                     color: AppColors.primaryBlue,
                     size: 18,
                   ),

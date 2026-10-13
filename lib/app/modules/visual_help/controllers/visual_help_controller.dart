@@ -73,6 +73,65 @@ class VisualHelpController extends GetxController {
     );
   }
 
+  // Indeks tombol yang sedang dipilih pada ketukan pertama: 0 (Relawan), 1 (Keluarga), -1 (belum ada)
+  final RxInt selectedButtonIndex = (-1).obs;
+  Timer? _buttonSelectionTimer;
+
+  /// Menangani ketukan tombol Panggil Relawan:
+  /// - Ketukan 1: Memberi penjelasan fitur singkat dan jelas.
+  /// - Ketukan 2: Mengirim permintaan dan memanggil relawan.
+  void handleVolunteerButtonTap() {
+    if (selectedButtonIndex.value == 0) {
+      // Ketukan ke-2: Langsung panggil relawan
+      _buttonSelectionTimer?.cancel();
+      selectedButtonIndex.value = -1;
+      HapticFeedback.heavyImpact();
+      recipientTarget.value = RecipientTarget.communityVolunteers;
+      submitHelpRequest();
+    } else {
+      // Ketukan ke-1: Jelaskan fitur dan tandai seleksi
+      selectedButtonIndex.value = 0;
+      HapticFeedback.mediumImpact();
+      ttsService.speak(
+        'Panggil Relawan. Menghubungi relawan terdekat melalui kamera dan suara untuk bantuan visual umum. Ketuk sekali lagi untuk memanggil.',
+        isUrgent: true,
+      );
+      _buttonSelectionTimer?.cancel();
+      _buttonSelectionTimer = Timer(const Duration(seconds: 6), () {
+        if (selectedButtonIndex.value == 0) {
+          selectedButtonIndex.value = -1;
+        }
+      });
+    }
+  }
+
+  /// Menangani ketukan tombol Kontak Keluarga:
+  /// - Ketukan 1: Memberi penjelasan fitur singkat dan jelas.
+  /// - Ketukan 2: Membuka daftar kontak tepercaya keluarga.
+  void handleContactsButtonTap() {
+    if (selectedButtonIndex.value == 1) {
+      // Ketukan ke-2: Buka halaman kontak
+      _buttonSelectionTimer?.cancel();
+      selectedButtonIndex.value = -1;
+      HapticFeedback.heavyImpact();
+      Get.toNamed(Routes.TRUSTED_CONTACTS);
+    } else {
+      // Ketukan ke-1: Jelaskan fitur dan tandai seleksi
+      selectedButtonIndex.value = 1;
+      HapticFeedback.mediumImpact();
+      ttsService.speak(
+        'Kontak Keluarga. Panggilan langsung WhatsApp atau telepon ke keluarga atau orang terdekat. Ketuk sekali lagi untuk membuka.',
+        isUrgent: true,
+      );
+      _buttonSelectionTimer?.cancel();
+      _buttonSelectionTimer = Timer(const Duration(seconds: 6), () {
+        if (selectedButtonIndex.value == 1) {
+          selectedButtonIndex.value = -1;
+        }
+      });
+    }
+  }
+
   /// Penjelasan suara saat formulir tambah kontak dibuka
   void speakAddContactHelp() {
     ttsService.speak(
@@ -563,6 +622,7 @@ class VisualHelpController extends GetxController {
 
   @override
   void onClose() {
+    _buttonSelectionTimer?.cancel();
     _stopCountdown();
     _stopHandshakeTimer();
     targetNameController.dispose();

@@ -10,6 +10,19 @@ import '../../detector/controllers/detector_controller.dart';
 class HomeController extends GetxController {
   final RxInt activeMenuIndex = 0.obs;
 
+  // Indeks menu yang sedang terpilih pada ketukan pertama (-1 jika belum ada yang dipilih)
+  final RxInt selectedMenuIndex = (-1).obs;
+  Timer? _selectionTimer;
+
+  // Penjelasan fitur singkat dan jelas untuk ketukan pertama
+  final List<String> menuExplanations = [
+    'Mode Dalam Ruangan. Mendeteksi rintangan, perabotan, dan pintu di sekitar Anda di dalam ruangan. Ketuk sekali lagi untuk masuk.',
+    'Mode Luar Ruangan. Memandu navigasi jalan, trotoar, dan rintangan di luar ruangan. Ketuk sekali lagi untuk masuk.',
+    'Mode Baca Uang. Memindai dan membacakan nominal uang rupiah secara otomatis. Ketuk sekali lagi untuk masuk.',
+    'Cari Barang. Membantu mencari benda tertentu dengan menyebutkan namanya melalui suara. Ketuk sekali lagi untuk masuk.',
+    'Bantuan Relawan. Menghubungkan Anda ke pendamping manusia secara langsung melalui video dan suara. Ketuk sekali lagi untuk masuk.',
+  ];
+
   final List<String> menuTitles = [
     'Mode Dalam Ruangan, mendeteksi perabotan dan pintu',
     'Mode Luar Ruangan, mendeteksi rintangan dan jalan di luar',
@@ -18,26 +31,74 @@ class HomeController extends GetxController {
     'Bantuan Relawan, panggilan langsung ke pendamping manusia',
   ];
 
+  /// Menangani ketukan pada kartu menu:
+  /// - Ketukan ke-1: Mengumumkan suara penjelasan fitur yang singkat dan jelas.
+  /// - Ketukan ke-2: Membuka menu/mode tersebut.
+  void handleMenuTap(int index) {
+    if (isSosCountdownActive.value) {
+      cancelEmergencySOS();
+      return;
+    }
+
+    if (selectedMenuIndex.value == index) {
+      // KETUKAN KE-2: Masuk ke menu!
+      _selectionTimer?.cancel();
+      selectedMenuIndex.value = -1;
+      HapticFeedback.heavyImpact();
+      activateMenuIndex(index);
+    } else {
+      // KETUKAN KE-1: Pilih menu dan bacakan penjelasan fitur
+      selectedMenuIndex.value = index;
+      activeMenuIndex.value = index;
+      HapticFeedback.mediumImpact();
+
+      final explanation = index >= 0 && index < menuExplanations.length
+          ? menuExplanations[index]
+          : 'Menu dipilih. Ketuk sekali lagi untuk masuk.';
+      _ttsService.speak(explanation, isUrgent: true);
+
+      // Batalkan seleksi otomatis setelah 6 detik jika tidak diketuk ulang
+      _selectionTimer?.cancel();
+      _selectionTimer = Timer(const Duration(seconds: 6), () {
+        if (selectedMenuIndex.value == index) {
+          selectedMenuIndex.value = -1;
+        }
+      });
+    }
+  }
+
   void nextMenu() {
-    activeMenuIndex.value = (activeMenuIndex.value + 1) % menuTitles.length;
+    activeMenuIndex.value = (activeMenuIndex.value + 1) % menuExplanations.length;
+    selectedMenuIndex.value = activeMenuIndex.value;
     HapticFeedback.selectionClick();
     _announceSelectedMenu();
   }
 
   void previousMenu() {
-    activeMenuIndex.value = (activeMenuIndex.value - 1 + menuTitles.length) % menuTitles.length;
+    activeMenuIndex.value = (activeMenuIndex.value - 1 + menuExplanations.length) % menuExplanations.length;
+    selectedMenuIndex.value = activeMenuIndex.value;
     HapticFeedback.selectionClick();
     _announceSelectedMenu();
   }
 
   void _announceSelectedMenu() {
     final idx = activeMenuIndex.value;
-    final total = menuTitles.length;
-    _ttsService.speak('Pilihan ${idx + 1} dari $total: ${menuTitles[idx]}. Ketuk dua kali untuk memilih.');
+    final total = menuExplanations.length;
+    _ttsService.speak(
+      'Pilihan ${idx + 1} dari $total: ${menuExplanations[idx]}',
+      isUrgent: true,
+    );
+
+    _selectionTimer?.cancel();
+    _selectionTimer = Timer(const Duration(seconds: 6), () {
+      if (selectedMenuIndex.value == idx) {
+        selectedMenuIndex.value = -1;
+      }
+    });
   }
 
-  void activateCurrentMenu() {
-    switch (activeMenuIndex.value) {
+  void activateMenuIndex(int index) {
+    switch (index) {
       case 0:
         openMode(VisionMode.indoor);
         break;
@@ -54,6 +115,11 @@ class HomeController extends GetxController {
         openVisualHelp();
         break;
     }
+  }
+
+  void activateCurrentMenu() {
+    final target = selectedMenuIndex.value != -1 ? selectedMenuIndex.value : activeMenuIndex.value;
+    activateMenuIndex(target);
   }
 
   // Status Hitung Mundur Darurat (SOS)
@@ -159,5 +225,12 @@ class HomeController extends GetxController {
       'Ketuk dua kali menu mana saja untuk mengaktifkannya.',
       isUrgent: true,
     );
+  }
+
+  @override
+  void onClose() {
+    _selectionTimer?.cancel();
+    _sosCountdownTimer?.cancel();
+    super.onClose();
   }
 }
