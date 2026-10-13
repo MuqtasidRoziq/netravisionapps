@@ -121,6 +121,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   DateTime _lastOcrScanTime = DateTime.fromMillisecondsSinceEpoch(0);
   String? _lastOcrVerifiedNominal;
   DateTime _lastOcrVerifiedTime = DateTime.fromMillisecondsSinceEpoch(0);
+  Timer? _currencyOcrTimer;
+  int _consecutiveEmptyOcrCount = 0;
 
   /// Konfigurasi model untuk mode aktif (sumber tunggal di
   /// [VisionModelConfig]): path model, task, dan ambang threshold.
@@ -154,6 +156,13 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       numItemsThreshold: _maxNumItems,
     );
 
+    // Khusus mode baca uang: sembunyikan kotak visual keliru bawaan model
+    // dan mulai pemindaian OCR aktif mandiri
+    if (mode == VisionMode.currency) {
+      yoloController.setShowOverlays(false);
+      _startCurrencyOcrTimer();
+    }
+
     if (mode == VisionMode.outdoor) {
       isOutdoor.value = true;
       _setupNavigation();
@@ -168,6 +177,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
         // Hentikan suara & preview saat app ke background agar hemat baterai.
+        _currencyOcrTimer?.cancel();
         ttsService.stop();
         vibrationService.stop();
         yoloController.pause();
@@ -175,6 +185,10 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         if (!isPaused.value) {
           yoloController.resume();
+          if (mode == VisionMode.currency) {
+            yoloController.setShowOverlays(false);
+            _startCurrencyOcrTimer();
+          }
         }
         break;
       case AppLifecycleState.detached:
@@ -190,6 +204,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       numItemsThreshold: _maxNumItems,
     );
     if (mode == VisionMode.currency) {
+      yoloController.setShowOverlays(false);
+      _startCurrencyOcrTimer();
       currentStatusText.value = 'Arahkan uang ke kamera...';
     } else if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
       currentStatusText.value = 'Mencari "$targetItem" di depan Anda...';
@@ -419,12 +435,23 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   // ====================== Validasi Nominal Uang (OCR) ======================
 
+  void _startCurrencyOcrTimer() {
+    _currencyOcrTimer?.cancel();
+    _currencyOcrTimer = Timer.periodic(const Duration(milliseconds: 700), (_) {
+      if (!isPaused.value && mode == VisionMode.currency) {
+        _runCurrencyOcrVerification();
+      }
+    });
+  }
+
   /// Memverifikasi angka nominal uang kertas Rupiah menggunakan Google ML Kit OCR on-device.
   Future<void> _runCurrencyOcrVerification({bool isUrgent = false}) async {
-    if (_isOcrBusy || _currencyOcr == null || mode != VisionMode.currency) return;
+    if (_isOcrBusy || _currencyOcr == null || mode != VisionMode.currency || isPaused.value) {
+      return;
+    }
 
     final now = DateTime.now();
-    if (!isUrgent && now.difference(_lastOcrScanTime).inMilliseconds < 1200) {
+    if (!isUrgent && now.difference(_lastOcrScanTime).inMilliseconds < 600) {
       return;
     }
     _lastOcrScanTime = now;
@@ -435,14 +462,26 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       if (bytes != null && bytes.isNotEmpty) {
         final String? recognizedNominal = await _currencyOcr?.recognizeRupiah(bytes);
         if (recognizedNominal != null) {
+          _consecutiveEmptyOcrCount = 0;
           _lastOcrVerifiedNominal = recognizedNominal;
           _lastOcrVerifiedTime = DateTime.now();
           _announceVerifiedRupiah(recognizedNominal, isUrgent: isUrgent);
-        } else if (isUrgent) {
-          ttsService.speak(
-            'Angka nominal belum terbaca jelas. Ratakan dan dekatkan uang ke kamera.',
-            isUrgent: true,
-          );
+        } else {
+          _consecutiveEmptyOcrCount++;
+          // Bila uang sudah dijauhkan dari pandangan kamera selama > 2.5 detik
+          if (_consecutiveEmptyOcrCount >= 4) {
+            if (_lastOcrVerifiedNominal != null) {
+              _lastOcrVerifiedNominal = null;
+              _lastAnnouncedLabel = '';
+              currentStatusText.value = 'Arahkan uang ke kamera...';
+            }
+          }
+          if (isUrgent) {
+            ttsService.speak(
+              'Angka nominal belum terbaca jelas. Pastikan angka uang menghadap kamera.',
+              isUrgent: true,
+            );
+          }
         }
       }
     } catch (_) {
@@ -467,6 +506,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       _lastAnnouncedLabel = nominal;
       _lastAnnounceTime = now;
       ttsService.speak(speechText, isUrgent: true);
+      HapticFeedback.mediumImpact();
     }
   }
 
@@ -712,10 +752,15 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   void togglePause() {
     isPaused.value = !isPaused.value;
     if (isPaused.value) {
+      _currencyOcrTimer?.cancel();
       yoloController.pause();
       ttsService.speak('Deteksi dijeda');
     } else {
       yoloController.resume();
+      if (mode == VisionMode.currency) {
+        yoloController.setShowOverlays(false);
+        _startCurrencyOcrTimer();
+      }
       ttsService.speak('Deteksi dilanjutkan');
     }
   }
@@ -728,6 +773,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     vibrationService.stop();
 
     // 2. Jeda deteksi kamera agar tidak bentrok dengan video call
+    _currencyOcrTimer?.cancel();
     yoloController.pause();
     isPaused.value = true;
 
@@ -767,11 +813,16 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   void resumeDetection() {
     isPaused.value = false;
     yoloController.resume();
+    if (mode == VisionMode.currency) {
+      yoloController.setShowOverlays(false);
+      _startCurrencyOcrTimer();
+    }
     ttsService.speak('Kamera deteksi diaktifkan kembali');
   }
 
   @override
   void onClose() {
+    _currencyOcrTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();
     _compassSub?.cancel();

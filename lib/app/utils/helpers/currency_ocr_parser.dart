@@ -47,42 +47,42 @@ class CurrencyOcrParser {
   static final List<({RegExp regex, String nominal})> _digitPatterns = [
     // 100.000 / 100000
     (
-      regex: RegExp(r'\b100[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)100[.,\s]?000(?!\d)'),
       nominal: '100000',
     ),
     // 75.000 / 75000
     (
-      regex: RegExp(r'\b75[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)75[.,\s]?000(?!\d)'),
       nominal: '75000',
     ),
     // 50.000 / 50000
     (
-      regex: RegExp(r'\b50[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)50[.,\s]?000(?!\d)'),
       nominal: '50000',
     ),
     // 20.000 / 20000
     (
-      regex: RegExp(r'\b20[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)20[.,\s]?000(?!\d)'),
       nominal: '20000',
     ),
     // 10.000 / 10000
     (
-      regex: RegExp(r'\b10[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)10[.,\s]?000(?!\d)'),
       nominal: '10000',
     ),
     // 5.000 / 5000
     (
-      regex: RegExp(r'\b5[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)5[.,\s]?000(?!\d)'),
       nominal: '5000',
     ),
     // 2.000 / 2000
     (
-      regex: RegExp(r'\b2[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)2[.,\s]?000(?!\d)'),
       nominal: '2000',
     ),
     // 1.000 / 1000
     (
-      regex: RegExp(r'\b1[.,\s]?000\b'),
+      regex: RegExp(r'(?<!\d)1[.,\s]?000(?!\d)'),
       nominal: '1000',
     ),
   ];
@@ -95,6 +95,7 @@ class CurrencyOcrParser {
     if (ocrText.trim().isEmpty) return null;
 
     final normalized = ocrText.replaceAll('\n', ' ').trim();
+    final upper = normalized.toUpperCase();
 
     // 1. Prioritas Utama: Kata nominal tertulis (mis. "DUA RIBU RUPIAH", "LIMA PULUH RIBU")
     // Teks tulisan sangat kuat dan tidak rentan salah deteksi noise.
@@ -104,16 +105,36 @@ class CurrencyOcrParser {
       }
     }
 
-    // 2. Prioritas Kedua: Angka nominal tertera (mis. "2000", "2.000", "50000", "50.000")
+    // 2. Prioritas Kedua: Angka nominal tertera dengan batas digit tegas
+    final matchedNominals = <String>[];
     for (final pattern in _digitPatterns) {
       if (pattern.regex.hasMatch(normalized)) {
-        return pattern.nominal;
+        matchedNominals.add(pattern.nominal);
       }
+    }
+
+    if (matchedNominals.isNotEmpty) {
+      // Jika hanya ada 1 kecocokan, langsung kembalikan
+      if (matchedNominals.length == 1) {
+        return matchedNominals.first;
+      }
+      // Jika ada lebih dari satu kecocokan (mis. noise serial number 50000 dan nominal asli 2000):
+      // Berikan prioritas pada teks petunjuk kata pada uang
+      if (matchedNominals.contains('2000') && (upper.contains('DUA') || !upper.contains('LIMA'))) {
+        return '2000';
+      }
+      if (matchedNominals.contains('50000') && (upper.contains('PULUH') || upper.contains('LIMA'))) {
+        return '50000';
+      }
+      return matchedNominals.first;
     }
 
     // 3. Toleransi Khusus OCR parsial: jika ada angka "2000" yang sedikit terpotong atau "Rp 2000"
     final cleanDigits = normalized.replaceAll(RegExp(r'[^0-9]'), ' ');
-    final tokens = cleanDigits.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    final tokens = cleanDigits.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+    if (tokens.contains('2000') && (upper.contains('DUA') || !tokens.contains('50000'))) {
+      return '2000';
+    }
     for (final token in tokens) {
       switch (token) {
         case '100000':

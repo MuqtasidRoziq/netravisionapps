@@ -41,6 +41,13 @@ void main() {
       expect(CurrencyOcrParser.extractNominal('SERIBU RUPIAH'), '1000');
     });
 
+    test('disambiguasi 2000 vs 50000 saat ada noise serial number', () {
+      expect(CurrencyOcrParser.extractNominal('TAA 500012 2000'), '2000');
+      expect(CurrencyOcrParser.extractNominal('DUA RIBU RUPIAH 50000'), '2000');
+      expect(CurrencyOcrParser.extractNominal('BANK INDONESIA DUA RIBU 2000'), '2000');
+      expect(CurrencyOcrParser.extractNominal('LIMA PULUH RIBU RUPIAH 2000'), '50000');
+    });
+
     test('menolak teks keyboard, laptop, dan noise acak', () {
       expect(CurrencyOcrParser.extractNominal(''), isNull);
       expect(CurrencyOcrParser.extractNominal('ASUS ROG Intel Core i7'), isNull);

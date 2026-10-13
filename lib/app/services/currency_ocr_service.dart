@@ -35,25 +35,63 @@ class CurrencyOcrService extends GetxService {
 
       final inputImage = InputImage.fromFilePath(file.path);
       final recognizedText = await _textRecognizer.processImage(inputImage);
+      final rawText = recognizedText.text.toUpperCase();
 
-      // 1. Periksa teks gabungan seluruh gambar
+      // 1. Prioritas Tertinggi: Teks tulisan nominal resmi Bank Indonesia
+      if (rawText.contains('DUA RIBU') || rawText.contains('DUARIBU')) {
+        return '2000';
+      }
+      if (rawText.contains('LIMA PULUH') || rawText.contains('50 RIBU')) {
+        return '50000';
+      }
+      if (rawText.contains('SERATUS RIBU')) {
+        return '100000';
+      }
+      if (rawText.contains('SEPULUH RIBU')) {
+        return '10000';
+      }
+      if (rawText.contains('DUA PULUH') || rawText.contains('20 RIBU')) {
+        return '20000';
+      }
+      if (rawText.contains('LIMA RIBU') && !rawText.contains('PULUH')) {
+        return '5000';
+      }
+      if (rawText.contains('SERIBU') || rawText.contains('SATU RIBU')) {
+        return '1000';
+      }
+      if (rawText.contains('TUJUH PULUH LIMA')) {
+        return '75000';
+      }
+
+      // 2. Periksa teks gabungan seluruh gambar via parser angka
       final overall = CurrencyOcrParser.extractNominal(recognizedText.text);
       if (overall != null) {
         return overall;
       }
 
-      // 2. Periksa blok dan baris secara individual (untuk teks uang yang tersebar di sudut)
+      // 3. Periksa blok dan baris secara individual
+      final candidates = <String>[];
       for (final block in recognizedText.blocks) {
         final blockNominal = CurrencyOcrParser.extractNominal(block.text);
         if (blockNominal != null) {
-          return blockNominal;
+          candidates.add(blockNominal);
         }
-        for (final line in block.lines) {
-          final lineNominal = CurrencyOcrParser.extractNominal(line.text);
-          if (lineNominal != null) {
-            return lineNominal;
+      }
+
+      if (candidates.isNotEmpty) {
+        final counts = <String, int>{};
+        for (final c in candidates) {
+          counts[c] = (counts[c] ?? 0) + 1;
+        }
+        String best = candidates.first;
+        int maxCount = 0;
+        counts.forEach((nom, count) {
+          if (count > maxCount) {
+            maxCount = count;
+            best = nom;
           }
-        }
+        });
+        return best;
       }
 
       return null;
