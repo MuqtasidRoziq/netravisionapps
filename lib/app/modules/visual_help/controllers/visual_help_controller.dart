@@ -61,7 +61,23 @@ class VisualHelpController extends GetxController {
   void onReady() {
     super.onReady();
     ttsService.speak(
-      'Menu Bantuan Visual. Ketuk dua kali di mana saja untuk memanggil relawan, atau pilih kontak keluarga.',
+      'Menu Bantuan Visual. Ketuk dua kali di mana saja untuk memanggil relawan bantuan umum, atau pilih kontak keluarga.',
+    );
+  }
+
+  /// Penjelasan suara ramah saat masuk ke halaman Kontak Tepercaya
+  void speakTrustedContactsIntro() {
+    ttsService.speak(
+      'Halaman Kontak Tepercaya. Jika nomor belum tersimpan atau Anda kesulitan mengetik, minta bantuan keluarga atau orang terdekat untuk mengisikan nomor WhatsApp atau telepon pada tombol Tambah Kontak.',
+      isUrgent: true,
+    );
+  }
+
+  /// Penjelasan suara saat formulir tambah kontak dibuka
+  void speakAddContactHelp() {
+    ttsService.speak(
+      'Formulir tambah kontak dibuka. Silakan minta keluarga atau orang terdekat untuk mengetikkan nama dan nomor telepon atau WhatsApp.',
+      isUrgent: true,
     );
   }
 
@@ -243,8 +259,8 @@ class VisualHelpController extends GetxController {
     );
 
     ttsService.speak(
-      'Mengirim permintaan bantuan visual: ${context.taskType.label}. '
-      'Kamera belakang dan mikrofon belum dibagikan sebelum terhubung.',
+      'Menghubungkan ke relawan bantuan visual. '
+      'Kamera belakang dan mikrofon baru akan aktif setelah relawan menjawab panggilan.',
       isUrgent: true,
     );
 

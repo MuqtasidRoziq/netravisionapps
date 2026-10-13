@@ -25,14 +25,14 @@ class VisionModelConfig {
 
   static const Map<VisionMode, VisionModelConfig> byMode = {
     VisionMode.currency: VisionModelConfig(
-      modelPath: 'assets/models/rupiah/rupiah.tflite',
+      modelPath: 'assets/models/rupiah/best.tflite',
       task: YOLOTask.detect,
       confidenceThreshold: 0.65,
       iouThreshold: 0.50,
     ),
     VisionMode.outdoor: VisionModelConfig(
-      modelPath: 'assets/models/outdoor/netravision_out.tflite',
-      task: YOLOTask.segment,
+      modelPath: 'assets/models/indoor/indoor_objects.tflite',
+      task: YOLOTask.detect,
       confidenceThreshold: 0.45,
       iouThreshold: 0.45,
     ),
@@ -44,8 +44,16 @@ class VisionModelConfig {
       confidenceThreshold: 0.45,
       iouThreshold: 0.45,
     ),
+    // Mode Cari Barang: gunakan model indoor (COCO 80 kelas) dengan threshold
+    // lebih rendah agar lebih sensitif mendeteksi barang yang dicari user.
+    VisionMode.itemSearch: VisionModelConfig(
+      modelPath: 'assets/models/indoor/indoor_objects.tflite',
+      task: YOLOTask.detect,
+      confidenceThreshold: 0.35,
+      iouThreshold: 0.40,
+    ),
   };
 
   static VisionModelConfig forMode(VisionMode mode) =>
-      byMode[mode] ?? byMode[VisionMode.outdoor]!;
+      byMode[mode] ?? byMode[VisionMode.indoor]!;
 }

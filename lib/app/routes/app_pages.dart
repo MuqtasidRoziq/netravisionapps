@@ -4,6 +4,8 @@ import '../modules/detector/bindings/detector_binding.dart';
 import '../modules/detector/views/detector_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
+import '../modules/item_search/bindings/item_search_binding.dart';
+import '../modules/item_search/views/item_search_view.dart';
 import '../modules/splash/bindings/splash_binding.dart';
 import '../modules/splash/views/splash_view.dart';
 
@@ -36,6 +38,12 @@ class AppPages {
       page: () => const DetectorView(),
       binding: DetectorBinding(),
       transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: _Paths.ITEM_SEARCH,
+      page: () => const ItemSearchView(),
+      binding: ItemSearchBinding(),
+      transition: Transition.rightToLeft,
     ),
     GetPage(
       name: _Paths.VISUAL_HELP,

@@ -6,6 +6,7 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import '../../../data/models/vision_mode.dart';
 import '../../../utils/constants/app_colors.dart';
 import '../controllers/detector_controller.dart';
+import 'widgets/navigation_map_embed.dart';
 
 class DetectorView extends GetView<DetectorController> {
   const DetectorView({super.key});
@@ -15,7 +16,11 @@ class DetectorView extends GetView<DetectorController> {
     return Obx(() {
       final subtitle = controller.mode == VisionMode.currency
           ? 'Ketuk layar kapan saja untuk mengulang nominal uang'
-          : 'Ketuk layar kapan saja untuk cek rintangan';
+          : controller.mode == VisionMode.outdoor
+              ? (controller.navStatus.value.isNotEmpty
+                  ? controller.navStatus.value
+                  : 'Ketuk mikrofon pada peta untuk menyebutkan tujuan')
+              : 'Ketuk layar kapan saja untuk cek rintangan';
 
       return Scaffold(
         backgroundColor: Colors.black,
@@ -102,6 +107,22 @@ class DetectorView extends GetView<DetectorController> {
                 right: 16,
                 child: _buildBottomStatusBar(subtitle),
               ),
+
+              // 4. Peta kecil navigasi — hanya Mode Jalan (di atas kamera).
+              if (controller.isOutdoor.value)
+                Obx(
+                  () => Positioned(
+                    left: 12,
+                    top: 72,
+                    width: controller.mapExpanded.value
+                        ? MediaQuery.of(context).size.width - 24
+                        : 200,
+                    height: controller.mapExpanded.value
+                        ? MediaQuery.of(context).size.height - 170
+                        : 240,
+                    child: NavigationMapEmbed(controller: controller),
+                  ),
+                ),
             ],
           ),
         ),

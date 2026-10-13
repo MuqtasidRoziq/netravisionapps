@@ -26,6 +26,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # (file .tflite, file labels, task) — urutan baris labels.txt = urutan class index.
+# Model uang tersedia dua kali nama (rupiah.tflite & netra_rupiah.tflite) yang
+# identik; keduanya di-append agar file mana pun yang dipakai config tetap punya
+# label.
 TARGETS = [
     (
         REPO_ROOT / "assets/models/rupiah/rupiah.tflite",
@@ -33,7 +36,7 @@ TARGETS = [
         "detect",
     ),
     (
-        REPO_ROOT / "assets/models/netra_rupiah.tflite",
+        REPO_ROOT / "assets/models/rupiah/best.tflite",
         REPO_ROOT / "assets/models/rupiah/labels.txt",
         "detect",
     ),

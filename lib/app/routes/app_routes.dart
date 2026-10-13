@@ -6,6 +6,7 @@ abstract class Routes {
   static const SPLASH = _Paths.SPLASH;
   static const HOME = _Paths.HOME;
   static const DETECTOR = _Paths.DETECTOR;
+  static const ITEM_SEARCH = _Paths.ITEM_SEARCH;
   static const VISUAL_HELP = _Paths.VISUAL_HELP;
   static const VISUAL_HELP_WAITING = _Paths.VISUAL_HELP_WAITING;
   static const VISUAL_HELP_CALL = _Paths.VISUAL_HELP_CALL;
@@ -17,6 +18,7 @@ abstract class _Paths {
   static const SPLASH = '/splash';
   static const HOME = '/home';
   static const DETECTOR = '/detector';
+  static const ITEM_SEARCH = '/item-search';
   static const VISUAL_HELP = '/visual-help';
   static const VISUAL_HELP_WAITING = '/visual-help-waiting';
   static const VISUAL_HELP_CALL = '/visual-help-call';

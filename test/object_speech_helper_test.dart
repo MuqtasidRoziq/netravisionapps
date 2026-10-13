@@ -46,6 +46,63 @@ void main() {
     });
   });
 
+  group('ObjectSpeechHelper.shouldAnnounce (whitelist uang)', () {
+    test('mode uang hanya meloloskan nominal kertas', () {
+      for (final label in [
+        '1000',
+        '2000',
+        '5000',
+        '10000',
+        '20000',
+        '50000',
+        '75000',
+        '100000',
+      ]) {
+        expect(
+          ObjectSpeechHelper.shouldAnnounce(label, VisionMode.currency),
+          isTrue,
+          reason: '$label harus diumumkan di Mode Baca Uang',
+        );
+      }
+    });
+
+    test('mode uang hanya meloloskan koin (coin_<nominal>)', () {
+      for (final label in [
+        'coin_1000',
+        'coin_500',
+        'coin_200',
+        'coin_100',
+        'coin_50',
+      ]) {
+        expect(
+          ObjectSpeechHelper.shouldAnnounce(label, VisionMode.currency),
+          isTrue,
+          reason: '$label harus diumumkan di Mode Baca Uang',
+        );
+      }
+    });
+
+    test('mode uang menolak label non-uang (fallback class N, objek lain)', () {
+      for (final label in ['class 0', 'class 1', 'class 13', 'mobil',
+          'orang', 'uang', 'kursi', '']) {
+        expect(
+          ObjectSpeechHelper.shouldAnnounce(label, VisionMode.currency),
+          isFalse,
+          reason: '$label bukan uang sehingga harus ditolak',
+        );
+      }
+    });
+
+    test('whitelist uang tidak mengubah mode lain', () {
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('mobil', VisionMode.outdoor),
+          isTrue);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('class 0', VisionMode.indoor),
+          isTrue);
+    });
+  });
+
   group('ObjectSpeechHelper.isDangerousObstacle', () {
     test('mengenali rintangan berbahaya (huruf besar/kecil tidak masalah)', () {
       for (final label in [

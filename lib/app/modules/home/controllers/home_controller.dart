@@ -14,6 +14,7 @@ class HomeController extends GetxController {
     'Mode Dalam Ruangan, mendeteksi perabotan dan pintu',
     'Mode Luar Ruangan, mendeteksi rintangan dan jalan di luar',
     'Mode Baca Uang, memindai nominal uang rupiah',
+    'Cari Barang, ucapkan nama barang untuk mendeteksinya',
     'Bantuan Relawan, panggilan langsung ke pendamping manusia',
   ];
 
@@ -47,6 +48,9 @@ class HomeController extends GetxController {
         openMode(VisionMode.currency);
         break;
       case 3:
+        openItemSearch();
+        break;
+      case 4:
         openVisualHelp();
         break;
     }
@@ -129,6 +133,13 @@ class HomeController extends GetxController {
     Get.toNamed(Routes.DETECTOR, arguments: mode);
   }
 
+  /// Membuka halaman Cari Barang (speech-to-search)
+  void openItemSearch() {
+    HapticFeedback.mediumImpact();
+    _ttsService.speak('Membuka Cari Barang. Gunakan suara untuk mencari barang.');
+    Get.toNamed(Routes.ITEM_SEARCH);
+  }
+
   /// Fitur Bantuan Visual
   void openVisualHelp() {
     HapticFeedback.mediumImpact();
@@ -143,7 +154,8 @@ class HomeController extends GetxController {
       'Panduan NetraVision. Menu satu: Mode Indoor untuk mendeteksi perabotan di dalam rumah. '
       'Menu dua: Mode Outdoor untuk mendeteksi jalan dan rintangan luar ruangan. '
       'Menu tiga: Mode Baca Uang untuk memindai uang rupiah. '
-      'Menu empat: Bantuan Visual untuk meminta bantuan relawan via kamera dan audio. '
+      'Menu empat: Cari Barang, ucapkan nama barang yang ingin dicari. '
+      'Menu lima: Bantuan Visual untuk meminta bantuan relawan via kamera dan audio. '
       'Ketuk dua kali menu mana saja untuk mengaktifkannya.',
       isUrgent: true,
     );

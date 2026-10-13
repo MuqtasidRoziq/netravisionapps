@@ -94,8 +94,8 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                 ),
                 const SizedBox(height: 24),
 
-                // Konteks Tugas yang Dikirim
-                if (req != null)
+                // Konteks Tugas yang Diteruskan (Hanya jika ada konteks spesifik dari deteksi AI)
+                if (req != null && (req.taskContext.targetName != null || req.taskContext.taskType != TaskType.generalHelp))
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -107,7 +107,7 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Konteks yang dibagikan:',
+                          'Konteks yang diteruskan:',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 13,

@@ -6,7 +6,9 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   flutter_tts
   flutter_webrtc
+  geolocator_windows
   livekit_client
+  speech_to_text_windows
   url_launcher_windows
 )
 

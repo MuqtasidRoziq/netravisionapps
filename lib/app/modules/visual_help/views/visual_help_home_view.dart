@@ -160,8 +160,8 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
             Expanded(
               flex: 4,
               child: Semantics(
-                label: 'Tombol Kedua: Kontak Keluarga. Hubungi keluarga atau kontak darurat.',
-                hint: 'Ketuk dua kali untuk membuka daftar nomor telepon keluarga.',
+                label: 'Tombol Kedua: Kontak Keluarga Tepercaya. Hubungi keluarga via WhatsApp atau telepon darurat. Minta orang terdekat untuk mengisi nomor bila belum ada.',
+                hint: 'Ketuk dua kali untuk membuka kontak keluarga.',
                 button: true,
                 child: Material(
                   color: AppColors.surface,
@@ -172,6 +172,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                     borderRadius: BorderRadius.circular(24),
                     onTap: () {
                       HapticFeedback.mediumImpact();
+                      controller.speakTrustedContactsIntro();
                       Get.toNamed(Routes.TRUSTED_CONTACTS);
                     },
                     child: Container(
@@ -215,7 +216,7 @@ class VisualHelpHomeView extends GetView<VisualHelpController> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  'Panggilan langsung WhatsApp / telepon darurat',
+                                  'Panggilan langsung WhatsApp / telepon.\nMinta orang terdekat mengisi nomor.',
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 13,

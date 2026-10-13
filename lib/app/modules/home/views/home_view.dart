@@ -190,10 +190,21 @@ class HomeView extends GetView<HomeController> {
             ),
             const SizedBox(height: 16),
 
-            // Card 4: Bantuan Visual
-            _buildVisualHelpCard(
+            // Card 4: Cari Barang (Voice Search)
+            _buildMenuCard(
               index: '4',
-              title: '4. Bantuan Relawan',
+              title: '4. Cari Barang',
+              subtitle: 'Ucapkan nama barang untuk mendeteksinya',
+              icon: Icons.manage_search_rounded,
+              onTap: () => controller.openItemSearch(),
+              accessibilityHint: 'Ketuk dua kali untuk membuka pencarian barang dengan suara',
+            ),
+            const SizedBox(height: 16),
+
+            // Card 5: Bantuan Visual
+            _buildVisualHelpCard(
+              index: '5',
+              title: '5. Bantuan Relawan',
               subtitle: 'Panggilan langsung ke pendamping manusia',
               icon: Icons.volunteer_activism_rounded,
               onTap: () => controller.openVisualHelp(),

@@ -57,8 +57,6 @@ class ObjectSpeechHelper {
     final clean = label.trim().toLowerCase();
     if (_ignoredLabels.contains(clean)) return false;
     if (mode == VisionMode.currency) {
-      // Khusus mode baca uang: HANYA izinkan jika label termasuk 13 pecahan Rupiah resmi.
-      // Objek non-uang (seperti keyboard, laptop, orang, meja, dll) ditolak mutlak.
       return _currencyNames.containsKey(clean);
     }
     return clean.isNotEmpty;

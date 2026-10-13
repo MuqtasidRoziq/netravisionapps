@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'app/routes/app_pages.dart';
+import 'app/services/compass_service.dart';
+import 'app/services/location_service.dart';
 import 'app/services/contacts_service.dart';
 import 'app/services/fallback_service.dart';
 import 'app/services/livekit_call_service.dart';
@@ -16,6 +18,8 @@ void main() async {
   // Inisialisasi Service Global (Single Instance untuk seluruh aplikasi)
   await Get.putAsync(() => TtsService().init());
   await Get.putAsync(() async => VibrationService());
+  await Get.putAsync(() async => LocationService());
+  await Get.putAsync(() async => CompassService());
   await Get.putAsync(() => ContactsService().init());
   Get.put(FallbackService());
   await Get.putAsync(() => VisualHelpService().init());

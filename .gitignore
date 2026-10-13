@@ -48,3 +48,11 @@ app.*.map.json
 .widget_preview/
 
 # assets/models/*
+
+# Google Cloud / Maps API keys (jangan pernah di-commit)
+android/key.properties
+local.keys.properties
+# Flutter --dart-define disuntik saat build, bukan di kode
+*.keys.dart
+
+.env
