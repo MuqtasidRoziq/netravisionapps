@@ -1142,12 +1142,31 @@
       }
     }
 
+    function sanitizeDescription(desc) {
+      if (!desc) return 'Bantuan Umum Visual';
+      return String(desc)
+        .replace(/\s*\(\+?[\d\s-]+\)/g, '')
+        .replace(/\b(\+?62|08)[\d\s-]{7,15}\b/g, '')
+        .trim() || 'Bantuan Umum Visual';
+    }
+
+    function sanitizeName(name) {
+      if (!name) return 'Pengguna Netra';
+      const clean = String(name)
+        .replace(/\s*\(\+?[\d\s-]+\)/g, '')
+        .replace(/\b(\+?62|08)[\d\s-]{7,15}\b/g, '')
+        .trim();
+      return clean || 'Pengguna Netra';
+    }
+
     function showSystemNotification(req) {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
       const title = '🚨 PANGGILAN BANTUAN NETRAVISION';
+      const cleanDesc = sanitizeDescription(req.description);
+      const cleanName = sanitizeName(req.user_name);
       const options = {
-        body: `${req.user_name || 'Pengguna Netra'} butuh bantuan: ${req.description || 'Bantuan Visual'}`,
+        body: `${cleanName} butuh bantuan: ${cleanDesc}`,
         icon: 'logo_no_bg.png',
         badge: 'logo_no_bg.png',
         tag: 'netravision-call-' + req.id,
@@ -1440,14 +1459,14 @@
         <div class="request-card" id="card-${req.id}">
           <div class="card-top">
             <div class="user-meta">
-              <h4>${req.user_name || 'Pengguna NetraVision'}</h4>
+              <h4>${sanitizeName(req.user_name)}</h4>
               <span>ID: ${req.id}</span>
             </div>
             <span class="urgency-badge">Menunggu Relawan</span>
           </div>
 
           <div class="task-preview">
-            ${req.description || 'Bantuan Umum Visual'}
+            ${sanitizeDescription(req.description)}
           </div>
 
           <button class="btn-accept" onclick="acceptRequest('${req.id}')">
@@ -1499,8 +1518,8 @@
 
       const userNameEl = document.getElementById('activeUserName');
       const taskDescEl = document.getElementById('activeTaskDesc');
-      if (userNameEl) userNameEl.innerText = session.user_name || 'Pengguna Netra';
-      if (taskDescEl) taskDescEl.innerText = session.description || 'Bantuan visual aktif';
+      if (userNameEl) userNameEl.innerText = sanitizeName(session.user_name);
+      if (taskDescEl) taskDescEl.innerText = sanitizeDescription(session.description);
 
       if (session.livekit_url && session.companion_token) {
         connectLiveKit(session.livekit_url, session.companion_token);
@@ -1508,7 +1527,7 @@
 
       const waBtn = document.getElementById('btnWaCall');
       if (waBtn) {
-        waBtn.href = 'https://wa.me/?text=' + encodeURIComponent('Halo ' + (session.user_name || 'pengguna Netra') + ', saya ' + companionName + ' dari NetraVision siap membantu.');
+        waBtn.href = 'https://wa.me/?text=' + encodeURIComponent('Halo ' + sanitizeName(session.user_name) + ', saya ' + companionName + ' dari NetraVision siap membantu.');
       }
 
       callSeconds = 0;

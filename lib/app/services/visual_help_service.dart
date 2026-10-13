@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../data/models/visual_help_models.dart';
-import 'contacts_service.dart';
 
 class VisualHelpService extends GetxService {
   // ====================== SUPABASE CLOUD PILOT ======================
@@ -274,26 +273,12 @@ class VisualHelpService extends GetxService {
           name: 'Relawan Netra',
           canPublish: true,
         );
-
-        final phone = () {
-          try {
-            if (Get.isRegistered<ContactsService>()) {
-              final cs = Get.find<ContactsService>();
-              if (cs.contacts.isNotEmpty) {
-                return cs.contacts.first.phoneNumber;
-              }
-            }
-          } catch (_) {}
-          return '';
-        }();
-        final fullDesc = phone.isNotEmpty ? '$targetDesc ($phone)' : targetDesc;
-
         final body = {
           'id': reqId,
           'user_id': currentUserId.value,
           'user_name': currentUserName.value,
           'mode': recipientTarget.code,
-          'description': fullDesc,
+          'description': targetDesc,
           'status': 'pending',
           'access_key': accessKey,
           'room_name': roomName,
