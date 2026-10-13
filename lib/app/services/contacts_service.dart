@@ -36,15 +36,31 @@ class ContactsService extends GetxService {
       await prefs.remove(_legacyPhoneKey);
     }
 
-    // Bersihkan kontak fiktif dummy atau 112 jika ada dari versi sebelumnya
+    // Bersihkan kontak fiktif dummy, 112, atau kontak pengujian Yahya
+    final initialLen = contacts.length;
     contacts.removeWhere((c) {
       final digits = c.phoneNumber.replaceAll(RegExp(r'\D'), '');
-      return digits == '081234567890' || digits == '112';
+      final name = c.name.toLowerCase();
+      return digits == '081234567890' ||
+          digits == '112' ||
+          name.contains('yahya') ||
+          digits.contains('85540116690');
     });
+    if (contacts.length != initialLen) {
+      await _saveToStorage();
+    }
   }
 
   /// Memastikan kontak Ilma (0895422727533) tersedia di daftar kontak keluarga
   Future<void> ensureIlmaContact() async {
+    final beforeCount = contacts.length;
+    contacts.removeWhere((c) {
+      final digits = c.phoneNumber.replaceAll(RegExp(r'\D'), '');
+      final name = c.name.toLowerCase();
+      return name.contains('yahya') || digits.contains('85540116690');
+    });
+    bool changed = contacts.length != beforeCount;
+
     final ilmaIndex = contacts.indexWhere((c) => c.phoneNumber.replaceAll(RegExp(r'\D'), '').contains('895422727533'));
     if (ilmaIndex < 0) {
       final ilmaContact = TrustedContact(
@@ -55,10 +71,14 @@ class ContactsService extends GetxService {
         isWhatsAppAvailable: true,
       );
       contacts.insert(0, ilmaContact);
-      await _saveToStorage();
+      changed = true;
     } else if (ilmaIndex > 0) {
       final ilma = contacts.removeAt(ilmaIndex);
       contacts.insert(0, ilma);
+      changed = true;
+    }
+
+    if (changed) {
       await _saveToStorage();
     }
   }
