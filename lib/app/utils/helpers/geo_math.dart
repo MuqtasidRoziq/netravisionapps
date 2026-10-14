@@ -6,7 +6,10 @@ class GeoPoint {
   final double lat;
   final double lng;
 
-  const GeoPoint(this.lat, this.lng);
+  /// Akurasi horizontal perkiraan (meter) dari sensor GPS, bila tersedia.
+  final double? accuracy;
+
+  const GeoPoint(this.lat, this.lng, {this.accuracy});
 
   bool get isValid => lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 

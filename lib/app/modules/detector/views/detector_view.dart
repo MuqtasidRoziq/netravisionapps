@@ -111,6 +111,16 @@ class DetectorView extends GetView<DetectorController> {
               child: _buildTopBar(context),
             ),
 
+            // 2b. Kartu titik koordinat pengguna (khusus Mode Jalan) — selalu
+            //      terlihat agar posisi GPS & alamat terkini jelas.
+            if (controller.mode == VisionMode.outdoor)
+              Positioned(
+                top: 70,
+                left: 14,
+                right: 14,
+                child: _buildCoordinateCard(),
+              ),
+
             // 3. Banner status bawah (kontras tinggi putih-biru, reaktif mandiri).
             Positioned(
               bottom: 16,
@@ -119,30 +129,29 @@ class DetectorView extends GetView<DetectorController> {
               child: _buildBottomStatusBar(),
             ),
 
-            // 4. Peta navigasi — hanya Mode Jalan (di pojok kanan bawah).
+            // 4. Peta navigasi — tampil sejak Mode Jalan dibuka (agar titik
+            //    koordinat & posisi pengguna langsung terlihat), mengecil
+            //    otomatis setelah rute terbentuk.
             if (controller.mode == VisionMode.outdoor)
-              Obx(
-                () {
-                  final isExpanded = controller.mapExpanded.value;
-                  if (isExpanded) {
-                    return Positioned(
-                      left: 14,
-                      right: 14,
-                      top: 75,
-                      bottom: 165,
-                      child: NavigationMapEmbed(controller: controller),
-                    );
-                  } else {
-                    return Positioned(
-                      right: 14,
-                      bottom: 165,
-                      width: 145,
-                      height: 145,
-                      child: NavigationMapEmbed(controller: controller),
-                    );
-                  }
-                },
-              ),
+              Obx(() {
+                final isExpanded = controller.mapExpanded.value;
+                return AnimatedPositioned(
+                  key: const ValueKey('navigation_map_embed_pos'),
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  left: isExpanded ? 14 : null,
+                  right: 14,
+                  top: 160,
+                  bottom: isExpanded ? 85 : null,
+                  width: isExpanded ? null : 145,
+                  height: isExpanded ? null : 145,
+                  child: NavigationMapEmbed(
+                    key: const ValueKey('navigation_map_embed_instance'),
+                    controller: controller,
+                  ),
+                );
+              }),
+
 
             // 5. Overlay Darurat SOS (Tampil saat hitung mundur 5 detik)
             Obx(() {
@@ -229,135 +238,56 @@ class DetectorView extends GetView<DetectorController> {
     );
   }
 
-  /// Header kontrol atas yang responsif untuk semua ukuran layar HP.
-  /// Memisahkan tombol navigasi/aksi dengan badge mode agar tidak saling berebut lebar layar.
+  /// Header kontrol atas: hanya tombol Kembali dan indikator mode aktif (bersih dan mudah diakses).
   Widget _buildTopBar(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Baris 1: Kontrol Navigasi & Aksi (Kembali, SOS, Jeda)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Tombol Kembali
-            Semantics(
-              label: 'Kembali ke Menu Utama',
-              hint: 'Ketuk untuk menutup kamera dan kembali',
-              button: true,
-              child: Material(
-                color: AppColors.primaryBlue,
-                borderRadius: BorderRadius.circular(16),
-                elevation: 4,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    Get.back();
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-                        SizedBox(width: 6),
-                        Text(
-                          'Kembali',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+        // Tombol Kembali (Lebih besar, ramah sentuhan)
+        Semantics(
+          label: 'Kembali ke Menu Utama',
+          hint: 'Ketuk untuk menutup kamera dan kembali',
+          button: true,
+          child: Material(
+            color: AppColors.primaryBlue,
+            borderRadius: BorderRadius.circular(16),
+            elevation: 4,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                Get.back();
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Kembali',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
-
-            // Tombol Aksi Kanan: SOS + Jeda
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Tombol Darurat SOS di Layar Kamera
-                Semantics(
-                  label: 'Panggilan Darurat SOS',
-                  hint: 'Ketuk untuk memicu peringatan darurat lima detik',
-                  button: true,
-                  child: Material(
-                    color: AppColors.emergencyRed,
-                    borderRadius: BorderRadius.circular(16),
-                    elevation: 4,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        HapticFeedback.heavyImpact();
-                        controller.triggerEmergencySOS();
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-                            SizedBox(width: 4),
-                            Text(
-                              'SOS',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Tombol Jeda / Lanjutkan Deteksi (lokal Obx)
-                Obx(() => Semantics(
-                  label: controller.isPaused.value ? 'Lanjutkan Deteksi' : 'Jeda Deteksi',
-                  button: true,
-                  child: Material(
-                    color: controller.isPaused.value
-                        ? AppColors.yellowAccent
-                        : Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(16),
-                    elevation: 2,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        controller.togglePause();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          controller.isPaused.value ? Icons.play_arrow : Icons.pause,
-                          color: controller.isPaused.value ? Colors.black : Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ),
-                )),
-              ],
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 8),
-        // Baris 2: Badge Indikator Mode Kamera Aktif (Tengah & Responsif)
-        Center(
+
+        // Badge Indikator Mode Kamera Aktif
+        Semantics(
+          label: 'Mode aktif: ${controller.mode.title}',
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(20),
+              color: Colors.black.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white30, width: 1.2),
               boxShadow: const [
                 BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
@@ -369,19 +299,15 @@ class DetectorView extends GetView<DetectorController> {
                 Icon(
                   _getModeIcon(controller.mode),
                   color: Colors.white,
-                  size: 16,
+                  size: 20,
                 ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    controller.mode.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
+                const SizedBox(width: 8),
+                Text(
+                  controller.mode.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -405,86 +331,202 @@ class DetectorView extends GetView<DetectorController> {
     }
   }
 
+  Widget _buildCoordinateCard() {
+    return Obx(() {
+      final available = controller.locationAvailable.value;
+      final pos = controller.userPosition.value;
+      final address = controller.currentAddress.value;
+
+      String coords;
+      String status;
+      bool ok;
+      if (!available) {
+        ok = false;
+        coords = 'Lokasi tidak aktif';
+        status = 'Izinkan akses lokasi pada perangkat';
+      } else if (pos == null) {
+        ok = false;
+        coords = 'Mengunci sinyal GPS...';
+        status = 'Menunggu satelit';
+      } else {
+        ok = true;
+        coords =
+            '${pos.lat.toStringAsFixed(5)}, ${pos.lng.toStringAsFixed(5)}';
+        final acc = pos.accuracy;
+        status = (acc != null && acc > 0)
+            ? 'GPS aktif · akurasi ±${acc.round()} m'
+            : 'GPS aktif';
+      }
+
+      return Semantics(
+        label: 'Titik koordinat Anda. $coords. $status.'
+            '${address.isNotEmpty ? ' $address.' : ''}',
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: ok ? AppColors.successGreen : Colors.white30,
+              width: 1.4,
+            ),
+            boxShadow: const [
+              BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(
+                ok ? Icons.my_location_rounded : Icons.location_searching_rounded,
+                color: ok ? AppColors.successGreen : Colors.white70,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      coords,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      address.isNotEmpty ? '$status · $address' : status,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
   Widget _buildBottomStatusBar() {
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Obx(() {
-          final subtitle = controller.mode == VisionMode.currency
-              ? 'Ketuk layar kapan saja untuk mengulang nominal uang'
-              : controller.mode == VisionMode.outdoor
-                  ? (controller.navStatus.value.isNotEmpty
-                      ? controller.navStatus.value
-                      : 'Ketuk mikrofon pada peta untuk menyebutkan tujuan')
-                  : 'Ketuk layar kapan saja untuk cek rintangan';
-
-          return Semantics(
-            label: 'Status deteksi: ${controller.currentStatusText.value}',
-            liveRegion: true,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        // Instruksi Navigasi Jalan (Hanya tampil jika sedang dalam rute perjalanan aktif)
+        if (controller.mode == VisionMode.outdoor)
+          Obx(() {
+            final navText = controller.navStatus.value;
+            if (navText.isEmpty) return const SizedBox.shrink();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.primaryBlue, width: 2),
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black38,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
                   ),
                 ],
               ),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.lightBlue,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.volume_up,
-                      color: AppColors.primaryBlue,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+                  const Icon(Icons.navigation_rounded, color: AppColors.primaryBlue, size: 24),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          controller.currentStatusText.value,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      navText,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-          );
-        }),
-        const SizedBox(height: 10),
-        // Tombol Aksesibel Minta Bantuan Relawan
+            );
+          }),
+
+        // Tombol Sebutkan Tujuan / Mikrofon (Khusus Mode Jalan)
+        if (controller.mode == VisionMode.outdoor)
+          Obx(() {
+            final isListening = controller.isListeningDestination.value;
+            final hasDestination = controller.destinationPoint.value != null;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Semantics(
+                label: isListening
+                    ? 'Mikrofon sedang mendengarkan tujuan. Ketuk untuk berhenti.'
+                    : (hasDestination
+                        ? 'Ganti Tujuan Rute. Ketuk untuk berbicara dan mengganti tujuan.'
+                        : 'Sebutkan Tujuan Rute. Ketuk untuk mengaktifkan mikrofon dan menyebutkan tempat tujuan.'),
+                button: true,
+                child: Material(
+                  color: isListening ? const Color(0xFFE65100) : AppColors.successGreen,
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: 4,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      HapticFeedback.heavyImpact();
+                      if (isListening) {
+                        controller.stopDestinationListening();
+                      } else {
+                        controller.startDestinationListening(announcePrompt: false);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isListening ? Icons.mic : Icons.mic_none_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              isListening
+                                  ? 'Mendengarkan... (Ketuk Batal)'
+                                  : (hasDestination
+                                      ? 'Ganti Tujuan Rute (Bicara)'
+                                      : 'Sebutkan Tujuan (Mikrofon)'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+
+        // Tombol Aksesibel Minta Bantuan Relawan (Besar, Jelas, dan Mudah Dijangkau)
         Semantics(
           label: 'Minta Bantuan Relawan. Hubungi relawan untuk membantu memeriksa kamera.',
           button: true,
@@ -496,7 +538,7 @@ class DetectorView extends GetView<DetectorController> {
               borderRadius: BorderRadius.circular(16),
               onTap: () => controller.requestVisualHelp(),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -509,7 +551,7 @@ class DetectorView extends GetView<DetectorController> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

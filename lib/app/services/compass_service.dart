@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:get/get.dart';
 
@@ -8,6 +9,24 @@ import 'package:get/get.dart';
 class CompassService extends GetxService {
   double _smoothed = 0;
   bool _hasValue = false;
+  StreamSubscription<double>? _persistentSub;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _startListening();
+  }
+
+  void _startListening() {
+    _persistentSub?.cancel();
+    _persistentSub = headingStream().listen((_) {}, onError: (_) {});
+  }
+
+  @override
+  void onClose() {
+    _persistentSub?.cancel();
+    super.onClose();
+  }
 
   /// Heading saat ini (0–360, utara = 0). Null bila kompas tak tersedia.
   double? get lastHeading => _hasValue ? _smoothed : null;

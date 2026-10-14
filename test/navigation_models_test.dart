@@ -43,6 +43,8 @@ void main() {
       expect(extractDestinationQuery('tolong antar saya ke rumah sakit'), 'rumah sakit');
       expect(extractDestinationQuery('saya mau ke pasar'), 'pasar');
       expect(extractDestinationQuery('carikan apotek'), 'apotek');
+      expect(extractDestinationQuery('antarkan saya ke stasiun dong'), 'stasiun');
+      expect(extractDestinationQuery('silakan sebutkan tujuan anda minimarket'), 'minimarket');
     });
 
     test('tanpa frase perintah = kalimat utuh', () {

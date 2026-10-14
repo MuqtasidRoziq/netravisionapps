@@ -72,6 +72,12 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- Wajib speech_to_text di Android 11+: agar layanan pengenalan suara
+             (RecognitionService) terlihat oleh aplikasi. Tanpa ini mikrofon
+             kadang bisa, kadang tidak bisa membuka STT. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
         <package android:name="com.whatsapp" />
         <package android:name="com.whatsapp.w4b" />
         <intent>

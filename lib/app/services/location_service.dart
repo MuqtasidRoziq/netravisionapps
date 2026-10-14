@@ -25,19 +25,35 @@ class LocationService extends GetxService {
         accuracy: LocationAccuracy.high,
         distanceFilter: 2,
       ),
-    ).map((position) => GeoPoint(position.latitude, position.longitude));
+    ).map((position) => GeoPoint(position.latitude, position.longitude,
+        accuracy: position.accuracy));
+  }
+
+  /// Ambil posisi terakhir yang tersimpan di sistem (instan tanpa menunggu sinyal satelit).
+  Future<GeoPoint?> lastKnownPosition() async {
+    try {
+      final position = await Geolocator.getLastKnownPosition();
+      if (position != null) {
+        return GeoPoint(position.latitude, position.longitude,
+            accuracy: position.accuracy);
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Ambil posisi sekali (mis. saat membuat rute awal).
-  Future<GeoPoint?> currentPosition() async {
+  Future<GeoPoint?> currentPosition({
+    Duration timeLimit = const Duration(seconds: 12),
+  }) async {
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
+        locationSettings: LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
+          timeLimit: timeLimit,
         ),
       );
-      return GeoPoint(position.latitude, position.longitude);
+      return GeoPoint(position.latitude, position.longitude,
+          accuracy: position.accuracy);
     } catch (_) {
       return null;
     }

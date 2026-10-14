@@ -131,6 +131,31 @@ class SpatialEstimator {
     'bridge': 3.0,
     'papan reklame': 1.0,
     'hewan': 0.8,
+    // Objek umum dalam ruangan (indoor)
+    'tempat tidur': 1.5,
+    'bed': 1.5,
+    'lemari': 0.9,
+    'wardrobe': 0.9,
+    'closet': 0.9,
+    'microwave': 0.5,
+    'laptop': 0.35,
+    'buku': 0.2,
+    'book': 0.2,
+    'botol': 0.1,
+    'bottle': 0.1,
+    'cangkir': 0.1,
+    'cup': 0.1,
+    'mug': 0.1,
+    'tas punggung': 0.35,
+    'backpack': 0.35,
+    'tas tangan': 0.3,
+    'handbag': 0.3,
+    'koper': 0.45,
+    'suitcase': 0.45,
+    'payung': 0.8,
+    'umbrella': 0.8,
+    'ponsel': 0.08,
+    'cell phone': 0.08,
     // Kelas tambahan outdoor
     'skuter atau sepeda': 0.7,
     'micromobility': 0.7,
@@ -269,5 +294,19 @@ class SpatialEstimator {
       band: classifyProximity(box),
       meters: estimateMeters(box, result.className, classIndex: result.classIndex),
     );
+  }
+
+  /// Estimasi jarak efektif dalam meter. Menggunakan [estimateMeters] bila tersedia,
+  /// atau fallback berdasarkan luas bounding box kamera.
+  static double effectiveMeters(YOLOResult result) {
+    final box = result.normalizedBox;
+    final estimated = estimateMeters(box, result.className, classIndex: result.classIndex);
+    if (estimated != null && estimated > 0) return estimated;
+
+    // Fallback jarak berdasarkan luas bounding box kamera
+    final area = (box.isEmpty || box.width <= 0 || box.height <= 0)
+        ? 0.005
+        : (box.width * box.height).clamp(0.005, 1.0);
+    return sqrt(0.128 / area);
   }
 }

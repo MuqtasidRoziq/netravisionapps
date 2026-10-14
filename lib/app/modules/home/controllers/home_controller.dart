@@ -6,6 +6,7 @@ import '../../../data/models/vision_mode.dart';
 import '../../../routes/app_pages.dart';
 import '../../../services/location_service.dart';
 import '../../../services/tts_service.dart';
+import '../../../utils/helpers/tts_policy.dart';
 import '../../detector/controllers/detector_controller.dart';
 
 class HomeController extends GetxController {
@@ -18,7 +19,7 @@ class HomeController extends GetxController {
   // Penjelasan fitur singkat dan jelas untuk ketukan pertama
   final List<String> menuExplanations = [
     'Mode Dalam Ruangan. Mendeteksi rintangan, perabotan, dan pintu di sekitar Anda di dalam ruangan. Ketuk sekali lagi untuk masuk.',
-    'Mode Luar Ruangan. Memandu navigasi jalan, trotoar, dan rintangan di luar ruangan. Ketuk sekali lagi untuk masuk.',
+    'Mode Jalan. Memandu navigasi jalan, trotoar, dan rintangan di luar ruangan. Ketuk sekali lagi untuk masuk.',
     'Mode Baca Uang. Memindai dan membacakan nominal uang rupiah secara otomatis. Ketuk sekali lagi untuk masuk.',
     'Cari Barang. Membantu mencari benda tertentu dengan menyebutkan namanya melalui suara. Ketuk sekali lagi untuk masuk.',
     'Bantuan Relawan. Menghubungkan Anda ke pendamping manusia secara langsung melalui video dan suara. Ketuk sekali lagi untuk masuk.',
@@ -26,7 +27,7 @@ class HomeController extends GetxController {
 
   final List<String> menuTitles = [
     'Mode Dalam Ruangan, mendeteksi perabotan dan pintu',
-    'Mode Luar Ruangan, mendeteksi rintangan dan jalan di luar',
+    'Mode Jalan, mendeteksi rintangan dan jalan di luar',
     'Mode Baca Uang, memindai nominal uang rupiah',
     'Cari Barang, ucapkan nama barang untuk mendeteksinya',
     'Bantuan Relawan, panggilan langsung ke pendamping manusia',
@@ -56,7 +57,7 @@ class HomeController extends GetxController {
       final explanation = index >= 0 && index < menuExplanations.length
           ? menuExplanations[index]
           : 'Menu dipilih. Ketuk sekali lagi untuk masuk.';
-      _ttsService.speak(explanation, isUrgent: true);
+      _ttsService.speak(explanation, priority: TtsPriority.navigation);
 
       // Batalkan seleksi otomatis setelah 6 detik jika tidak diketuk ulang
       _selectionTimer?.cancel();
@@ -87,7 +88,7 @@ class HomeController extends GetxController {
     final total = menuExplanations.length;
     _ttsService.speak(
       'Pilihan ${idx + 1} dari $total: ${menuExplanations[idx]}',
-      isUrgent: true,
+      priority: TtsPriority.navigation,
     );
 
     _selectionTimer?.cancel();
@@ -139,7 +140,7 @@ class HomeController extends GetxController {
 
     _ttsService.speak(
       'Peringatan darurat aktif. Ketuk layar untuk membatalkan.',
-      isUrgent: true,
+      priority: TtsPriority.sos,
     );
 
     _sosCountdownTimer?.cancel();
@@ -148,7 +149,8 @@ class HomeController extends GetxController {
       HapticFeedback.heavyImpact();
 
       if (sosCountdownSeconds.value > 0) {
-        _ttsService.speak('${sosCountdownSeconds.value}', isUrgent: true);
+        _ttsService.speak('${sosCountdownSeconds.value}',
+            priority: TtsPriority.sos);
       } else {
         timer.cancel();
         _dispatchSosCall();
@@ -162,13 +164,15 @@ class HomeController extends GetxController {
     _sosCountdownTimer?.cancel();
     isSosCountdownActive.value = false;
     HapticFeedback.mediumImpact();
-    _ttsService.speak('Panggilan darurat dibatalkan.', isUrgent: true);
+    _ttsService.speak('Panggilan darurat dibatalkan.',
+        priority: TtsPriority.sos);
   }
 
   void _dispatchSosCall() async {
     isSosCountdownActive.value = false;
     HapticFeedback.heavyImpact();
-    _ttsService.speak('Menghubungkan panggilan darurat sekarang...', isUrgent: true);
+    _ttsService.speak('Menghubungkan panggilan darurat sekarang...',
+        priority: TtsPriority.sos);
 
     String? locationNotes;
     try {
@@ -200,9 +204,11 @@ class HomeController extends GetxController {
   }
 
   /// Membuka kamera dengan mode yang dipilih
-  void openMode(VisionMode mode) {
+  Future<void> openMode(VisionMode mode) async {
     HapticFeedback.mediumImpact();
-    _ttsService.speak('Membuka ${mode.title}');
+    // Hentikan suara menu sebelumnya agar tidak bertumpuk dengan suara
+    // pengantar di dalam menu (announcement mode / prompt tujuan).
+    await _ttsService.stop();
     // Buang controller detector sesi sebelumnya (jika masih ada) agar mode
     // baru selalu dibuat segar sesuai argumen. Tanpa ini, controller lama —
     // mis. sisa Mode Baca Uang — bisa dipakai ulang dan membuat Mode Outdoor
@@ -212,16 +218,18 @@ class HomeController extends GetxController {
   }
 
   /// Membuka halaman Cari Barang (speech-to-search)
-  void openItemSearch() {
+  Future<void> openItemSearch() async {
     HapticFeedback.mediumImpact();
-    _ttsService.speak('Membuka Cari Barang. Gunakan suara untuk mencari barang.');
+    // Suara pengantar menu dihentikan; halaman Cari Barang punya suaranya
+    // sendiri sehingga tidak saling menimpa.
+    await _ttsService.stop();
     Get.toNamed(Routes.ITEM_SEARCH);
   }
 
   /// Fitur Bantuan Visual
-  void openVisualHelp() {
+  Future<void> openVisualHelp() async {
     HapticFeedback.mediumImpact();
-    _ttsService.speak('Membuka menu Bantuan Visual');
+    await _ttsService.stop();
     Get.toNamed(Routes.VISUAL_HELP);
   }
 
@@ -235,7 +243,7 @@ class HomeController extends GetxController {
       'Menu empat: Cari Barang, ucapkan nama barang yang ingin dicari. '
       'Menu lima: Bantuan Visual untuk meminta bantuan relawan via kamera dan audio. '
       'Ketuk dua kali menu mana saja untuk mengaktifkannya.',
-      isUrgent: true,
+      priority: TtsPriority.navigation,
     );
   }
 

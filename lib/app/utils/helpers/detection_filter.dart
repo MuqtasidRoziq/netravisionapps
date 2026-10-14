@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+import 'object_speech_helper.dart';
+import 'spatial_estimator.dart';
 
 /// Filter presisi hasil deteksi agar yang diumumkan hanya objek yang benar-benar
 /// valid, stabil, dan — khusus Mode Baca Uang — memang berbentuk uang.
@@ -139,6 +141,97 @@ class DetectionFilter {
       }
     }
     return best;
+  }
+
+  /// Pilih deteksi terdekat dari daftar kandidat, dirancang khusus untuk navigasi (indoor / outdoor).
+  ///
+  /// Objek yang lebih dekat ke pengguna (jarak estimasi lebih kecil / kotak lebih besar)
+  /// diprioritaskan utama agar pengguna tidak menabrak rintangan langsung di depannya.
+  /// Bila jarak objek relatif sebanding (selisih <= 0.6 meter dari objek terdekat):
+  /// 1. Objek berbahaya (rintangan fisik kritis / kendaraan) diutamakan.
+  /// 2. Objek di zona depan (jalur langsung langkah pengguna) diutamakan dibanding samping.
+  /// 3. Skor kedekatan dan confidence × area sebagai penentu akhir.
+  static YOLOResult selectClosest(List<YOLOResult> candidates) {
+    assert(candidates.isNotEmpty, 'selectClosest butuh minimal 1 kandidat');
+    if (candidates.length == 1) return candidates.first;
+
+    // 1. Hitung jarak efektif untuk setiap kandidat dan cari jarak terdekat
+    final distances =
+        candidates.map((c) => SpatialEstimator.effectiveMeters(c)).toList();
+    final double minDistance = distances.reduce(math.min);
+
+    // 2. Kumpulkan kandidat dalam klaster terdekat (selisih <= 0.6m dari objek terdekat)
+    const double clusterThreshold = 0.6;
+    final List<int> closeIndices = [];
+    for (int i = 0; i < candidates.length; i++) {
+      if (distances[i] <= minDistance + clusterThreshold) {
+        closeIndices.add(i);
+      }
+    }
+
+    if (closeIndices.length == 1) {
+      return candidates[closeIndices.first];
+    }
+
+    // 3. Di antara kandidat dalam klaster terdekat:
+    // a. Utamakan objek berbahaya bila ada
+    final dangerousIndices = closeIndices.where((i) {
+      final c = candidates[i];
+      return ObjectSpeechHelper.isDangerousObstacle(
+        c.className,
+        classIndex: c.classIndex,
+      );
+    }).toList();
+
+    final targetIndices =
+        dangerousIndices.isNotEmpty ? dangerousIndices : closeIndices;
+    if (targetIndices.length == 1) {
+      return candidates[targetIndices.first];
+    }
+
+    // b. Prioritaskan objek yang berada tepat di depan pengguna (HorizontalZone.depan)
+    final frontIndices = targetIndices.where((i) {
+      final c = candidates[i];
+      return SpatialEstimator.classifyHorizontal(c.normalizedBox) ==
+          HorizontalZone.depan;
+    }).toList();
+
+    final preferredIndices =
+        frontIndices.isNotEmpty ? frontIndices : targetIndices;
+    if (preferredIndices.length == 1) {
+      return candidates[preferredIndices.first];
+    }
+
+    // c. Dari kandidat yang tersisa, pilih yang paling dekat (jarak terkecil).
+    // Bila jaraknya sangat dekat (selisih < 0.15m), pilih berdasarkan skor confidence * area.
+    int bestIndex = preferredIndices.first;
+    double bestDist = distances[bestIndex];
+    final bestBox = candidates[bestIndex].normalizedBox;
+    double bestScore = candidates[bestIndex].confidence *
+        (bestBox.isEmpty ? 0.0 : bestBox.width * bestBox.height);
+
+    for (int j = 1; j < preferredIndices.length; j++) {
+      final idx = preferredIndices[j];
+      final dist = distances[idx];
+      final box = candidates[idx].normalizedBox;
+      final score =
+          candidates[idx].confidence *
+          (box.isEmpty ? 0.0 : box.width * box.height);
+
+      if (dist < bestDist - 0.15) {
+        bestIndex = idx;
+        bestDist = dist;
+        bestScore = score;
+      } else if ((dist - bestDist).abs() <= 0.15) {
+        if (score > bestScore) {
+          bestIndex = idx;
+          bestDist = dist;
+          bestScore = score;
+        }
+      }
+    }
+
+    return candidates[bestIndex];
   }
 
   /// Konfirmasi temporal: apakah classIndex [classIndex] cukup stabil pada

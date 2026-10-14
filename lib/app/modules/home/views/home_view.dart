@@ -121,40 +121,6 @@ class HomeView extends GetView<HomeController> {
                 child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Status Info Banner
-            Semantics(
-              label: 'Kamera dan suara siap digunakan.',
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.lightBlue,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.lightBlueBorder, width: 1.5),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle_rounded,
-                      color: AppColors.primaryBlue,
-                      size: 22,
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Pilih salah satu menu di bawah untuk mulai memindai.',
-                        style: TextStyle(
-                          color: AppColors.primaryBlue,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
             // Card 1: Mode Indoor
             Obx(() => _buildMenuCard(
               index: 0,

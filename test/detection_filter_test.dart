@@ -8,10 +8,11 @@ YOLOResult _box({
   required int classIndex,
   required double confidence,
   required Rect normalized,
+  String? className,
 }) {
   return YOLOResult(
     classIndex: classIndex,
-    className: 'class_$classIndex',
+    className: className ?? 'class_$classIndex',
     confidence: confidence,
     boundingBox: Rect.zero,
     normalizedBox: normalized,
@@ -149,6 +150,82 @@ void main() {
 
       final best = DetectionFilter.selectBest([smallHighConf, bigMediumConf]);
       expect(best, bigMediumConf);
+    });
+  });
+
+  group('DetectionFilter.selectClosest', () {
+    test('mengembalikan satu-satunya kandidat bila hanya ada 1', () {
+      final chair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.25, 0.25, 0.5, 0.5),
+      );
+      expect(DetectionFilter.selectClosest([chair]), chair);
+    });
+
+    test('memprioritaskan objek lebih dekat daripada objek berbahaya yang jauh', () {
+      // Objek dekat: kursi di dalam ruangan (~0.85 m, aman)
+      final closeChair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.8,
+        normalized: const Rect.fromLTWH(0.25, 0.2, 0.5, 0.5),
+      );
+      // Objek jauh: mobil di luar jendela (> 10 m, berbahaya)
+      final farCar = _box(
+        classIndex: 2,
+        className: 'mobil',
+        confidence: 0.95,
+        normalized: const Rect.fromLTWH(0.1, 0.1, 0.15, 0.15),
+      );
+
+      final selected = DetectionFilter.selectClosest([farCar, closeChair]);
+      expect(selected, closeChair,
+          reason: 'Kursi yang dekat harus dipilih daripada mobil yang jauh');
+    });
+
+    test('memprioritaskan bahaya bila jarak sebanding (selisih <= 0.6 m)', () {
+      // Dua objek dengan estimasi jarak berdekatan
+      // Motor (berbahaya)
+      final motor = _box(
+        classIndex: 5,
+        className: 'sepeda motor',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.3, 0.2, 0.38, 0.45),
+      );
+      // Kursi (aman) pada jarak relatif mirip
+      final chair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.3, 0.2, 0.25, 0.3),
+      );
+
+      final selected = DetectionFilter.selectClosest([chair, motor]);
+      expect(selected, motor,
+          reason: 'Objek berbahaya harus menang jika berada pada jarak sebanding');
+    });
+
+    test('memprioritaskan objek di zona depan dibanding samping pada jarak mirip', () {
+      // Kursi di kiri (cx < 0.35)
+      final sideChair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.05, 0.3, 0.25, 0.3),
+      );
+      // Meja makan di depan (cx 0.5, aman)
+      final frontTable = _box(
+        classIndex: 20,
+        className: 'meja makan',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.38, 0.3, 0.25, 0.3),
+      );
+
+      final selected = DetectionFilter.selectClosest([sideChair, frontTable]);
+      expect(selected, frontTable,
+          reason: 'Objek di depan jalur jalan harus menang dibanding objek samping');
     });
   });
 

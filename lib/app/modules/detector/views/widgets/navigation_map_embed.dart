@@ -26,10 +26,16 @@ class NavigationMapEmbed extends StatefulWidget {
 class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
   GoogleMapController? _mapController;
   StreamSubscription<GeoPoint?>? _subscription;
+  StreamSubscription<GeoPoint?>? _destSub;
+  StreamSubscription<List<GeoPoint>>? _routeSub;
   static const _fallbackCenter = LatLng(-6.2, 106.816666);
   GeoPoint? _lastCameraCenter;
   final _destMarketId = const MarkerId('destination');
+  final _userMarkerId = const MarkerId('user_position');
   late final LatLng _initialPosition;
+  bool _isMapReady = false;
+  Set<Polyline> _polylines = const {};
+  Set<Marker> _markers = const {};
 
   @override
   void initState() {
@@ -37,23 +43,78 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
     final pos = widget.controller.userPosition.value;
     _initialPosition =
         pos != null ? LatLng(pos.lat, pos.lng) : _fallbackCenter;
+    _updateOverlays();
+
     _subscription = widget.controller.userPosition.listen((pos) {
       if (pos == null) return;
+      // Selalu perbarui marker posisi pengguna di peta.
+      _updateOverlays();
       final moved = _lastCameraCenter == null ||
           haversineMeters(_lastCameraCenter!, pos) > 3.0;
       if (!moved || _mapController == null) return;
-      _lastCameraCenter = pos;
-      _mapController!.moveCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: LatLng(pos.lat, pos.lng), zoom: 17),
-        ),
-      );
+      _moveTo(pos);
+    });
+
+    _destSub = widget.controller.destinationPoint.listen((_) {
+      _updateOverlays();
+    });
+
+    _routeSub = widget.controller.routePolyline.listen((_) {
+      _updateOverlays();
+    });
+
+    // Beri jeda 600ms sebelum me-mount GoogleMap native PlatformView
+    // agar kamera YOLO selesai mengunci buffer camera tanpa bentrok Surface.
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        setState(() {
+          _isMapReady = true;
+        });
+      }
+    });
+  }
+
+  void _updateOverlays() {
+    final dest = widget.controller.destinationPoint.value;
+    final route = widget.controller.routePolyline.value;
+    final user = widget.controller.userPosition.value;
+    if (!mounted) return;
+    setState(() {
+      _polylines = route.isEmpty
+          ? const {}
+          : {
+              Polyline(
+                polylineId: const PolylineId('route'),
+                color: AppColors.primaryBlue,
+                width: 6,
+                points: route.map((p) => LatLng(p.lat, p.lng)).toList(),
+              ),
+            };
+      _markers = {
+        // Titik posisi pengguna agar koordinat selalu terlihat di peta.
+        if (user != null)
+          Marker(
+            markerId: _userMarkerId,
+            position: LatLng(user.lat, user.lng),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueAzure),
+            infoWindow: const InfoWindow(title: 'Posisi Anda'),
+          ),
+        if (dest != null)
+          Marker(
+            markerId: _destMarketId,
+            position: LatLng(dest.lat, dest.lng),
+            infoWindow: const InfoWindow(title: 'Tujuan'),
+          ),
+      };
     });
   }
 
   @override
   void dispose() {
     _subscription?.cancel();
+    _destSub?.cancel();
+    _routeSub?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
@@ -82,48 +143,41 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
   }
 
   Widget _buildMap() {
-    return Obx(() {
-      final dest = widget.controller.destinationPoint.value;
-      final route = widget.controller.routePolyline.value;
-      final isExpanded = widget.controller.mapExpanded.value;
-
-      return GoogleMap(
-        initialCameraPosition:
-            CameraPosition(target: _initialPosition, zoom: 17),
-        onMapCreated: (controller) {
-          _mapController = controller;
-          final p = widget.controller.userPosition.value;
-          if (p != null) _moveTo(p);
-        },
-        myLocationEnabled: false,
-        myLocationButtonEnabled: false,
-        compassEnabled: false,
-        mapToolbarEnabled: false,
-        zoomControlsEnabled: false,
-        rotateGesturesEnabled: false,
-        tiltGesturesEnabled: false,
-        scrollGesturesEnabled: isExpanded,
-        polylines: route.isEmpty
-            ? const {}
-            : {
-                Polyline(
-                  polylineId: const PolylineId('route'),
-                  color: AppColors.primaryBlue,
-                  width: 6,
-                  points: route.map((p) => LatLng(p.lat, p.lng)).toList(),
-                ),
-              },
-        markers: dest == null
-            ? const {}
-            : {
-                Marker(
-                  markerId: _destMarketId,
-                  position: LatLng(dest.lat, dest.lng),
-                  infoWindow: const InfoWindow(title: 'Tujuan'),
-                ),
-              },
+    if (!_isMapReady) {
+      return Container(
+        color: const Color(0xFF1E293B),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primaryBlue,
+            ),
+          ),
+        ),
       );
-    });
+    }
+
+    return GoogleMap(
+      initialCameraPosition:
+          CameraPosition(target: _initialPosition, zoom: 17),
+      onMapCreated: (controller) {
+        _mapController = controller;
+        final p = widget.controller.userPosition.value;
+        if (p != null) _moveTo(p);
+      },
+      myLocationEnabled: true,
+      myLocationButtonEnabled: false,
+      compassEnabled: false,
+      mapToolbarEnabled: false,
+      zoomControlsEnabled: false,
+      rotateGesturesEnabled: false,
+      tiltGesturesEnabled: false,
+      scrollGesturesEnabled: widget.controller.mapExpanded.value,
+      polylines: _polylines,
+      markers: _markers,
+    );
   }
 
   void _moveTo(GeoPoint p) {

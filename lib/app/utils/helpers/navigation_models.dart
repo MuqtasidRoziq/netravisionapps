@@ -5,18 +5,49 @@ import 'geo_math.dart';
 /// Contoh: "saya ingin pergi ke warung" → "warung".
 String extractDestinationQuery(String sentence) {
   var lower = sentence.trim().toLowerCase();
+  // Hapus tanda baca
+  lower = lower.replaceAll(RegExp(r'[^\w\s]'), ' ');
+
+  // 1. Bersihkan frasa sistem / TalkBack yang mungkin bocor ke mikrofon
+  final systemPhrases = [
+    'silakan sebutkan tujuan anda',
+    'silakan ucapkan tujuan anda',
+    'sebutkan tujuan anda',
+    'ucapkan tujuan anda',
+    'sebutkan tujuan',
+    'ucapkan tujuan',
+    'tujuan anda',
+    'tujuan saya',
+  ];
+  for (final phrase in systemPhrases) {
+    lower = lower.replaceAll(phrase, ' ');
+  }
+
+  // 2. Bersihkan awalan perintah
   const prefixes = [
     'saya ingin pergi ke',
+    'saya mau pergi ke',
+    'tolong antarkan saya ke',
     'tolong antar saya ke',
     'tolong bawa saya ke',
-    'saya mau pergi ke',
+    'tolong carikan rute ke',
     'tolong carikan',
+    'tolong cari rute ke',
+    'tolong cari',
     'saya ingin ke',
     'saya mau ke',
     'mau pergi ke',
     'ingin pergi ke',
-    'tolong cari',
+    'mau jalan ke',
+    'ingin jalan ke',
+    'antarkan saya ke',
+    'antarkan ke',
+    'antar saya ke',
+    'antar ke',
+    'menuju ke',
+    'menuju',
     'pergi ke',
+    'jalan ke',
     'mau ke',
     'ingin ke',
     'carikan',
@@ -25,11 +56,24 @@ String extractDestinationQuery(String sentence) {
     'ke',
   ];
   for (final prefix in prefixes) {
-    if (lower.startsWith(prefix)) {
-      final after = lower.substring(prefix.length).trim();
-      if (after.isNotEmpty) return after;
+    final pattern = RegExp('^\\s*' + RegExp.escape(prefix) + '\\b');
+    if (pattern.hasMatch(lower)) {
+      lower = lower.replaceFirst(pattern, ' ').trim();
+      break;
     }
   }
+
+  // 3. Bersihkan akhiran pemanis kalimat
+  final suffixPatterns = [
+    RegExp(r'\b(dong|ya|sih|deh|nih|lah|tolong)\b'),
+  ];
+  for (final pattern in suffixPatterns) {
+    lower = lower.replaceAll(pattern, ' ');
+  }
+
+  lower = lower.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (lower.isNotEmpty) return lower;
+
   return sentence.trim();
 }
 
