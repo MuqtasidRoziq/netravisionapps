@@ -92,8 +92,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   bool _sttAvailable = false;
   bool _navBusy = false;
 
-  // Throttle: proses maksimal 2 frame per detik agar CPU & TTS tidak dibanjiri.
-  static const _frameIntervalMs = 500;
+  // Throttle: proses frame hingga 5 fps agar deteksi responsif tanpa membebani baterai.
+  static const _frameIntervalMs = 200;
   DateTime _lastFrameTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Gating pengumuman: kalimat biasa hanya diucapkan ulang bila label atau
@@ -167,6 +167,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
     if (mode == VisionMode.outdoor) {
       isOutdoor.value = true;
+      yoloController.setShowOverlays(false);
       _setupNavigation();
     }
   }
@@ -211,10 +212,15 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       currentStatusText.value = 'Arahkan uang ke kamera...';
     } else if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
       currentStatusText.value = 'Mencari "$targetItem" di depan Anda...';
+    } else if (mode == VisionMode.outdoor && destinationPoint.value == null) {
+      yoloController.setShowOverlays(false);
+      currentStatusText.value = 'Silakan sebutkan tujuan Anda...';
     } else {
       currentStatusText.value = 'Mencari objek di depan Anda...';
     }
-    ttsService.speak(mode.announcement);
+    if (mode != VisionMode.outdoor) {
+      ttsService.speak(mode.announcement);
+    }
     if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
       ttsService.speak('Arahkan kamera untuk mencari $targetItem.');
     }
@@ -232,6 +238,14 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   /// Callback hasil inferensi per frame dari [YOLOView].
   void handleResults(List<YOLOResult> results) {
     if (isPaused.value || results.isEmpty) return;
+    // Pada mode jalan: jangan deteksi sebelum user menentukan tujuan
+    if (mode == VisionMode.outdoor && destinationPoint.value == null) {
+      if (activeDetectionBox.value != null || activeDetectionLabel.value.isNotEmpty) {
+        activeDetectionBox.value = null;
+        activeDetectionLabel.value = '';
+      }
+      return;
+    }
 
     final now = DateTime.now();
     if (now.difference(_lastFrameTime).inMilliseconds < _frameIntervalMs) {
@@ -247,7 +261,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     //    bentuk kotak & rasio aspek yang memang valid uang Rupiah.
     var validDetections = results
         .where((r) => r.confidence >= modelConfig.confidenceThreshold)
-        .where((r) => ObjectSpeechHelper.shouldAnnounce(r.className, mode))
+        .where((r) => ObjectSpeechHelper.shouldAnnounce(r.className, mode,
+            classIndex: r.classIndex))
         .where((r) =>
             mode != VisionMode.currency ||
             DetectionFilter.isPlausibleMoneyBox(r.normalizedBox,
@@ -258,7 +273,9 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
       final target = targetItem.toLowerCase();
       validDetections = validDetections.where((r) {
-        final label = r.className.toLowerCase();
+        final label = ObjectSpeechHelper.resolveLabel(r.className,
+                classIndex: r.classIndex)
+            .toLowerCase();
         // Cocokkan bila label mengandung kata kunci target atau sebaliknya
         return label.contains(target) ||
             target.split(' ').any((word) => word.length > 2 && label.contains(word));
@@ -294,7 +311,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     final dangerous =
         validDetections
             .where(
-              (d) => ObjectSpeechHelper.isDangerousObstacle(d.className),
+              (d) => ObjectSpeechHelper.isDangerousObstacle(d.className,
+                  classIndex: d.classIndex),
             )
             .toList();
     final bool isDangerous = dangerous.isNotEmpty;
@@ -341,10 +359,14 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       return;
     }
 
-    final String detectedLabel =
+    final String rawLabel =
         (mode == VisionMode.currency && hasRecentOcrVerification)
             ? _lastOcrVerifiedNominal!
             : targetDetection.className;
+    final String detectedLabel = (mode == VisionMode.currency)
+        ? rawLabel
+        : ObjectSpeechHelper.resolveLabel(rawLabel,
+            classIndex: targetDetection.classIndex);
     lastDetectedObject.value = detectedLabel;
 
     if (mode == VisionMode.currency && hasRecentOcrVerification) {
@@ -573,6 +595,10 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         _arrivedSpoken = true;
         navStatus.value = 'Anda telah tiba di tujuan';
         routePolyline.value = [];
+        destinationPoint.value = null;
+        if (mode == VisionMode.outdoor) {
+          yoloController.setShowOverlays(false);
+        }
         final speech = tick.speech ?? 'Anda telah tiba di tujuan';
         if (mode == VisionMode.outdoor) ttsService.speak(speech);
       }
@@ -592,16 +618,21 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  /// Saat model kamera siap & mode jalan: sapa + ajak bicara tujuan.
+  /// Saat model kamera siap & mode jalan: sapa + ajak bicara tujuan + arah mata angin.
   void _promptDestination() {
     if (_navPrompted || _navBusy) return;
     _navPrompted = true;
-    navStatus.value = 'Silakan ucapkan tujuan...';
+    navStatus.value = 'Silakan sebutkan tujuan...';
     Future.delayed(const Duration(milliseconds: 1400), () {
       if (!isOutdoor.value) return;
-      ttsService.speak('Mode jalan aktif. Silakan bicara, Anda mau ke mana?');
+      final h = compassService.lastHeading ??
+          (userHeading.value > 0 ? userHeading.value : null);
+      final greeting = (h != null)
+          ? 'Mode jalan aktif. Anda sedang menghadap ke arah ${CompassService.headingToCardinalDirection(h)}. Silakan bicara, Anda mau ke mana?'
+          : 'Mode jalan aktif. Silakan bicara, Anda mau ke mana?';
+      ttsService.speak(greeting);
     });
-    Future.delayed(const Duration(milliseconds: 3600), () {
+    Future.delayed(const Duration(milliseconds: 4000), () {
       if (isOutdoor.value) startDestinationListening();
     });
   }
@@ -691,6 +722,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       ttsService.speak(
           'Menuju $placeName, ${formatDistanceMeters(placeDist)}. Membuat rute.');
       destinationPoint.value = place.point;
+      yoloController.setShowOverlays(true);
 
       final route = await directionsService.getWalkingRoute(
         origin: origin,
@@ -756,10 +788,23 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       return;
     }
 
+    if (mode == VisionMode.outdoor && destinationPoint.value == null) {
+      final h = compassService.lastHeading ??
+          (userHeading.value > 0 ? userHeading.value : null);
+      final headingStr = (h != null)
+          ? ' Anda sedang menghadap ke arah ${CompassService.headingToCardinalDirection(h)}.'
+          : '';
+      ttsService.speak(
+        'Tujuan belum ditentukan.$headingStr Ketuk tombol mikrofon atau ucapkan tujuan Anda.',
+        isUrgent: true,
+      );
+      return;
+    }
+
     if (lastDetectedObject.value.isNotEmpty) {
       final speech =
           ObjectSpeechHelper.formatForTts(lastDetectedObject.value, mode);
-      ttsService.speak('Objek di depan: $speech', isUrgent: true);
+      ttsService.speak(speech, isUrgent: true);
     } else {
       ttsService.speak('Belum ada objek terdeteksi di depan Anda.',
           isUrgent: true);

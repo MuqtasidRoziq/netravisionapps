@@ -131,7 +131,77 @@ class SpatialEstimator {
     'bridge': 3.0,
     'papan reklame': 1.0,
     'hewan': 0.8,
+    // Kelas tambahan outdoor
+    'skuter atau sepeda': 0.7,
+    'micromobility': 0.7,
+    'gerobak': 0.9,
+    'push_cart': 0.9,
+    'push cart': 0.9,
+    'hewan peliharaan': 0.6,
+    'pet': 0.6,
+    'rambu jalan': 0.7,
+    'movable_signage': 0.7,
+    'movable signage': 0.7,
+    'kursi roda': 0.7,
+    'wheelchair': 0.7,
+    'barikade jalan': 1.5,
+    'barricade': 1.5,
+    'kursi taman': 1.4,
+    'tiang pembatas trotoar': 0.3,
+    'bollard': 0.3,
+    'hidran air': 0.4,
+    'fire hydrant': 0.4,
+    'fire_hydrant': 0.4,
+    'terminal layanan': 0.8,
+    'service_terminal': 0.8,
+    'service terminal': 0.8,
+    'pot tanaman': 0.4,
+    'gardu listrik': 1.0,
+    'control_cabinet': 1.0,
+    'control cabinet': 1.0,
+    'halte': 2.5,
+    'transit_stop': 2.5,
+    'transit stop': 2.5,
+    'meja': 1.0,
+    'table': 1.0,
+    'lampu lalu lintas': 0.5,
+    'traffic light': 0.5,
+    'traffic_light': 0.5,
+    'rambu lalu lintas': 0.6,
+    'traffic_sign': 0.6,
+    'traffic sign': 0.6,
+    'batang pohon': 0.5,
+    'tree_trunk': 0.5,
+    'tree trunk': 0.5,
   };
+
+  // Lebar fisik (meter) untuk 24 kelas outdoor sesuai urutan index model (0..23)
+  static const List<double> _outdoorFallbackWidths = [
+    0.7, // 0: micromobility
+    2.6, // 1: bus
+    1.8, // 2: car
+    0.9, // 3: push_cart
+    0.6, // 4: pet
+    0.8, // 5: motorcycle
+    0.7, // 6: movable_signage
+    0.45, // 7: person
+    2.5, // 8: truck
+    0.7, // 9: wheelchair
+    1.5, // 10: barricade
+    1.4, // 11: bench
+    0.3, // 12: bollard
+    0.5, // 13: chair
+    0.4, // 14: fire hydrant
+    0.8, // 15: service_terminal
+    0.3, // 16: pole
+    0.4, // 17: potted plant
+    1.0, // 18: control_cabinet
+    2.5, // 19: transit_stop
+    1.0, // 20: table
+    0.5, // 21: traffic light
+    0.6, // 22: traffic_sign
+    0.5, // 23: tree_trunk
+  ];
 
   /// Zona horizontal dari titik tengah-x kotak.
   static HorizontalZone classifyHorizontal(Rect box) {
@@ -159,17 +229,30 @@ class SpatialEstimator {
   }
 
   /// Lebar fisik referensi untuk [label]; `null` bila tidak dikenal.
-  static double? referenceWidthOf(String label) {
+  static double? referenceWidthOf(String label, {int? classIndex}) {
     final clean = label.trim().toLowerCase();
-    return referenceWidthMeters[clean];
+    if (referenceWidthMeters.containsKey(clean)) {
+      return referenceWidthMeters[clean];
+    }
+    final unspaced = clean.replaceAll('_', ' ');
+    if (referenceWidthMeters.containsKey(unspaced)) {
+      return referenceWidthMeters[unspaced];
+    }
+    final classMatch = RegExp(r'^class[_\s:]*(\d+)$').firstMatch(clean);
+    final idx =
+        classMatch != null ? int.tryParse(classMatch.group(1)!) : classIndex;
+    if (idx != null && idx >= 0 && idx < _outdoorFallbackWidths.length) {
+      return _outdoorFallbackWidths[idx];
+    }
+    return null;
   }
 
   /// Estimasi jarak (meter) ke objek dari lebar kotak & lebar fisik kelas.
   ///
   /// Mengasumsikan frame mencakup [assumedHorizontalFovDegrees] secara
   /// horizontal: `jarak = lebarReferensi / (2 * tan(setengah sudut objek))`.
-  static double? estimateMeters(Rect box, String label) {
-    final refWidth = referenceWidthOf(label);
+  static double? estimateMeters(Rect box, String label, {int? classIndex}) {
+    final refWidth = referenceWidthOf(label, classIndex: classIndex);
     if (refWidth == null || box.isEmpty || box.width <= 0) return null;
     final halfAngle =
         0.5 * assumedHorizontalFovDegrees * box.width * (pi / 180);
@@ -184,7 +267,7 @@ class SpatialEstimator {
       horizontal: classifyHorizontal(box),
       vertical: classifyVertical(box),
       band: classifyProximity(box),
-      meters: estimateMeters(box, result.className),
+      meters: estimateMeters(box, result.className, classIndex: result.classIndex),
     );
   }
 }

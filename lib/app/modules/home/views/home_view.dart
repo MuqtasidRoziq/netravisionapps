@@ -38,28 +38,34 @@ class HomeView extends GetView<HomeController> {
               ),
             ),
             const SizedBox(width: 14),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'NetraVision',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'NetraVision',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-                Text(
-                  'Asisten Mobilitas Mandiri',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                  Text(
+                    'Asisten Mobilitas Mandiri',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -153,7 +159,7 @@ class HomeView extends GetView<HomeController> {
             Obx(() => _buildMenuCard(
               index: 0,
               numberLabel: '1',
-              title: '1. Mode Dalam Ruangan',
+              title: 'Mode Dalam Ruangan',
               subtitle: 'Deteksi rintangan, perabotan & pintu',
               icon: Icons.meeting_room_rounded,
               isSelected: controller.selectedMenuIndex.value == 0,
@@ -168,7 +174,7 @@ class HomeView extends GetView<HomeController> {
             Obx(() => _buildMenuCard(
               index: 1,
               numberLabel: '2',
-              title: '2. Mode Luar Ruangan',
+              title: 'Mode Jalan',
               subtitle: 'Navigasi jalan raya, trotoar & bahaya',
               icon: Icons.explore_rounded,
               isSelected: controller.selectedMenuIndex.value == 1,
@@ -183,7 +189,7 @@ class HomeView extends GetView<HomeController> {
             Obx(() => _buildMenuCard(
               index: 2,
               numberLabel: '3',
-              title: '3. Mode Baca Uang',
+              title: 'Mode Baca Uang',
               subtitle: 'Pindai nominal uang kertas rupiah',
               icon: Icons.payments_rounded,
               isSelected: controller.selectedMenuIndex.value == 2,
@@ -198,7 +204,7 @@ class HomeView extends GetView<HomeController> {
             Obx(() => _buildMenuCard(
               index: 3,
               numberLabel: '4',
-              title: '4. Cari Barang',
+              title: 'Cari Barang',
               subtitle: 'Ucapkan nama barang untuk mendeteksinya',
               icon: Icons.manage_search_rounded,
               isSelected: controller.selectedMenuIndex.value == 3,
@@ -213,7 +219,7 @@ class HomeView extends GetView<HomeController> {
             Obx(() => _buildVisualHelpCard(
               index: 4,
               numberLabel: '5',
-              title: '5. Bantuan Relawan',
+              title: 'Panggil Relawan',
               subtitle: 'Panggilan langsung ke pendamping manusia',
               icon: Icons.volunteer_activism_rounded,
               isSelected: controller.selectedMenuIndex.value == 4,
@@ -238,74 +244,80 @@ class HomeView extends GetView<HomeController> {
                       child: Container(
                         color: AppColors.emergencyRed.withValues(alpha: 0.95),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 110,
-                              height: 110,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 20,
-                                    spreadRadius: 4,
+                        child: Center(
+                          child: SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 110,
+                                  height: 110,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.3),
+                                        blurRadius: 20,
+                                        spreadRadius: 4,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '$countdown',
-                                  style: const TextStyle(
-                                    color: AppColors.emergencyRed,
-                                    fontSize: 54,
+                                  child: Center(
+                                    child: Text(
+                                      '$countdown',
+                                      style: const TextStyle(
+                                        color: AppColors.emergencyRed,
+                                        fontSize: 54,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                                const Text(
+                                  '🚨 PANGGILAN DARURAT',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 26,
                                     fontWeight: FontWeight.w900,
+                                    letterSpacing: 1,
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            const Text(
-                              '🚨 PANGGILAN DARURAT',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Menghubungi relawan siaga secara otomatis...\n\nKetuk di mana saja di layar untuk MEMBATALKAN.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                height: 1.4,
-                              ),
-                            ),
-                            const SizedBox(height: 36),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppColors.emergencyRed,
-                                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Menghubungi relawan siaga secara otomatis...\n\nKetuk di mana saja di layar untuk MEMBATALKAN.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
+                                  ),
                                 ),
-                              ),
-                              onPressed: () => controller.cancelEmergencySOS(),
-                              icon: const Icon(Icons.cancel_rounded, size: 24),
-                              label: const Text(
-                                'Batalkan Panggilan',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
+                                const SizedBox(height: 36),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: AppColors.emergencyRed,
+                                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
+                                  onPressed: () => controller.cancelEmergencySOS(),
+                                  icon: const Icon(Icons.cancel_rounded, size: 24),
+                                  label: const Text(
+                                    'Batalkan Panggilan',
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),

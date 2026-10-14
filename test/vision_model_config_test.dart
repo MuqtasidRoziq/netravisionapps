@@ -12,9 +12,9 @@ void main() {
       expect(config.task, YOLOTask.detect);
     });
 
-    test('Mode Outdoor memakai model indoor detect 80 kelas', () {
+    test('Mode Outdoor memakai model outdoor netravision_out.tflite', () {
       final config = VisionModelConfig.forMode(VisionMode.outdoor);
-      expect(config.modelPath, 'assets/models/indoor/indoor_objects.tflite');
+      expect(config.modelPath, 'assets/models/outdoor/netravision_out.tflite');
       expect(config.task, YOLOTask.detect);
     });
 

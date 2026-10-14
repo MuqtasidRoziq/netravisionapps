@@ -31,9 +31,9 @@ class VisionModelConfig {
       iouThreshold: 0.45,
     ),
     VisionMode.outdoor: VisionModelConfig(
-      modelPath: 'assets/models/indoor/indoor_objects.tflite',
+      modelPath: 'assets/models/outdoor/netravision_out.tflite',
       task: YOLOTask.detect,
-      confidenceThreshold: 0.45,
+      confidenceThreshold: 0.35,
       iouThreshold: 0.45,
     ),
     // Model indoor: YOLO11n detect COCO 80 kelas (perabotan, pintu, penghuni)
@@ -41,15 +41,15 @@ class VisionModelConfig {
     VisionMode.indoor: VisionModelConfig(
       modelPath: 'assets/models/indoor/indoor_objects.tflite',
       task: YOLOTask.detect,
-      confidenceThreshold: 0.45,
+      confidenceThreshold: 0.25,
       iouThreshold: 0.45,
     ),
     // Mode Cari Barang: gunakan model indoor (COCO 80 kelas) dengan threshold
-    // lebih rendah agar lebih sensitif mendeteksi barang yang dicari user.
+    // sensitif agar dapat mendeteksi barang yang dicari user.
     VisionMode.itemSearch: VisionModelConfig(
       modelPath: 'assets/models/indoor/indoor_objects.tflite',
       task: YOLOTask.detect,
-      confidenceThreshold: 0.35,
+      confidenceThreshold: 0.25,
       iouThreshold: 0.40,
     ),
   };

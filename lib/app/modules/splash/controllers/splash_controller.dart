@@ -15,7 +15,7 @@ class SplashController extends GetxController {
   Future<void> _startSplash() async {
     // 1. Sambutan suara langsung aktif
     _ttsService.speak(
-      'Selamat datang di NetraVision. Asisten pintar mobilitas tunanetra.',
+      'Selamat datang di NetraVision. Asisten pintar mobilitas tunanetra. Usap atau ketuk menu untuk memilih fitur deteksi.',
     );
 
     // 2. Waktu loading sebelum berpindah ke menu utama

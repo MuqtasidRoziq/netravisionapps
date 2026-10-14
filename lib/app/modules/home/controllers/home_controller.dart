@@ -197,10 +197,6 @@ class HomeController extends GetxController {
   @override
   void onReady() {
     super.onReady();
-    // Sambutan awal saat aplikasi pertama kali terbuka
-    _ttsService.speak(
-      'Selamat datang di NetraVision. Usap atau ketuk menu untuk memilih fitur deteksi.',
-    );
   }
 
   /// Membuka kamera dengan mode yang dipilih

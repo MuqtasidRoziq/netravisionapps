@@ -41,4 +41,17 @@ class CompassService extends GetxService {
     if (d < 0) d += 360;
     return d;
   }
+
+  /// Konversi derajat heading (0–360) ke arah mata angin Bahasa Indonesia.
+  static String headingToCardinalDirection(double degrees) {
+    final d = (degrees % 360 + 360) % 360;
+    if (d >= 337.5 || d < 22.5) return 'utara';
+    if (d < 67.5) return 'timur laut';
+    if (d < 112.5) return 'timur';
+    if (d < 157.5) return 'tenggara';
+    if (d < 202.5) return 'selatan';
+    if (d < 247.5) return 'barat daya';
+    if (d < 292.5) return 'barat';
+    return 'barat laut';
+  }
 }

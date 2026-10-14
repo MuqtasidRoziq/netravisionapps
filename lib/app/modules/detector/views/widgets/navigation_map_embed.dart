@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../../../services/api_keys.dart';
 import '../../../../utils/constants/app_colors.dart';
 import '../../../../utils/helpers/geo_math.dart';
 import '../../controllers/detector_controller.dart';
@@ -30,10 +29,14 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
   static const _fallbackCenter = LatLng(-6.2, 106.816666);
   GeoPoint? _lastCameraCenter;
   final _destMarketId = const MarkerId('destination');
+  late final LatLng _initialPosition;
 
   @override
   void initState() {
     super.initState();
+    final pos = widget.controller.userPosition.value;
+    _initialPosition =
+        pos != null ? LatLng(pos.lat, pos.lng) : _fallbackCenter;
     _subscription = widget.controller.userPosition.listen((pos) {
       if (pos == null) return;
       final moved = _lastCameraCenter == null ||
@@ -57,61 +60,36 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final child = ClipRRect(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white54, width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+              color: Colors.black45, blurRadius: 12, offset: Offset(0, 4)),
+        ],
+      ),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           fit: StackFit.expand,
           children: [_buildMap(), _buildOverlay()],
         ),
-      );
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white54, width: 1.5),
-          boxShadow: const [
-            BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, 4)),
-          ],
-        ),
-        child: child,
-      );
-    });
+      ),
+    );
   }
 
   Widget _buildMap() {
-    if (!ApiKeys.isConfigured) {
-      return Container(
-        color: AppColors.surface,
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.map_outlined, color: AppColors.textSecondary, size: 32),
-              SizedBox(height: 8),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Peta belum aktif. Tambahkan GOOGLE_MAPS_API_KEY saat build.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Obx(() {
-      final pos = widget.controller.userPosition.value;
-      final initial =
-          pos != null ? LatLng(pos.lat, pos.lng) : _fallbackCenter;
       final dest = widget.controller.destinationPoint.value;
       final route = widget.controller.routePolyline.value;
+      final isExpanded = widget.controller.mapExpanded.value;
+
       return GoogleMap(
-        initialCameraPosition: CameraPosition(target: initial, zoom: 17),
+        initialCameraPosition:
+            CameraPosition(target: _initialPosition, zoom: 17),
         onMapCreated: (controller) {
           _mapController = controller;
           final p = widget.controller.userPosition.value;
@@ -124,7 +102,7 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
         zoomControlsEnabled: false,
         rotateGesturesEnabled: false,
         tiltGesturesEnabled: false,
-        scrollGesturesEnabled: widget.controller.mapExpanded.value,
+        scrollGesturesEnabled: isExpanded,
         polylines: route.isEmpty
             ? const {}
             : {
@@ -141,7 +119,7 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
                 Marker(
                   markerId: _destMarketId,
                   position: LatLng(dest.lat, dest.lng),
-                  infoWindow: InfoWindow(title: 'Tujuan'),
+                  infoWindow: const InfoWindow(title: 'Tujuan'),
                 ),
               },
       );
@@ -158,28 +136,30 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
   }
 
   Widget _buildOverlay() {
-    final heading = widget.controller.userHeading.value;
     return Stack(
       children: [
         // Panah arah hadap di tengah peta.
         IgnorePointer(
           child: Center(
-            child: Transform.rotate(
-              angle: heading * math.pi / 180,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black38, blurRadius: 8),
-                  ],
+            child: Obx(() {
+              final heading = widget.controller.userHeading.value;
+              return Transform.rotate(
+                angle: heading * math.pi / 180,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black38, blurRadius: 8),
+                    ],
+                  ),
+                  child: const Icon(Icons.navigation_rounded,
+                      color: Colors.white, size: 18),
                 ),
-                child: const Icon(Icons.navigation_rounded,
-                    color: Colors.white, size: 18),
-              ),
-            ),
+              );
+            }),
           ),
         ),
 
@@ -189,6 +169,7 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
           right: 6,
           child: _smallButton(
             icon: Icons.mic_rounded,
+            semanticLabel: 'Ucapkan tujuan rute navigasi',
             onTap: () => widget.controller.startDestinationListening(),
           ),
         ),
@@ -201,6 +182,9 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
                 icon: widget.controller.mapExpanded.value
                     ? Icons.close_fullscreen_rounded
                     : Icons.open_in_full_rounded,
+                semanticLabel: widget.controller.mapExpanded.value
+                    ? 'Perkecil peta'
+                    : 'Perbesar peta',
                 onTap: () => widget.controller.toggleMapExpanded(),
               )),
         ),
@@ -208,17 +192,25 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
     );
   }
 
-  Widget _smallButton({required IconData icon, required VoidCallback onTap}) {
-    return Material(
-      color: AppColors.primaryBlue,
-      shape: const CircleBorder(),
-      elevation: 3,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, color: Colors.white, size: 20),
+  Widget _smallButton({
+    required IconData icon,
+    required String semanticLabel,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Material(
+        color: AppColors.primaryBlue,
+        shape: const CircleBorder(),
+        elevation: 3,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
         ),
       ),
     );
