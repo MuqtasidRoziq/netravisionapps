@@ -4,7 +4,7 @@
 /// - Jangan pernah meletakkan API Secret / Private Key (seperti LiveKit API Secret) di sini.
 /// - Kredensial rahasia (LiveKit Secret) tersimpan aman di Supabase Edge Function Secrets.
 /// - Pengaturan di bawah ini dapat ditimpa saat compile/build menggunakan flag:
-///   flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
+///   flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=... --dart-define=SUPABASE_USER_JWT=...
 class AppConfig {
   /// URL Project Supabase Cloud
   static const String supabaseUrl = String.fromEnvironment(
@@ -17,6 +17,18 @@ class AppConfig {
     'SUPABASE_ANON_KEY',
     defaultValue: 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG',
   );
+
+  /// JWT milik pengguna yang sudah terautentikasi. Publishable/anon key bukan
+  /// identitas pengguna dan tidak boleh dipakai untuk membuat token media.
+  /// Kosong secara default sehingga jalur cloud tidak aktif tanpa konfigurasi
+  /// autentikasi yang nyata.
+  static const String supabaseUserJwt = String.fromEnvironment(
+    'SUPABASE_USER_JWT',
+    defaultValue: '',
+  );
+
+  static bool get hasAuthenticatedCloudSession =>
+      supabaseUserJwt.trim().isNotEmpty;
 
   /// URL LiveKit Cloud Server untuk streaming WebRTC
   static const String livekitCloudUrl = String.fromEnvironment(

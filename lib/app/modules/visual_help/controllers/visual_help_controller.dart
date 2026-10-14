@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+
 import '../../../data/models/visual_help_models.dart';
 import '../../../routes/app_pages.dart';
 import '../../../services/auto_click_service.dart';
@@ -17,7 +19,9 @@ class VisualHelpController extends GetxController {
   void broadcastRequestToWhatsApp() async {
     final req = visualHelpService.activeRequest.value;
     final reqId = req?.id ?? '';
-    final targetName = (req?.taskContext.targetName != null && req!.taskContext.targetName!.isNotEmpty)
+    final targetName =
+        (req?.taskContext.targetName != null &&
+            req!.taskContext.targetName!.isNotEmpty)
         ? req.taskContext.targetName!
         : (req?.taskContext.taskType.label ?? 'Bantuan Visual');
     final userName = visualHelpService.currentUserName.value.isNotEmpty
@@ -60,7 +64,8 @@ class VisualHelpController extends GetxController {
   final TextEditingController targetNameController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
   final RxString unverifiedAiLabel = ''.obs;
-  final Rx<RecipientTarget> recipientTarget = RecipientTarget.communityVolunteers.obs;
+  final Rx<RecipientTarget> recipientTarget =
+      RecipientTarget.communityVolunteers.obs;
 
   // Status Koneksi Terkini
   final RxString connectionStatus = 'Belum terhubung'.obs;
@@ -79,11 +84,16 @@ class VisualHelpController extends GetxController {
   void onReady() {
     super.onReady();
     ttsService.speak(
-      'Menu Bantuan Relawan. Ada dua pilihan: Bantuan Visual Umum dan Panggil Kontak Terpercaya. Ketuk tombol sekali untuk mendengar fungsi, ketuk dua kali untuk memilih.',
+      'Menu Bantuan Relawan. Ada dua pilihan: Bantuan Visual Umum dan Panggil Kontak Terpercaya. Aktifkan tombol untuk langsung memilih.',
     );
   }
 
   bool _hasSpokenTrustedIntro = false;
+
+  // Dipertahankan sebagai status reaktif tampilan; alur satu klik tidak
+  // pernah mengaktifkan tahap seleksi perantara.
+  final RxInt selectedButtonIndex = (-1).obs;
+  final RxString selectedContactActionKey = ''.obs;
 
   /// Penjelasan suara ramah saat masuk ke halaman Kontak Tepercaya
   void speakTrustedContactsIntro() {
@@ -94,7 +104,7 @@ class VisualHelpController extends GetxController {
       final count = list.length;
       final names = list.map((c) => c.name).take(3).join(', ');
       ttsService.speak(
-        'Halaman Kontak Keluarga. Tersedia $count kontak tersimpan: $names. Setiap tombol menggunakan sistem dua kali ketuk: ketuk sekali untuk mendengar fungsi, ketuk sekali lagi untuk memilih.',
+        'Halaman Kontak Keluarga. Tersedia $count kontak tersimpan: $names. Aktifkan tombol untuk langsung menjalankan fungsinya.',
         isUrgent: true,
       );
     } else {
@@ -109,74 +119,28 @@ class VisualHelpController extends GetxController {
     _hasSpokenTrustedIntro = false;
   }
 
-  // Indeks tombol yang sedang dipilih pada ketukan pertama: 0 (Relawan), 1 (Keluarga), -1 (belum ada)
-  final RxInt selectedButtonIndex = (-1).obs;
-  Timer? _buttonSelectionTimer;
-
-  /// Langsung memanggil relawan (panggilan langsung atau ketukan kedua)
+  /// Langsung memanggil relawan.
   void callVolunteersDirectly() {
-    _buttonSelectionTimer?.cancel();
-    selectedButtonIndex.value = -1;
     HapticFeedback.heavyImpact();
     recipientTarget.value = RecipientTarget.communityVolunteers;
     submitHelpRequest();
   }
 
-  /// Menangani ketukan tombol Panggil Relawan:
-  /// - Ketukan 1: Memberi penjelasan fitur singkat dan jelas.
-  /// - Ketukan 2: Mengirim permintaan dan memanggil relawan.
+  /// Satu aktivasi langsung mengirim permintaan bantuan.
   void handleVolunteerButtonTap() {
-    if (selectedButtonIndex.value == 0) {
-      // Ketukan ke-2: Langsung panggil relawan
-      callVolunteersDirectly();
-    } else {
-      // Ketukan ke-1: Jelaskan fitur dan tandai seleksi
-      selectedButtonIndex.value = 0;
-      HapticFeedback.mediumImpact();
-      ttsService.speak(
-        'Panggil Relawan. Menghubungi relawan terdekat melalui kamera dan suara untuk bantuan visual umum. Ketuk sekali lagi untuk memanggil.',
-        isUrgent: true,
-      );
-      _buttonSelectionTimer?.cancel();
-      _buttonSelectionTimer = Timer(const Duration(seconds: 6), () {
-        if (selectedButtonIndex.value == 0) {
-          selectedButtonIndex.value = -1;
-        }
-      });
-    }
+    callVolunteersDirectly();
   }
 
-  /// Langsung membuka kontak keluarga (pembukaan langsung atau ketukan kedua)
+  /// Langsung membuka kontak keluarga.
   void openContactsDirectly() {
-    _buttonSelectionTimer?.cancel();
-    selectedButtonIndex.value = -1;
     resetTrustedContactsIntro();
     HapticFeedback.heavyImpact();
     Get.toNamed(Routes.TRUSTED_CONTACTS);
   }
 
-  /// Menangani ketukan tombol Kontak Keluarga:
-  /// - Ketukan 1: Memberi penjelasan fitur singkat dan jelas.
-  /// - Ketukan 2: Membuka daftar kontak tepercaya keluarga.
+  /// Satu aktivasi langsung membuka kontak keluarga.
   void handleContactsButtonTap() {
-    if (selectedButtonIndex.value == 1) {
-      // Ketukan ke-2: Buka halaman kontak
-      openContactsDirectly();
-    } else {
-      // Ketukan ke-1: Jelaskan fitur dan tandai seleksi
-      selectedButtonIndex.value = 1;
-      HapticFeedback.mediumImpact();
-      ttsService.speak(
-        'Kontak Keluarga. Panggilan langsung WhatsApp atau telepon ke keluarga atau orang terdekat. Ketuk sekali lagi untuk membuka.',
-        isUrgent: true,
-      );
-      _buttonSelectionTimer?.cancel();
-      _buttonSelectionTimer = Timer(const Duration(seconds: 6), () {
-        if (selectedButtonIndex.value == 1) {
-          selectedButtonIndex.value = -1;
-        }
-      });
-    }
+    openContactsDirectly();
   }
 
   /// Penjelasan suara saat formulir tambah kontak dibuka
@@ -187,127 +151,49 @@ class VisualHelpController extends GetxController {
     );
   }
 
-  // ====================== SISTEM DUA KALI KETUK KONTAK KELUARGA ======================
-  final RxString selectedContactActionKey = ''.obs;
-  Timer? _contactActionTimer;
-
-  void resetContactActionSelection() {
-    _contactActionTimer?.cancel();
-    selectedContactActionKey.value = '';
-  }
-
-  void _armContactAction(String key, String explanation) {
-    selectedContactActionKey.value = key;
-    HapticFeedback.mediumImpact();
-    ttsService.speak('$explanation Ketuk sekali lagi untuk memilih.', isUrgent: true);
-    _contactActionTimer?.cancel();
-    _contactActionTimer = Timer(const Duration(seconds: 6), () {
-      if (selectedContactActionKey.value == key) {
-        selectedContactActionKey.value = '';
-      }
-    });
-  }
-
-  /// Menangani ketukan tombol VC WhatsApp (Pola 2 Ketukan):
+  /// Satu aktivasi langsung memulai video call WhatsApp.
   void handleContactWhatsAppVoiceTap(TrustedContact contact) {
-    final key = 'wa_voice_${contact.id}';
-    if (selectedContactActionKey.value == key) {
-      resetContactActionSelection();
-      callContactWhatsAppVoice(contact.phoneNumber, contactName: contact.name);
-    } else {
-      _armContactAction(
-        key,
-        'Tombol Video Call WhatsApp ke ${contact.name}. Langsung memulai panggilan video WhatsApp ke keluarga. Sangat praktis untuk bertatap muka.',
-      );
-    }
+    callContactWhatsAppVoice(contact.phoneNumber, contactName: contact.name);
   }
 
-  /// Menangani ketukan tombol Telepon Seluler (Pola 2 Ketukan):
+  /// Satu aktivasi langsung memulai telepon seluler.
   void handleContactPhoneTap(TrustedContact contact) {
-    final key = 'phone_${contact.id}';
-    if (selectedContactActionKey.value == key) {
-      resetContactActionSelection();
-      callContactPhone(contact.phoneNumber, contactName: contact.name);
-    } else {
-      _armContactAction(
-        key,
-        'Tombol Telepon Langsung ke ${contact.name}. Panggilan telepon seluler langsung tanpa masuk ke chat. Sangat andal untuk darurat.',
-      );
-    }
+    callContactPhone(contact.phoneNumber, contactName: contact.name);
   }
 
-  /// Menangani ketukan tombol Chat WA (Pola 2 Ketukan):
+  /// Satu aktivasi langsung membuka chat WhatsApp.
   void handleContactChatTap(TrustedContact contact) {
-    final key = 'chat_${contact.id}';
-    if (selectedContactActionKey.value == key) {
-      resetContactActionSelection();
-      callContactWhatsApp(contact.phoneNumber, contactName: contact.name);
-    } else {
-      _armContactAction(
-        key,
-        'Tombol Chat WhatsApp ke ${contact.name}. Membuka ruang obrolan teks bantuan.',
-      );
-    }
+    callContactWhatsApp(contact.phoneNumber, contactName: contact.name);
   }
 
-  /// Menangani ketukan kartu kontak (Pola 2 Ketukan):
+  /// Satu aktivasi langsung membuka pilihan kontak.
   void handleContactCardTap(TrustedContact contact) {
-    final key = 'card_${contact.id}';
-    if (selectedContactActionKey.value == key) {
-      resetContactActionSelection();
-      showCallOptionsModal(phoneNumber: contact.phoneNumber, contactName: contact.name);
-    } else {
-      _armContactAction(
-        key,
-        'Kartu Kontak ${contact.name}, ${contact.relationship}, nomor ${contact.phoneNumber}. Membuka menu lengkap pilihan panggilan.',
-      );
-    }
+    showCallOptionsModal(
+      phoneNumber: contact.phoneNumber,
+      contactName: contact.name,
+    );
   }
 
-  /// Menangani ketukan tombol Hapus Kontak (Pola 2 Ketukan):
+  /// Satu aktivasi langsung menghapus kontak.
   void handleDeleteContactTap(TrustedContact contact) {
-    final key = 'delete_${contact.id}';
-    if (selectedContactActionKey.value == key) {
-      resetContactActionSelection();
-      contactsService.deleteContact(contact.id);
-      HapticFeedback.heavyImpact();
-      ttsService.speak('Kontak ${contact.name} berhasil dihapus.', isUrgent: true);
-    } else {
-      _armContactAction(
-        key,
-        'Tombol Hapus kontak ${contact.name}. Tindakan ini akan menghapus kontak dari daftar.',
-      );
-    }
+    contactsService.deleteContact(contact.id);
+    HapticFeedback.heavyImpact();
+    ttsService.speak(
+      'Kontak ${contact.name} berhasil dihapus.',
+      isUrgent: true,
+    );
   }
 
-  /// Menangani ketukan tombol Tambah Kontak (Pola 2 Ketukan):
+  /// Satu aktivasi langsung membuka formulir tambah kontak.
   void handleAddContactButtonTap(VoidCallback onOpenDialog) {
-    final key = 'add_contact';
-    if (selectedContactActionKey.value == key) {
-      resetContactActionSelection();
-      HapticFeedback.heavyImpact();
-      onOpenDialog();
-    } else {
-      _armContactAction(
-        key,
-        'Tombol Tambah Kontak. Minta keluarga atau orang terdekat untuk mengetikkan nama dan nomor telepon baru.',
-      );
-    }
+    HapticFeedback.heavyImpact();
+    onOpenDialog();
   }
 
-  /// Menangani ketukan tombol Kembali di halaman kontak (Pola 2 Ketukan):
+  /// Satu aktivasi langsung kembali ke halaman sebelumnya.
   void handleContactsBackButtonTap() {
-    final key = 'back_to_menu';
-    if (selectedContactActionKey.value == key) {
-      resetContactActionSelection();
-      HapticFeedback.mediumImpact();
-      Get.back();
-    } else {
-      _armContactAction(
-        key,
-        'Tombol Kembali. Menutup halaman kontak keluarga dan kembali ke Menu Bantuan Relawan.',
-      );
-    }
+    HapticFeedback.mediumImpact();
+    Get.back();
   }
 
   @override
@@ -345,10 +231,12 @@ class VisualHelpController extends GetxController {
     if (type == 'request_accepted') {
       _stopCountdown();
       final companionName = event['companionName'] as String? ?? 'Relawan';
-      final livekitUrl = event['livekitUrl'] as String? ?? 'wss://pilot.netravision.internal';
+      final livekitUrl =
+          event['livekitUrl'] as String? ?? 'wss://pilot.netravision.internal';
       final token = event['token'] as String?;
 
-      connectionStatus.value = 'Pendamping menerima, sedang menyambungkan media...';
+      connectionStatus.value =
+          'Pendamping menerima, sedang menyambungkan media...';
 
       // PEMBERITAHUAN JUJUR: Belum disebut "terhubung" karena media belum mengalir!
       ttsService.speak(
@@ -379,51 +267,36 @@ class VisualHelpController extends GetxController {
               Get.offNamed(Routes.VISUAL_HELP_CALL);
             }
           } else {
-            // Sesi terhubung di mode pilot/lokal (WebRTC cloud mock/offline):
-            _stopHandshakeTimer();
-            liveKitCallService.isConnected.value = true;
-            liveKitCallService.connectionStatusText.value = 'Terhubung Aktif (Mode Pilot)';
-            connectionStatus.value = 'Terhubung dengan $companionName';
-            ttsService.speak(
-              'Terhubung dengan $companionName. Sesi bantuan visual aktif.',
-              isUrgent: true,
+            await _handleMediaConnectionFailure(
+              'Koneksi media dengan $companionName tidak berhasil dibuat.',
             );
-
-            if (Get.currentRoute != Routes.VISUAL_HELP_CALL) {
-              Get.offNamed(Routes.VISUAL_HELP_CALL);
-            }
           }
         } catch (e) {
-          // Tangani exception koneksi media lokal tanpa menggagalkan sesi
-          _stopHandshakeTimer();
-          liveKitCallService.isConnected.value = true;
-          liveKitCallService.connectionStatusText.value = 'Terhubung Aktif (Mode Pilot)';
-          connectionStatus.value = 'Terhubung dengan $companionName';
-          ttsService.speak(
-            'Terhubung dengan $companionName. Sesi bantuan visual aktif.',
-            isUrgent: true,
+          await _handleMediaConnectionFailure(
+            'Koneksi media dengan $companionName gagal.',
           );
-
-          if (Get.currentRoute != Routes.VISUAL_HELP_CALL) {
-            Get.offNamed(Routes.VISUAL_HELP_CALL);
-          }
         }
       }
     } else if (type == 'session_connected') {
       _stopHandshakeTimer();
       liveKitCallService.isConnected.value = true;
-      liveKitCallService.connectionStatusText.value = 'Terhubung Aktif (Mode Pilot)';
+      liveKitCallService.connectionStatusText.value =
+          'Terhubung Aktif (Mode Pilot)';
       final companionName = event['companionName'] as String? ?? 'Pendamping';
       connectionStatus.value = 'Terhubung dengan $companionName';
       if (Get.currentRoute != Routes.VISUAL_HELP_CALL) {
-        ttsService.speak('Kamera belakang dan mikrofon aktif bersama $companionName.', isUrgent: true);
+        ttsService.speak(
+          'Kamera belakang dan mikrofon aktif bersama $companionName.',
+          isUrgent: true,
+        );
         Get.offNamed(Routes.VISUAL_HELP_CALL);
       }
     } else if (type == 'connection_failed') {
       _stopHandshakeTimer();
       _stopCountdown();
       await liveKitCallService.disconnect();
-      final reason = event['reason'] as String? ?? 'Koneksi media gagal tersambung';
+      final reason =
+          event['reason'] as String? ?? 'Koneksi media gagal tersambung';
       connectionStatus.value = 'Koneksi gagal: $reason';
       ttsService.speak(
         'Koneksi dengan pendamping gagal: $reason. Silakan coba lagi atau hubungi kontak via telepon.',
@@ -442,8 +315,13 @@ class VisualHelpController extends GetxController {
       _stopHandshakeTimer();
       await liveKitCallService.disconnect();
       ttsService.speak('Permintaan bantuan visual telah dibatalkan.');
-      if (Get.currentRoute == Routes.VISUAL_HELP_CALL || Get.currentRoute == Routes.VISUAL_HELP_WAITING) {
-        Get.until((route) => route.settings.name == Routes.VISUAL_HELP || route.settings.name == Routes.HOME);
+      if (Get.currentRoute == Routes.VISUAL_HELP_CALL ||
+          Get.currentRoute == Routes.VISUAL_HELP_WAITING) {
+        Get.until(
+          (route) =>
+              route.settings.name == Routes.VISUAL_HELP ||
+              route.settings.name == Routes.HOME,
+        );
       }
     } else if (type == 'session_ended') {
       _stopCountdown();
@@ -451,7 +329,11 @@ class VisualHelpController extends GetxController {
       await liveKitCallService.disconnect();
       ttsService.speak('Sesi bantuan visual telah selesai.', isUrgent: true);
       if (Get.currentRoute == Routes.VISUAL_HELP_CALL) {
-        Get.until((route) => route.settings.name == Routes.VISUAL_HELP || route.settings.name == Routes.HOME);
+        Get.until(
+          (route) =>
+              route.settings.name == Routes.VISUAL_HELP ||
+              route.settings.name == Routes.HOME,
+        );
       }
     }
   }
@@ -460,7 +342,8 @@ class VisualHelpController extends GetxController {
     _stopHandshakeTimer();
     _handshakeTimer = Timer(const Duration(seconds: 15), () async {
       await liveKitCallService.disconnect();
-      connectionStatus.value = 'Batas waktu jabat tangan media terlewati (15 detik)';
+      connectionStatus.value =
+          'Batas waktu jabat tangan media terlewati (15 detik)';
       ttsService.speak(
         'Batas waktu koneksi media terlewati. Belum tersambung dengan pendamping. Silakan coba lagi.',
         isUrgent: true,
@@ -473,6 +356,34 @@ class VisualHelpController extends GetxController {
     _handshakeTimer = null;
   }
 
+  /// Jangan pernah menyatakan sesi aktif sebelum koneksi media benar-benar
+  /// berhasil. Untuk permintaan bantuan mendesak, gunakan kontak tepercaya
+  /// sebagai jalur cadangan yang lebih andal.
+  Future<void> _handleMediaConnectionFailure(String reason) async {
+    _stopHandshakeTimer();
+    _stopCountdown();
+    await liveKitCallService.disconnect();
+    connectionStatus.value = reason;
+
+    final isUrgentRequest =
+        visualHelpService.activeRequest.value?.taskContext.sourceScreen ==
+        'emergency_sos';
+    final primary = contactsService.primaryEmergencyContact;
+    if (isUrgentRequest && primary != null) {
+      ttsService.speak(
+        '$reason. Membuka panggilan telepon ke ${primary.name}.',
+        isUrgent: true,
+      );
+      await fallbackService.launchPhoneDialer(primary.phoneNumber);
+      return;
+    }
+
+    ttsService.speak(
+      '$reason. Anda belum terhubung dengan pendamping. Silakan coba lagi atau hubungi kontak tepercaya.',
+      isUrgent: true,
+    );
+  }
+
   // ====================== AKSI PENGGUNA (TUNANETRA) ======================
 
   /// Memulai permintaan bantuan visual
@@ -480,21 +391,32 @@ class VisualHelpController extends GetxController {
     HapticFeedback.heavyImpact();
 
     // Sertakan lokasi GPS otomatis jika ini panggilan SOS darurat
-    String? resolvedNotes = notesController.text.trim().isEmpty ? null : notesController.text.trim();
-    if (sourceScreen == 'emergency_sos' && (resolvedNotes == null || !resolvedNotes.contains('https://maps.google.com'))) {
+    String? resolvedNotes = notesController.text.trim().isEmpty
+        ? null
+        : notesController.text.trim();
+    if (sourceScreen == 'emergency_sos' &&
+        (resolvedNotes == null ||
+            !resolvedNotes.contains('https://maps.google.com'))) {
       try {
         final loc = await locationService?.currentPosition();
         if (loc != null) {
-          final mapsLink = 'Lokasi GPS: https://maps.google.com/?q=${loc.lat},${loc.lng}';
-          resolvedNotes = resolvedNotes != null ? '$resolvedNotes\n$mapsLink' : mapsLink;
+          final mapsLink =
+              'Lokasi GPS: https://maps.google.com/?q=${loc.lat},${loc.lng}';
+          resolvedNotes = resolvedNotes != null
+              ? '$resolvedNotes\n$mapsLink'
+              : mapsLink;
         }
       } catch (_) {}
     }
 
     final context = TaskContext(
       taskType: selectedTaskType.value,
-      targetName: targetNameController.text.trim().isEmpty ? null : targetNameController.text.trim(),
-      unverifiedAiLabel: unverifiedAiLabel.value.isEmpty ? null : unverifiedAiLabel.value,
+      targetName: targetNameController.text.trim().isEmpty
+          ? null
+          : targetNameController.text.trim(),
+      unverifiedAiLabel: unverifiedAiLabel.value.isEmpty
+          ? null
+          : unverifiedAiLabel.value,
       notes: resolvedNotes,
       sourceScreen: sourceScreen,
     );
@@ -530,7 +452,9 @@ class VisualHelpController extends GetxController {
           );
         }
       } else {
-        ttsService.speak('Gagal membuat permintaan bantuan. Periksa koneksi internet atau server.');
+        ttsService.speak(
+          'Gagal membuat permintaan bantuan. Periksa koneksi internet atau server.',
+        );
       }
     }
   }
@@ -543,7 +467,7 @@ class VisualHelpController extends GetxController {
         remainingSeconds.value--;
       } else {
         _stopCountdown();
-        if (isSosCall || targetNameController.text.contains('DARURAT')) {
+        if (isSosCall) {
           final primary = contactsService.primaryEmergencyContact;
           if (primary != null) {
             ttsService.speak(
@@ -578,14 +502,20 @@ class VisualHelpController extends GetxController {
     _stopHandshakeTimer();
     final req = visualHelpService.activeRequest.value;
     if (req != null) {
-      await visualHelpService.cancelHelpRequest(req.id, reason: 'Dibatalkan oleh pengguna');
+      await visualHelpService.cancelHelpRequest(
+        req.id,
+        reason: 'Dibatalkan oleh pengguna',
+      );
     }
     ttsService.speak('Permintaan bantuan visual dibatalkan.');
     Get.back();
   }
 
   /// Melakukan Video Call WhatsApp langsung ke Kontak (Auto-VC tanpa masuk ke mode obrolan/chat)
-  Future<void> callContactWhatsAppVoice(String phoneNumber, {String? contactName}) async {
+  Future<void> callContactWhatsAppVoice(
+    String phoneNumber, {
+    String? contactName,
+  }) async {
     HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
     ttsService.speak(
@@ -608,7 +538,10 @@ class VisualHelpController extends GetxController {
   }
 
   /// Membuka panggilan dialer telepon seluler biasa
-  Future<void> callContactPhone(String phoneNumber, {String? contactName}) async {
+  Future<void> callContactPhone(
+    String phoneNumber, {
+    String? contactName,
+  }) async {
     HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
     ttsService.speak(
@@ -619,11 +552,16 @@ class VisualHelpController extends GetxController {
   }
 
   /// Membuka obrolan teks WhatsApp ke kontak
-  Future<void> callContactWhatsApp(String phoneNumber, {String? contactName}) async {
+  Future<void> callContactWhatsApp(
+    String phoneNumber, {
+    String? contactName,
+  }) async {
     HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
 
-    final autoClickService = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
+    final autoClickService = Get.isRegistered<AutoClickService>()
+        ? Get.find<AutoClickService>()
+        : null;
     final isPermGranted = await autoClickService?.checkPermission() ?? false;
     if (isPermGranted) {
       autoClickService?.armAutoClick(AutoClickAction.sendChat);
@@ -641,9 +579,14 @@ class VisualHelpController extends GetxController {
   }
 
   /// Menampilkan lembar pilihan panggilan ramah aksesibilitas (Telepon WA, Seluler, Chat WA)
-  void showCallOptionsModal({required String phoneNumber, required String contactName}) {
+  void showCallOptionsModal({
+    required String phoneNumber,
+    required String contactName,
+  }) {
     HapticFeedback.mediumImpact();
-    ttsService.speak('Pilihan panggilan untuk $contactName: Telepon WhatsApp, Telepon Seluler, atau Kirim Pesan.');
+    ttsService.speak(
+      'Pilihan panggilan untuk $contactName: Telepon WhatsApp, Telepon Seluler, atau Kirim Pesan.',
+    );
 
     Get.bottomSheet(
       Container(
@@ -658,7 +601,11 @@ class VisualHelpController extends GetxController {
           children: [
             Row(
               children: [
-                const Icon(Icons.contact_phone_rounded, color: Color(0xFF0D47A1), size: 28),
+                const Icon(
+                  Icons.contact_phone_rounded,
+                  color: Color(0xFF0D47A1),
+                  size: 28,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -688,15 +635,18 @@ class VisualHelpController extends GetxController {
 
             // Opsi 1: Telepon Seluler Langsung (Paling Cepat - Tanpa Chat)
             Semantics(
-              label: 'Telepon Langsung ke $contactName. Panggilan telepon seluler langsung tanpa melalui chat WhatsApp.',
-              hint: 'Ketuk dua kali untuk menelepon langsung',
+              label:
+                  'Telepon Langsung ke $contactName. Panggilan telepon seluler langsung tanpa melalui chat WhatsApp.',
+              hint: 'Aktifkan untuk menelepon langsung',
               button: true,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0D47A1),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 onPressed: () {
                   Get.back();
@@ -713,19 +663,25 @@ class VisualHelpController extends GetxController {
 
             // Opsi 2: VC WhatsApp Langsung
             Semantics(
-              label: 'Panggilan Video Call WhatsApp ke $contactName. Langsung memulai panggilan video WhatsApp.',
-              hint: 'Ketuk dua kali untuk memulai video call WhatsApp',
+              label:
+                  'Panggilan Video Call WhatsApp ke $contactName. Langsung memulai panggilan video WhatsApp.',
+              hint: 'Aktifkan untuk memulai video call WhatsApp',
               button: true,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF25D366),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 onPressed: () {
                   Get.back();
-                  callContactWhatsAppVoice(phoneNumber, contactName: contactName);
+                  callContactWhatsAppVoice(
+                    phoneNumber,
+                    contactName: contactName,
+                  );
                 },
                 icon: const Icon(Icons.videocam_rounded, size: 24),
                 label: const Text(
@@ -739,14 +695,16 @@ class VisualHelpController extends GetxController {
             // Opsi 3: Chat Pesan WhatsApp
             Semantics(
               label: 'Kirim pesan teks obrolan WhatsApp ke $contactName.',
-              hint: 'Ketuk dua kali untuk membuka obrolan pesan',
+              hint: 'Aktifkan untuk membuka obrolan pesan',
               button: true,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF128C7E),
                   side: const BorderSide(color: Color(0xFF128C7E), width: 1.5),
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 onPressed: () {
                   Get.back();
@@ -778,7 +736,9 @@ class VisualHelpController extends GetxController {
       final req = result['request'] as VisualHelpRequestModel;
       final token = result['token'] as String?;
 
-      ttsService.speak('Berhasil terhubung dengan ${req.userName}. Menyiapkan audio dua arah.');
+      ttsService.speak(
+        'Berhasil terhubung dengan ${req.userName}. Menyiapkan audio dua arah.',
+      );
 
       if (token != null && token.isNotEmpty) {
         await liveKitCallService.connect(
@@ -791,7 +751,8 @@ class VisualHelpController extends GetxController {
       Get.toNamed(Routes.VISUAL_HELP_CALL);
     } else {
       // 409 Conflict: Sudah diambil oleh orang lain
-      final errorMsg = result['error'] as String? ?? 'Sesi sudah tidak tersedia.';
+      final errorMsg =
+          result['error'] as String? ?? 'Sesi sudah tidak tersedia.';
       ttsService.speak(errorMsg, isUrgent: true);
       Get.defaultDialog(
         title: 'Sesi Sudah Diambil',
@@ -823,10 +784,11 @@ class VisualHelpController extends GetxController {
     HapticFeedback.lightImpact();
     liveKitCallService.toggleMic();
     ttsService.speak(
-      liveKitCallService.isMicMuted.value ? 'Mikrofon dinonaktifkan' : 'Mikrofon aktif',
+      liveKitCallService.isMicMuted.value
+          ? 'Mikrofon dinonaktifkan'
+          : 'Mikrofon aktif',
     );
   }
-
 
   Future<void> toggleScreenShare() async {
     HapticFeedback.mediumImpact();
@@ -849,16 +811,22 @@ class VisualHelpController extends GetxController {
     HapticFeedback.lightImpact();
     liveKitCallService.toggleCamera();
     ttsService.speak(
-      liveKitCallService.isCameraPaused.value ? 'Kamera dijeda' : 'Kamera aktif kembali',
+      liveKitCallService.isCameraPaused.value
+          ? 'Kamera dijeda'
+          : 'Kamera aktif kembali',
     );
   }
 
   void speakCurrentStatus() {
     final status = liveKitCallService.connectionStatusText.value;
     final partner = visualHelpService.currentRole.value == 'user'
-        ? (visualHelpService.activeRequest.value?.assignedCompanionName ?? 'Pendamping')
+        ? (visualHelpService.activeRequest.value?.assignedCompanionName ??
+              'Pendamping')
         : (visualHelpService.activeRequest.value?.userName ?? 'Pengguna');
-    ttsService.speak('Status panggilan: $status. Mitra: $partner.', isUrgent: true);
+    ttsService.speak(
+      'Status panggilan: $status. Mitra: $partner.',
+      isUrgent: true,
+    );
   }
 
   Future<void> endSession() async {
@@ -872,7 +840,11 @@ class VisualHelpController extends GetxController {
     isViewingSnapshot.value = false;
     ttsService.speak('Sesi bantuan visual diakhiri.', isUrgent: true);
 
-    Get.until((route) => route.settings.name == Routes.VISUAL_HELP || route.settings.name == Routes.HOME);
+    Get.until(
+      (route) =>
+          route.settings.name == Routes.VISUAL_HELP ||
+          route.settings.name == Routes.HOME,
+    );
   }
 
   Future<void> reportAbuse(String reason) async {
@@ -886,8 +858,6 @@ class VisualHelpController extends GetxController {
 
   @override
   void onClose() {
-    _buttonSelectionTimer?.cancel();
-    _contactActionTimer?.cancel();
     _stopCountdown();
     _stopHandshakeTimer();
     targetNameController.dispose();

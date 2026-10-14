@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../data/models/visual_help_models.dart';
 import '../../../services/auto_click_service.dart';
 import '../../../services/contacts_service.dart';
@@ -20,34 +21,34 @@ class TrustedContactsView extends GetView<VisualHelpController> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kontak Keluarga & Darurat'),
-        leading: Obx(() {
-          final isSelected = controller.selectedContactActionKey.value == 'back_to_menu';
-          return Semantics(
-            label: 'Kembali ke Menu Bantuan Relawan. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk kembali." : "Ketuk dua kali untuk mendengar fungsi dan kembali."}',
-            hint: isSelected ? 'Ketuk dua kali untuk kembali' : 'Ketuk dua kali untuk mendengar fungsi',
+        leading: Semantics(
+          label: 'Kembali ke Menu Bantuan Relawan.',
+          hint: 'Aktifkan untuk kembali',
+          button: true,
+          child: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppColors.primaryBlue,
+            ),
+            onPressed: () => controller.handleContactsBackButtonTap(),
+          ),
+        ),
+        actions: [
+          Semantics(
+            label: 'Tambah Kontak Baru.',
+            hint: 'Aktifkan untuk membuka formulir',
             button: true,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryBlue),
-              onPressed: () => controller.handleContactsBackButtonTap(),
-            ),
-          );
-        }),
-        actions: [
-          Obx(() {
-            final isSelected = controller.selectedContactActionKey.value == 'add_contact';
-            return Semantics(
-              label: 'Tambah Kontak Baru. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka formulir." : "Ketuk dua kali untuk mendengar penjelasan dan membuka formulir."}',
-              hint: isSelected ? 'Ketuk dua kali untuk membuka formulir' : 'Ketuk dua kali untuk mendengar fungsi',
-              button: true,
-              child: IconButton(
-                tooltip: 'Tambah Kontak',
-                icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primaryBlue),
-                onPressed: () => controller.handleAddContactButtonTap(
-                  () => _showAddContactDialog(context, contactsService),
-                ),
+              tooltip: 'Tambah Kontak',
+              icon: const Icon(
+                Icons.person_add_alt_1_rounded,
+                color: AppColors.primaryBlue,
               ),
-            );
-          }),
+              onPressed: () => controller.handleAddContactButtonTap(
+                () => _showAddContactDialog(context, contactsService),
+              ),
+            ),
+          ),
         ],
       ),
       body: SafeArea(
@@ -56,8 +57,11 @@ class TrustedContactsView extends GetView<VisualHelpController> {
           children: [
             // Banner Status Layanan Auto-Klik Aksesibilitas
             Obx(() {
-              final autoClick = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
-              final isEnabled = autoClick?.isAccessibilityGranted.value ?? false;
+              final autoClick = Get.isRegistered<AutoClickService>()
+                  ? Get.find<AutoClickService>()
+                  : null;
+              final isEnabled =
+                  autoClick?.isAccessibilityGranted.value ?? false;
               if (isEnabled) return const SizedBox.shrink();
 
               return Semantics(
@@ -69,11 +73,18 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF8E1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFFFB300), width: 1.5),
+                    border: Border.all(
+                      color: const Color(0xFFFFB300),
+                      width: 1.5,
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.touch_app_rounded, color: Color(0xFFF57C00), size: 24),
+                      const Icon(
+                        Icons.touch_app_rounded,
+                        color: Color(0xFFF57C00),
+                        size: 24,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -90,20 +101,34 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                             const SizedBox(height: 2),
                             const Text(
                               'Aktifkan Layanan Aksesibilitas NetraVision agar video call & pesan WA otomatis tertekan tanpa perlu meraba layar.',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF5D4037)),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF5D4037),
+                              ),
                             ),
                             const SizedBox(height: 8),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFF57C00),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                               onPressed: () {
                                 autoClick?.requestPermission();
                               },
-                              child: const Text('Aktifkan Sekarang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              child: const Text(
+                                'Aktifkan Sekarang',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -121,7 +146,10 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                 decoration: BoxDecoration(
                   color: AppColors.lightBlue,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.25), width: 1.5),
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withValues(alpha: 0.25),
+                    width: 1.5,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,10 +159,16 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                            color: AppColors.primaryBlue.withValues(
+                              alpha: 0.12,
+                            ),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.volunteer_activism_rounded, color: AppColors.primaryBlue, size: 22),
+                          child: const Icon(
+                            Icons.volunteer_activism_rounded,
+                            color: AppColors.primaryBlue,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
@@ -185,7 +219,11 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                           color: AppColors.lightBlue,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primaryBlue, size: 38),
+                        child: const Icon(
+                          Icons.person_add_alt_1_rounded,
+                          color: AppColors.primaryBlue,
+                          size: 38,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       const Text(
@@ -209,10 +247,12 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                       ),
                       const SizedBox(height: 20),
                       Obx(() {
-                        final isSelected = controller.selectedContactActionKey.value == 'add_contact';
+                        final isSelected =
+                            controller.selectedContactActionKey.value ==
+                            'add_contact';
                         return Semantics(
-                          label: 'Minta Orang Terdekat Isi Nomor Baru. ${isSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka formulir." : "Ketuk dua kali untuk mendengar penjelasan dan membuka formulir."}',
-                          hint: isSelected ? 'Ketuk dua kali untuk membuka formulir' : 'Ketuk dua kali untuk mendengar penjelasan',
+                          label: 'Minta Orang Terdekat Isi Nomor Baru.',
+                          hint: 'Aktifkan untuk membuka formulir',
                           button: true,
                           child: SizedBox(
                             width: double.infinity,
@@ -220,22 +260,39 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primaryBlue,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   side: isSelected
-                                      ? const BorderSide(color: AppColors.yellowAccent, width: 3)
+                                      ? const BorderSide(
+                                          color: AppColors.yellowAccent,
+                                          width: 3,
+                                        )
                                       : BorderSide.none,
                                 ),
                                 elevation: isSelected ? 4 : 1,
                               ),
-                              onPressed: () => controller.handleAddContactButtonTap(
-                                () => _showAddContactDialog(context, contactsService),
+                              onPressed: () =>
+                                  controller.handleAddContactButtonTap(
+                                    () => _showAddContactDialog(
+                                      context,
+                                      contactsService,
+                                    ),
+                                  ),
+                              icon: const Icon(
+                                Icons.add_circle_outline_rounded,
+                                size: 22,
                               ),
-                              icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
                               label: Text(
-                                isSelected ? 'Konfirmasi Buka Formulir' : 'Minta Orang Terdekat Isi Nomor',
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                isSelected
+                                    ? 'Konfirmasi Buka Formulir'
+                                    : 'Minta Orang Terdekat Isi Nomor',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -249,22 +306,28 @@ class TrustedContactsView extends GetView<VisualHelpController> {
               return Column(
                 children: list.map((contact) {
                   return Obx(() {
-                    final isCardSelected = controller.selectedContactActionKey.value == 'card_${contact.id}';
+                    final isCardSelected =
+                        controller.selectedContactActionKey.value ==
+                        'card_${contact.id}';
                     return Card(
                       elevation: isCardSelected ? 4 : 2,
                       margin: const EdgeInsets.only(bottom: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                         side: isCardSelected
-                            ? const BorderSide(color: AppColors.primaryBlue, width: 2.5)
+                            ? const BorderSide(
+                                color: AppColors.primaryBlue,
+                                width: 2.5,
+                              )
                             : BorderSide.none,
                       ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
                         onTap: () => controller.handleContactCardTap(contact),
                         child: Semantics(
-                          label: 'Kontak ${contact.name}, ${contact.relationship}, nomor ${contact.phoneNumber}. ${isCardSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka menu pilihan panggilan." : "Ketuk dua kali untuk mendengar info dan membuka menu pilihan."}',
-                          hint: 'Ketuk dua kali untuk membuka pilihan panggilan',
+                          label:
+                              'Kontak ${contact.name}, ${contact.relationship}, nomor ${contact.phoneNumber}.',
+                          hint: 'Aktifkan untuk membuka pilihan panggilan',
                           button: true,
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -272,11 +335,13 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             contact.name,
@@ -299,19 +364,25 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                                     ),
                                     Obx(() {
                                       final isDeleteSelected =
-                                          controller.selectedContactActionKey.value == 'delete_${contact.id}';
+                                          controller
+                                              .selectedContactActionKey
+                                              .value ==
+                                          'delete_${contact.id}';
                                       return Semantics(
-                                        label: 'Hapus kontak ${contact.name}. ${isDeleteSelected ? "Sedang dipilih. Ketuk dua kali untuk menghapus kontak." : "Ketuk dua kali untuk konfirmasi hapus."}',
-                                        hint: isDeleteSelected ? 'Ketuk dua kali untuk menghapus' : 'Ketuk dua kali untuk konfirmasi hapus',
+                                        label: 'Hapus kontak ${contact.name}.',
+                                        hint: 'Aktifkan untuk menghapus kontak',
                                         button: true,
                                         child: IconButton(
                                           tooltip: 'Hapus kontak',
                                           icon: Icon(
                                             Icons.delete_outline_rounded,
-                                            color: isDeleteSelected ? AppColors.emergencyRed : Colors.grey,
+                                            color: isDeleteSelected
+                                                ? AppColors.emergencyRed
+                                                : Colors.grey,
                                             size: isDeleteSelected ? 28 : 24,
                                           ),
-                                          onPressed: () => controller.handleDeleteContactTap(contact),
+                                          onPressed: () => controller
+                                              .handleDeleteContactTap(contact),
                                         ),
                                       );
                                     }),
@@ -327,29 +398,52 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                                       flex: 4,
                                       child: Obx(() {
                                         final isPhoneSelected =
-                                            controller.selectedContactActionKey.value == 'phone_${contact.id}';
+                                            controller
+                                                .selectedContactActionKey
+                                                .value ==
+                                            'phone_${contact.id}';
                                         return Semantics(
-                                          label: 'Panggil ${contact.name} via Telepon Seluler langsung tanpa chat. ${isPhoneSelected ? "Sedang dipilih. Ketuk dua kali untuk memanggil langsung." : "Ketuk dua kali untuk mendengar penjelasan dan memanggil."}',
-                                          hint: isPhoneSelected ? 'Ketuk dua kali untuk memanggil langsung' : 'Ketuk dua kali untuk mendengar penjelasan',
+                                          label:
+                                              'Panggil ${contact.name} via Telepon Seluler langsung tanpa chat.',
+                                          hint: 'Aktifkan untuk memanggil langsung',
                                           button: true,
                                           child: ElevatedButton.icon(
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.primaryBlue,
+                                              backgroundColor:
+                                                  AppColors.primaryBlue,
                                               foregroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 side: isPhoneSelected
-                                                    ? const BorderSide(color: Colors.white, width: 2.5)
+                                                    ? const BorderSide(
+                                                        color: Colors.white,
+                                                        width: 2.5,
+                                                      )
                                                     : BorderSide.none,
                                               ),
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
-                                              elevation: isPhoneSelected ? 4 : 1,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
+                                              elevation: isPhoneSelected
+                                                  ? 4
+                                                  : 1,
                                             ),
-                                            onPressed: () => controller.handleContactPhoneTap(contact),
-                                            icon: const Icon(Icons.phone_rounded, size: 18),
+                                            onPressed: () => controller
+                                                .handleContactPhoneTap(contact),
+                                            icon: const Icon(
+                                              Icons.phone_rounded,
+                                              size: 18,
+                                            ),
                                             label: Text(
-                                              isPhoneSelected ? 'Panggil' : 'Telepon',
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                              isPhoneSelected
+                                                  ? 'Panggil'
+                                                  : 'Telepon',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ),
                                         );
@@ -362,29 +456,53 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                                       flex: 4,
                                       child: Obx(() {
                                         final isWaSelected =
-                                            controller.selectedContactActionKey.value == 'wa_voice_${contact.id}';
+                                            controller
+                                                .selectedContactActionKey
+                                                .value ==
+                                            'wa_voice_${contact.id}';
                                         return Semantics(
-                                          label: 'Panggil ${contact.name} via Video Call WhatsApp langsung. ${isWaSelected ? "Sedang dipilih. Ketuk dua kali untuk memulai panggilan video." : "Ketuk dua kali untuk mendengar penjelasan dan memulai video call."}',
-                                          hint: isWaSelected ? 'Ketuk dua kali untuk memulai video call' : 'Ketuk dua kali untuk mendengar penjelasan',
+                                          label:
+                                              'Panggil ${contact.name} via Video Call WhatsApp langsung.',
+                                          hint: 'Aktifkan untuk memulai video call',
                                           button: true,
                                           child: ElevatedButton.icon(
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF25D366),
+                                              backgroundColor: const Color(
+                                                0xFF25D366,
+                                              ),
                                               foregroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 side: isWaSelected
-                                                    ? const BorderSide(color: Colors.white, width: 2.5)
+                                                    ? const BorderSide(
+                                                        color: Colors.white,
+                                                        width: 2.5,
+                                                      )
                                                     : BorderSide.none,
                                               ),
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
                                               elevation: isWaSelected ? 4 : 1,
                                             ),
-                                            onPressed: () => controller.handleContactWhatsAppVoiceTap(contact),
-                                            icon: const Icon(Icons.videocam_rounded, size: 20),
+                                            onPressed: () => controller
+                                                .handleContactWhatsAppVoiceTap(
+                                                  contact,
+                                                ),
+                                            icon: const Icon(
+                                              Icons.videocam_rounded,
+                                              size: 20,
+                                            ),
                                             label: Text(
-                                              isWaSelected ? 'Panggil VC' : 'VC WA',
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                              isWaSelected
+                                                  ? 'Panggil VC'
+                                                  : 'VC WA',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ),
                                         );
@@ -397,29 +515,51 @@ class TrustedContactsView extends GetView<VisualHelpController> {
                                       flex: 3,
                                       child: Obx(() {
                                         final isChatSelected =
-                                            controller.selectedContactActionKey.value == 'chat_${contact.id}';
+                                            controller
+                                                .selectedContactActionKey
+                                                .value ==
+                                            'chat_${contact.id}';
                                         return Semantics(
-                                          label: 'Kirim pesan WhatsApp ke ${contact.name}. ${isChatSelected ? "Sedang dipilih. Ketuk dua kali untuk membuka pesan." : "Ketuk dua kali untuk mendengar penjelasan dan membuka pesan."}',
-                                          hint: isChatSelected ? 'Ketuk dua kali untuk membuka pesan' : 'Ketuk dua kali untuk mendengar penjelasan',
+                                          label:
+                                              'Kirim pesan WhatsApp ke ${contact.name}.',
+                                          hint: 'Aktifkan untuk membuka pesan',
                                           button: true,
                                           child: ElevatedButton.icon(
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF128C7E),
+                                              backgroundColor: const Color(
+                                                0xFF128C7E,
+                                              ),
                                               foregroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 side: isChatSelected
-                                                    ? const BorderSide(color: Colors.white, width: 2.5)
+                                                    ? const BorderSide(
+                                                        color: Colors.white,
+                                                        width: 2.5,
+                                                      )
                                                     : BorderSide.none,
                                               ),
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
                                               elevation: isChatSelected ? 4 : 1,
                                             ),
-                                            onPressed: () => controller.handleContactChatTap(contact),
-                                            icon: const Icon(Icons.chat_rounded, size: 18),
+                                            onPressed: () => controller
+                                                .handleContactChatTap(contact),
+                                            icon: const Icon(
+                                              Icons.chat_rounded,
+                                              size: 18,
+                                            ),
                                             label: Text(
-                                              isChatSelected ? 'Buka Chat' : 'Chat',
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                              isChatSelected
+                                                  ? 'Buka Chat'
+                                                  : 'Chat',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ),
                                         );
@@ -470,7 +610,11 @@ class TrustedContactsView extends GetView<VisualHelpController> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: AppColors.primaryBlue, size: 18),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.primaryBlue,
+                    size: 18,
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -535,12 +679,15 @@ class TrustedContactsView extends GetView<VisualHelpController> {
       confirmTextColor: Colors.white,
       buttonColor: AppColors.primaryBlue,
       onConfirm: () {
-        if (nameCtrl.text.trim().isNotEmpty && phoneCtrl.text.trim().isNotEmpty) {
+        if (nameCtrl.text.trim().isNotEmpty &&
+            phoneCtrl.text.trim().isNotEmpty) {
           final newContact = TrustedContact(
             id: 'contact_${DateTime.now().millisecondsSinceEpoch}',
             name: nameCtrl.text.trim(),
             phoneNumber: phoneCtrl.text.trim(),
-            relationship: relCtrl.text.trim().isEmpty ? 'Keluarga' : relCtrl.text.trim(),
+            relationship: relCtrl.text.trim().isEmpty
+                ? 'Keluarga'
+                : relCtrl.text.trim(),
           );
           service.addContact(newContact);
           controller.ttsService.speak(

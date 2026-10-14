@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../data/models/visual_help_models.dart';
 import '../../../routes/app_pages.dart';
 import '../../../services/contacts_service.dart';
@@ -49,13 +50,19 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                     color: isExpired ? AppColors.surface : AppColors.lightBlue,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isExpired ? AppColors.textSecondary : AppColors.primaryBlue,
+                      color: isExpired
+                          ? AppColors.textSecondary
+                          : AppColors.primaryBlue,
                       width: 3,
                     ),
                   ),
                   child: Center(
                     child: isExpired
-                        ? const Icon(Icons.timer_off_rounded, size: 54, color: AppColors.textSecondary)
+                        ? const Icon(
+                            Icons.timer_off_rounded,
+                            size: 54,
+                            color: AppColors.textSecondary,
+                          )
                         : Text(
                             '$secondsLeft',
                             style: const TextStyle(
@@ -70,10 +77,14 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
 
                 // Teks Status
                 Text(
-                  isExpired ? 'Belum Ada Relawan Tersedia' : 'Menghubungkan ke Relawan Pilot...',
+                  isExpired
+                      ? 'Belum Ada Relawan Tersedia'
+                      : 'Menghubungkan ke Relawan Pilot...',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isExpired ? AppColors.emergencyRed : AppColors.textPrimary,
+                    color: isExpired
+                        ? AppColors.emergencyRed
+                        : AppColors.textPrimary,
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                   ),
@@ -95,7 +106,9 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                 const SizedBox(height: 24),
 
                 // Konteks Tugas yang Diteruskan (Hanya jika ada konteks spesifik dari deteksi AI)
-                if (req != null && (req.taskContext.targetName != null || req.taskContext.taskType != TaskType.generalHelp))
+                if (req != null &&
+                    (req.taskContext.targetName != null ||
+                        req.taskContext.taskType != TaskType.generalHelp))
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -144,7 +157,7 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                 if (!isExpired) ...[
                   Semantics(
                     label: 'Kirim Notifikasi ke Grup WhatsApp Relawan',
-                    hint: 'Ketuk dua kali untuk mengirim pesan bantuan ke grup WhatsApp agar relawan segera menjawab.',
+                    hint: 'Aktifkan untuk mengirim pesan bantuan ke grup WhatsApp agar relawan segera menjawab.',
                     button: true,
                     child: SizedBox(
                       width: double.infinity,
@@ -153,14 +166,20 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                           backgroundColor: const Color(0xFF25D366),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           elevation: 2,
                         ),
-                        onPressed: () => controller.broadcastRequestToWhatsApp(),
+                        onPressed: () =>
+                            controller.broadcastRequestToWhatsApp(),
                         icon: const Icon(Icons.share_rounded, size: 22),
                         label: const Text(
                           'Kirim ke Grup WhatsApp Relawan',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -174,8 +193,13 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: AppColors.emergencyRed, width: 2),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          side: const BorderSide(
+                            color: AppColors.emergencyRed,
+                            width: 2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                         onPressed: () => controller.cancelRequest(),
                         child: const Text(
@@ -193,10 +217,12 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                   // Opsi 1: Panggilan Cepat WhatsApp Kontak Tepercaya jika ada
                   Builder(
                     builder: (context) {
-                      final contactsService = Get.isRegistered<ContactsService>()
+                      final contactsService =
+                          Get.isRegistered<ContactsService>()
                           ? Get.find<ContactsService>()
                           : null;
-                      final primaryContact = contactsService?.contacts.firstOrNull;
+                      final primaryContact =
+                          contactsService?.contacts.firstOrNull;
 
                       if (primaryContact != null) {
                         return Padding(
@@ -207,17 +233,27 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF25D366),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
                               onPressed: () => controller.showCallOptionsModal(
                                 phoneNumber: primaryContact.phoneNumber,
                                 contactName: primaryContact.name,
                               ),
-                              icon: const Icon(Icons.phone_in_talk_rounded, size: 22),
+                              icon: const Icon(
+                                Icons.phone_in_talk_rounded,
+                                size: 22,
+                              ),
                               label: Text(
                                 'Telepon ${primaryContact.name} (WA / Seluler)',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -235,7 +271,9 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                         backgroundColor: AppColors.primaryBlue,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                       onPressed: () {
                         Get.back();
@@ -243,7 +281,10 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                       },
                       child: const Text(
                         'Coba Minta Bantuan Lagi',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -255,11 +296,19 @@ class VisualHelpWaitingView extends GetView<VisualHelpController> {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        side: const BorderSide(
+                          color: AppColors.primaryBlue,
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                       onPressed: () => Get.offNamed(Routes.TRUSTED_CONTACTS),
-                      icon: const Icon(Icons.contacts_rounded, color: AppColors.primaryBlue),
+                      icon: const Icon(
+                        Icons.contacts_rounded,
+                        color: AppColors.primaryBlue,
+                      ),
                       label: const Text(
                         'Buka Semua Kontak Tepercaya',
                         style: TextStyle(

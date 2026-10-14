@@ -2,25 +2,30 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../config/app_config.dart';
 import '../data/models/visual_help_models.dart';
 
 class VisualHelpService extends GetxService {
   // ====================== SUPABASE CLOUD PILOT ======================
-    // ====================== KONFIGURASI TERPUSAT ======================
+  // ====================== KONFIGURASI TERPUSAT ======================
   // Mengambil konfigurasi dari AppConfig (Aman tanpa bocoran secret di APK)
   static String get livekitCloudUrl => AppConfig.livekitCloudUrl;
   static String get supabaseUrl => AppConfig.supabaseUrl;
   static String get supabaseAnonKey => AppConfig.supabaseAnonKey;
-  final RxBool useSupabaseCloud = true.obs;
+
+  /// Cloud hanya boleh dipakai setelah aplikasi memiliki JWT pengguna yang
+  /// terautentikasi. Jangan pernah memakai anon key sebagai identitas sesi.
+  final RxBool useSupabaseCloud = AppConfig.hasAuthenticatedCloudSession.obs;
   Timer? _supabaseWatcherTimer;
 
   Map<String, String> get _supabaseHeaders => {
     'apikey': supabaseAnonKey,
-    'Authorization': 'Bearer $supabaseAnonKey',
+    'Authorization': 'Bearer ${AppConfig.supabaseUserJwt}',
     'Content-Type': 'application/json',
     'Prefer': 'return=representation',
   };
@@ -32,7 +37,8 @@ class VisualHelpService extends GetxService {
 
   // Alamat default: 10.0.2.2 untuk Android emulator, 127.0.0.1 untuk desktop/pengujian lokal
   final RxString serverBaseUrl = 'http://127.0.0.1:8080'.obs;
-  final RxString currentRole = 'user'.obs; // 'user' (tunanetra) atau 'companion' (relawan)
+  final RxString currentRole =
+      'user'.obs; // 'user' (tunanetra) atau 'companion' (relawan)
   final RxString currentUserId = ''.obs;
   final RxString currentUserName = ''.obs;
   final RxString communityId = 'komunitas_netra_pilot'.obs;
@@ -41,10 +47,13 @@ class VisualHelpService extends GetxService {
   final RxBool isCompanionAvailable = true.obs;
 
   // Sesi aktif saat ini
-  final Rx<VisualHelpRequestModel?> activeRequest = Rx<VisualHelpRequestModel?>(null);
+  final Rx<VisualHelpRequestModel?> activeRequest = Rx<VisualHelpRequestModel?>(
+    null,
+  );
 
   // Daftar permintaan masuk (khusus peran pendamping)
-  final RxList<VisualHelpRequestModel> incomingRequests = <VisualHelpRequestModel>[].obs;
+  final RxList<VisualHelpRequestModel> incomingRequests =
+      <VisualHelpRequestModel>[].obs;
 
   WebSocket? _webSocket;
   Timer? _heartbeatTimer;
@@ -64,9 +73,11 @@ class VisualHelpService extends GetxService {
     }
 
     currentRole.value = prefs.getString(_userRoleKey) ?? 'user';
-    currentUserId.value = prefs.getString(_userIdKey) ??
+    currentUserId.value =
+        prefs.getString(_userIdKey) ??
         'usr_${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-    currentUserName.value = prefs.getString(_userNameKey) ??
+    currentUserName.value =
+        prefs.getString(_userNameKey) ??
         (currentRole.value == 'companion' ? 'Relawan Netra' : 'Pengguna Netra');
 
     // Hubungkan WebSocket untuk notifikasi real-time
@@ -159,7 +170,9 @@ class VisualHelpService extends GetxService {
         if (!incomingRequests.any((r) => r.id == req.id)) {
           incomingRequests.insert(0, req);
         }
-      } else if (event == 'request_taken' || event == 'request_cancelled' || event == 'request_expired') {
+      } else if (event == 'request_taken' ||
+          event == 'request_cancelled' ||
+          event == 'request_expired') {
         final reqId = data['requestId'] as String?;
         if (reqId != null) {
           incomingRequests.removeWhere((r) => r.id == reqId);
@@ -198,12 +211,16 @@ class VisualHelpService extends GetxService {
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
       if (currentRole.value == 'companion') {
         try {
-          final uri = Uri.parse('${serverBaseUrl.value}/api/presence/heartbeat');
-          await http.post(
-            uri,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'companionId': currentUserId.value}),
-          ).timeout(const Duration(seconds: 3));
+          final uri = Uri.parse(
+            '${serverBaseUrl.value}/api/presence/heartbeat',
+          );
+          await http
+              .post(
+                uri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({'companionId': currentUserId.value}),
+              )
+              .timeout(const Duration(seconds: 3));
         } catch (_) {}
       }
     });
@@ -220,16 +237,20 @@ class VisualHelpService extends GetxService {
     bool canPublish = true,
   }) async {
     try {
-      final edgeUri = Uri.parse('$supabaseUrl/functions/v1/generate-livekit-token');
-      final res = await http.post(
-        edgeUri,
-        headers: _supabaseHeaders,
-        body: jsonEncode({
-          'roomName': roomName,
-          'identity': identity,
-          'name': name,
-        }),
-      ).timeout(const Duration(seconds: 4));
+      final edgeUri = Uri.parse(
+        '$supabaseUrl/functions/v1/generate-livekit-token',
+      );
+      final res = await http
+          .post(
+            edgeUri,
+            headers: _supabaseHeaders,
+            body: jsonEncode({
+              'roomName': roomName,
+              'identity': identity,
+              'name': name,
+            }),
+          )
+          .timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -242,7 +263,9 @@ class VisualHelpService extends GetxService {
     }
 
     // Jika Edge Function gagal/offline, lempar pesan ramah jaringan
-    throw Exception('Gagal mendapatkan token LiveKit dari server keamanan cloud.');
+    throw Exception(
+      'Gagal mendapatkan token LiveKit dari server keamanan cloud.',
+    );
   }
 
   Future<VisualHelpRequestModel?> createHelpRequest({
@@ -252,11 +275,15 @@ class VisualHelpService extends GetxService {
     if (useSupabaseCloud.value) {
       try {
         final rng = Random();
-        final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(90) + 10}';
-        final accessKey = 'key_${DateTime.now().millisecondsSinceEpoch % 1000000}_${rng.nextInt(900000) + 100000}';
-        
+        final reqId =
+            'req_${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(90) + 10}';
+        final accessKey =
+            'key_${DateTime.now().millisecondsSinceEpoch % 1000000}_${rng.nextInt(900000) + 100000}';
+
         final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests');
-        final targetDesc = (taskContext.targetName != null && taskContext.targetName!.trim().isNotEmpty)
+        final targetDesc =
+            (taskContext.targetName != null &&
+                taskContext.targetName!.trim().isNotEmpty)
             ? taskContext.targetName!
             : taskContext.taskType.label;
 
@@ -290,11 +317,9 @@ class VisualHelpService extends GetxService {
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         };
 
-        final res = await http.post(
-          uri,
-          headers: _supabaseHeaders,
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 6));
+        final res = await http
+            .post(uri, headers: _supabaseHeaders, body: jsonEncode(body))
+            .timeout(const Duration(seconds: 6));
 
         if (res.statusCode == 201) {
           final model = VisualHelpRequestModel(
@@ -319,21 +344,23 @@ class VisualHelpService extends GetxService {
 
     final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests');
     try {
-      final res = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': currentUserId.value,
-          'userName': currentUserName.value,
-          'taskType': taskContext.taskType.shortCode,
-          'taskTarget': taskContext.targetName,
-          'unverifiedAiLabel': taskContext.unverifiedAiLabel,
-          'notes': taskContext.notes,
-          'sourceScreen': taskContext.sourceScreen,
-          'recipientTarget': recipientTarget.code,
-          'communityId': communityId.value,
-        }),
-      ).timeout(const Duration(seconds: 5));
+      final res = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'userId': currentUserId.value,
+              'userName': currentUserName.value,
+              'taskType': taskContext.taskType.shortCode,
+              'taskTarget': taskContext.targetName,
+              'unverifiedAiLabel': taskContext.unverifiedAiLabel,
+              'notes': taskContext.notes,
+              'sourceScreen': taskContext.sourceScreen,
+              'recipientTarget': recipientTarget.code,
+              'communityId': communityId.value,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 201) {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -344,7 +371,9 @@ class VisualHelpService extends GetxService {
         // Sudah ada sesi aktif
         final json = jsonDecode(res.body) as Map<String, dynamic>;
         if (json.containsKey('activeRequest')) {
-          final req = VisualHelpRequestModel.fromJson(json['activeRequest'] as Map<String, dynamic>);
+          final req = VisualHelpRequestModel.fromJson(
+            json['activeRequest'] as Map<String, dynamic>,
+          );
           activeRequest.value = req;
           return req;
         }
@@ -355,23 +384,30 @@ class VisualHelpService extends GetxService {
 
   void _startSupabaseSessionWatcher(String reqId) {
     _supabaseWatcherTimer?.cancel();
-    _supabaseWatcherTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) async {
+    _supabaseWatcherTimer = Timer.periodic(const Duration(milliseconds: 1000), (
+      timer,
+    ) async {
       try {
-        final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests?id=eq.$reqId&select=*');
-        final res = await http.get(
-          uri,
-          headers: {
-            'apikey': supabaseAnonKey,
-            'Authorization': 'Bearer $supabaseAnonKey',
-          },
-        ).timeout(const Duration(seconds: 4));
+        final uri = Uri.parse(
+          '$supabaseUrl/rest/v1/help_requests?id=eq.$reqId&select=*',
+        );
+        final res = await http
+            .get(
+              uri,
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': 'Bearer ${AppConfig.supabaseUserJwt}',
+              },
+            )
+            .timeout(const Duration(seconds: 4));
 
         if (res.statusCode == 200) {
           final list = jsonDecode(res.body) as List<dynamic>;
           if (list.isEmpty) return;
           final data = list[0] as Map<String, dynamic>;
           final status = data['status'] as String?;
-          final companionName = data['assigned_companion_name'] as String? ?? 'Relawan Netra';
+          final companionName =
+              data['assigned_companion_name'] as String? ?? 'Relawan Netra';
           final companionId = data['assigned_companion_id'] as String?;
 
           if (status == 'accepted') {
@@ -405,10 +441,7 @@ class VisualHelpService extends GetxService {
               activeRequest.value!.status = HelpSessionState.completed;
               activeRequest.refresh();
             }
-            onSocketEvent?.call({
-              'event': 'session_ended',
-              'requestId': reqId,
-            });
+            onSocketEvent?.call({'event': 'session_ended', 'requestId': reqId});
           } else if (status == 'cancelled') {
             timer.cancel();
             if (activeRequest.value != null) {
@@ -429,12 +462,16 @@ class VisualHelpService extends GetxService {
     if (useSupabaseCloud.value) {
       _supabaseWatcherTimer?.cancel();
       try {
-        final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests?id=eq.$requestId');
-        await http.patch(
-          uri,
-          headers: _supabaseHeaders,
-          body: jsonEncode({'status': 'cancelled'}),
-        ).timeout(const Duration(seconds: 4));
+        final uri = Uri.parse(
+          '$supabaseUrl/rest/v1/help_requests?id=eq.$requestId',
+        );
+        await http
+            .patch(
+              uri,
+              headers: _supabaseHeaders,
+              body: jsonEncode({'status': 'cancelled'}),
+            )
+            .timeout(const Duration(seconds: 4));
       } catch (_) {}
       if (activeRequest.value?.id == requestId) {
         activeRequest.value?.status = HelpSessionState.cancelled;
@@ -444,20 +481,24 @@ class VisualHelpService extends GetxService {
     }
 
     final authKey = activeRequest.value?.accessKey;
-    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/cancel');
+    final uri = Uri.parse(
+      '${serverBaseUrl.value}/api/help-requests/$requestId/cancel',
+    );
     try {
-      final res = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Auth-Key': ?authKey,
-        },
-        body: jsonEncode({
-          'userId': currentUserId.value,
-          'authKey': ?authKey,
-          'reason': reason ?? 'Dibatalkan oleh pengguna',
-        }),
-      ).timeout(const Duration(seconds: 5));
+      final res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Key': ?authKey,
+            },
+            body: jsonEncode({
+              'userId': currentUserId.value,
+              'authKey': ?authKey,
+              'reason': reason ?? 'Dibatalkan oleh pengguna',
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         if (activeRequest.value?.id == requestId) {
@@ -472,16 +513,20 @@ class VisualHelpService extends GetxService {
 
   /// ATOMIC ACCEPTANCE: Relawan mengambil sesi bantuan
   Future<Map<String, dynamic>> acceptHelpRequest(String requestId) async {
-    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/accept');
+    final uri = Uri.parse(
+      '${serverBaseUrl.value}/api/help-requests/$requestId/accept',
+    );
     try {
-      final res = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'companionId': currentUserId.value,
-          'companionName': currentUserName.value,
-        }),
-      ).timeout(const Duration(seconds: 5));
+      final res = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'companionId': currentUserId.value,
+              'companionName': currentUserName.value,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
 
       final json = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 200) {
@@ -494,7 +539,10 @@ class VisualHelpService extends GetxService {
       } else if (res.statusCode == 409) {
         // Sudah diambil oleh orang lain
         incomingRequests.removeWhere((r) => r.id == requestId);
-        return {'success': false, 'error': json['error'] ?? 'Sesi sudah diambil oleh relawan lain.'};
+        return {
+          'success': false,
+          'error': json['error'] ?? 'Sesi sudah diambil oleh relawan lain.',
+        };
       }
     } catch (e) {
       return {'success': false, 'error': 'Gagal menghubungkan ke server: $e'};
@@ -506,12 +554,16 @@ class VisualHelpService extends GetxService {
     if (useSupabaseCloud.value) {
       _supabaseWatcherTimer?.cancel();
       try {
-        final uri = Uri.parse('$supabaseUrl/rest/v1/help_requests?id=eq.$requestId');
-        await http.patch(
-          uri,
-          headers: _supabaseHeaders,
-          body: jsonEncode({'status': 'completed'}),
-        ).timeout(const Duration(seconds: 4));
+        final uri = Uri.parse(
+          '$supabaseUrl/rest/v1/help_requests?id=eq.$requestId',
+        );
+        await http
+            .patch(
+              uri,
+              headers: _supabaseHeaders,
+              body: jsonEncode({'status': 'completed'}),
+            )
+            .timeout(const Duration(seconds: 4));
       } catch (_) {}
       if (activeRequest.value?.id == requestId) {
         activeRequest.value?.status = HelpSessionState.completed;
@@ -521,19 +573,23 @@ class VisualHelpService extends GetxService {
     }
 
     final authKey = activeRequest.value?.accessKey;
-    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/complete');
+    final uri = Uri.parse(
+      '${serverBaseUrl.value}/api/help-requests/$requestId/complete',
+    );
     try {
-      final res = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Auth-Key': ?authKey,
-        },
-        body: jsonEncode({
-          'userId': currentUserId.value,
-          'authKey': ?authKey,
-        }),
-      ).timeout(const Duration(seconds: 5));
+      final res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Key': ?authKey,
+            },
+            body: jsonEncode({
+              'userId': currentUserId.value,
+              'authKey': ?authKey,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         if (activeRequest.value?.id == requestId) {
@@ -547,16 +603,20 @@ class VisualHelpService extends GetxService {
   }
 
   Future<bool> reportSession(String requestId, String reason) async {
-    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/report');
+    final uri = Uri.parse(
+      '${serverBaseUrl.value}/api/help-requests/$requestId/report',
+    );
     try {
-      final res = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'reportedBy': currentUserId.value,
-          'reason': reason,
-        }),
-      ).timeout(const Duration(seconds: 5));
+      final res = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'reportedBy': currentUserId.value,
+              'reason': reason,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
       return res.statusCode == 201;
     } catch (_) {}
     return false;
@@ -566,19 +626,23 @@ class VisualHelpService extends GetxService {
     isCompanionAvailable.value = available;
     final uri = Uri.parse('${serverBaseUrl.value}/api/companions/availability');
     try {
-      await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'companionId': currentUserId.value,
-          'isAvailable': available,
-        }),
-      ).timeout(const Duration(seconds: 3));
+      await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'companionId': currentUserId.value,
+              'isAvailable': available,
+            }),
+          )
+          .timeout(const Duration(seconds: 3));
     } catch (_) {}
   }
 
   Future<void> requestSnapshot(String requestId) async {
-    final uri = Uri.parse('${serverBaseUrl.value}/api/help-requests/$requestId/snapshot');
+    final uri = Uri.parse(
+      '${serverBaseUrl.value}/api/help-requests/$requestId/snapshot',
+    );
     try {
       await http.post(
         uri,

@@ -21,9 +21,12 @@ class DetectorView extends GetView<DetectorController> {
           children: [
             // 1. Kamera + overlay deteksi native (bounding box & label).
             Semantics(
-              label:
-                  'Layar Kamera ${controller.mode.title} aktif. Ketuk sekali untuk mengulang info objek di hadapan Anda.',
-              hint: 'Ketuk layar untuk mendengarkan objek terbaru',
+              label: controller.mode == VisionMode.indoor
+                  ? 'Kamera Kenali Barang Sekitar aktif. Peringatan rintangan dekat berjalan otomatis.'
+                  : 'Layar Kamera ${controller.mode.title} aktif. Ketuk sekali untuk mengulang info objek di hadapan Anda.',
+              hint: controller.mode == VisionMode.indoor
+                  ? 'Ketuk layar untuk mendengar ringkasan maksimal tiga objek di sekitar'
+                  : 'Ketuk layar untuk mendengarkan objek terbaru',
               button: true,
               child: GestureDetector(
                 onTap: () {
@@ -80,8 +83,11 @@ class DetectorView extends GetView<DetectorController> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.pause_circle_filled,
-                                      size: 72, color: Colors.white),
+                                  Icon(
+                                    Icons.pause_circle_filled,
+                                    size: 72,
+                                    color: Colors.white,
+                                  ),
                                   SizedBox(height: 12),
                                   Text(
                                     'Deteksi Dijeda',
@@ -121,28 +127,26 @@ class DetectorView extends GetView<DetectorController> {
 
             // 4. Peta navigasi — hanya Mode Jalan (di pojok kanan bawah).
             if (controller.mode == VisionMode.outdoor)
-              Obx(
-                () {
-                  final isExpanded = controller.mapExpanded.value;
-                  if (isExpanded) {
-                    return Positioned(
-                      left: 14,
-                      right: 14,
-                      top: 75,
-                      bottom: 165,
-                      child: NavigationMapEmbed(controller: controller),
-                    );
-                  } else {
-                    return Positioned(
-                      right: 14,
-                      bottom: 165,
-                      width: 145,
-                      height: 145,
-                      child: NavigationMapEmbed(controller: controller),
-                    );
-                  }
-                },
-              ),
+              Obx(() {
+                final isExpanded = controller.mapExpanded.value;
+                if (isExpanded) {
+                  return Positioned(
+                    left: 14,
+                    right: 14,
+                    top: 75,
+                    bottom: 165,
+                    child: NavigationMapEmbed(controller: controller),
+                  );
+                } else {
+                  return Positioned(
+                    right: 14,
+                    bottom: 165,
+                    width: 145,
+                    height: 145,
+                    child: NavigationMapEmbed(controller: controller),
+                  );
+                }
+              }),
 
             // 5. Overlay Darurat SOS (Tampil saat hitung mundur 5 detik)
             Obx(() {
@@ -152,14 +156,16 @@ class DetectorView extends GetView<DetectorController> {
               return Positioned.fill(
                 child: Semantics(
                   label:
-                      'Peringatan Darurat SOS Aktif. Menghubungi bantuan dalam ${controller.sosCountdownSeconds.value} detik. Ketuk layar sekali untuk membatalkan.',
+                      'Permintaan bantuan mendesak aktif. Menghubungi relawan atau kontak tepercaya dalam ${controller.sosCountdownSeconds.value} detik. Ketuk layar sekali untuk membatalkan.',
                   button: true,
                   child: GestureDetector(
                     onTap: () => controller.cancelEmergencySOS(),
                     child: Container(
                       color: AppColors.emergencyRed.withValues(alpha: 0.95),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 30),
+                        horizontal: 24,
+                        vertical: 30,
+                      ),
                       child: Center(
                         child: SingleChildScrollView(
                           physics: const ClampingScrollPhysics(),
@@ -175,8 +181,9 @@ class DetectorView extends GetView<DetectorController> {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.3),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 20,
                                       spreadRadius: 4,
                                     ),
@@ -195,7 +202,7 @@ class DetectorView extends GetView<DetectorController> {
                               ),
                               const SizedBox(height: 24),
                               const Text(
-                                '🚨 PANGGILAN DARURAT',
+                                '🚨 BANTUAN MENDESAK',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white,
@@ -260,7 +267,11 @@ class DetectorView extends GetView<DetectorController> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                        Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'Kembali',
@@ -283,7 +294,7 @@ class DetectorView extends GetView<DetectorController> {
               children: [
                 // Tombol Darurat SOS di Layar Kamera
                 Semantics(
-                  label: 'Panggilan Darurat SOS',
+                  label: 'Minta bantuan mendesak kepada relawan atau kontak tepercaya',
                   hint: 'Ketuk untuk memicu peringatan darurat lima detik',
                   button: true,
                   child: Material(
@@ -297,11 +308,18 @@ class DetectorView extends GetView<DetectorController> {
                         controller.triggerEmergencySOS();
                       },
                       child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'SOS',
@@ -320,32 +338,40 @@ class DetectorView extends GetView<DetectorController> {
                 ),
                 const SizedBox(width: 8),
                 // Tombol Jeda / Lanjutkan Deteksi (lokal Obx)
-                Obx(() => Semantics(
-                  label: controller.isPaused.value ? 'Lanjutkan Deteksi' : 'Jeda Deteksi',
-                  button: true,
-                  child: Material(
-                    color: controller.isPaused.value
-                        ? AppColors.yellowAccent
-                        : Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(16),
-                    elevation: 2,
-                    child: InkWell(
+                Obx(
+                  () => Semantics(
+                    label: controller.isPaused.value
+                        ? 'Lanjutkan Deteksi'
+                        : 'Jeda Deteksi',
+                    button: true,
+                    child: Material(
+                      color: controller.isPaused.value
+                          ? AppColors.yellowAccent
+                          : Colors.black.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        controller.togglePause();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          controller.isPaused.value ? Icons.play_arrow : Icons.pause,
-                          color: controller.isPaused.value ? Colors.black : Colors.white,
-                          size: 24,
+                      elevation: 2,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          controller.togglePause();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Icon(
+                            controller.isPaused.value
+                                ? Icons.play_arrow
+                                : Icons.pause,
+                            color: controller.isPaused.value
+                                ? Colors.black
+                                : Colors.white,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                )),
+                ),
               ],
             ),
           ],
@@ -360,7 +386,11 @@ class DetectorView extends GetView<DetectorController> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white30, width: 1.2),
               boxShadow: const [
-                BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
+                BoxShadow(
+                  color: Colors.black38,
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
               ],
             ),
             child: Row(
@@ -413,14 +443,18 @@ class DetectorView extends GetView<DetectorController> {
           final subtitle = controller.mode == VisionMode.currency
               ? 'Ketuk layar kapan saja untuk mengulang nominal uang'
               : controller.mode == VisionMode.outdoor
-                  ? (controller.navStatus.value.isNotEmpty
-                      ? controller.navStatus.value
-                      : 'Ketuk mikrofon pada peta untuk menyebutkan tujuan')
-                  : 'Ketuk layar kapan saja untuk cek rintangan';
+              ? (controller.navStatus.value.isNotEmpty
+                    ? controller.navStatus.value
+                    : 'Ketuk mikrofon pada peta untuk menyebutkan tujuan')
+              : controller.mode == VisionMode.indoor
+              ? 'Ketuk layar untuk ringkasan · Tetap gunakan tongkat'
+              : 'Ketuk layar kapan saja untuk cek rintangan';
 
           return Semantics(
             label: 'Status deteksi: ${controller.currentStatusText.value}',
-            liveRegion: true,
+            // Indoor memakai satu jalur pengumuman terjadwal lewat TTS/TalkBack.
+            // Live region per frame akan menggandakan alarm dan melewati debounce.
+            liveRegion: controller.mode != VisionMode.indoor,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
@@ -496,11 +530,18 @@ class DetectorView extends GetView<DetectorController> {
               borderRadius: BorderRadius.circular(16),
               onTap: () => controller.requestVisualHelp(),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.volunteer_activism_rounded, color: Colors.white, size: 22),
+                    Icon(
+                      Icons.volunteer_activism_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     SizedBox(width: 8),
                     Flexible(
                       child: Text(
@@ -529,10 +570,22 @@ class DetectorView extends GetView<DetectorController> {
       final box = controller.activeDetectionBox.value;
       if (box == null || box.isEmpty) return const SizedBox.shrink();
 
-      final left = (box.left * constraints.maxWidth).clamp(0.0, constraints.maxWidth - 20);
-      final top = (box.top * constraints.maxHeight).clamp(0.0, constraints.maxHeight - 20);
-      final width = (box.width * constraints.maxWidth).clamp(20.0, constraints.maxWidth - left);
-      final height = (box.height * constraints.maxHeight).clamp(20.0, constraints.maxHeight - top);
+      final left = (box.left * constraints.maxWidth).clamp(
+        0.0,
+        constraints.maxWidth - 20,
+      );
+      final top = (box.top * constraints.maxHeight).clamp(
+        0.0,
+        constraints.maxHeight - 20,
+      );
+      final width = (box.width * constraints.maxWidth).clamp(
+        20.0,
+        constraints.maxWidth - left,
+      );
+      final height = (box.height * constraints.maxHeight).clamp(
+        20.0,
+        constraints.maxHeight - top,
+      );
 
       return Positioned(
         left: left,

@@ -1,4 +1,5 @@
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+
 import 'vision_mode.dart';
 
 /// Sumber kebenaran tunggal pemetaan fitur (mode) → model AI yang dipakai.
@@ -36,8 +37,8 @@ class VisionModelConfig {
       confidenceThreshold: 0.35,
       iouThreshold: 0.45,
     ),
-    // Model indoor: YOLO11n detect COCO 80 kelas (perabotan, pintu, penghuni)
-    // — jauh lebih ringan & sesuai fitur daripada meminjam model segment outdoor.
+    // Model indoor saat ini: YOLO11n detect COCO 80 kelas. Model ini mengenali
+    // orang/perabot tertentu, tetapi belum mendukung pintu, tangga, atau drop-off.
     VisionMode.indoor: VisionModelConfig(
       modelPath: 'assets/models/indoor/indoor_objects.tflite',
       task: YOLOTask.detect,

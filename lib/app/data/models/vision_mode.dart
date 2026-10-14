@@ -1,16 +1,11 @@
 /// Mode fitur deteksi yang tersedia di NetraVision
-enum VisionMode {
-  indoor,
-  outdoor,
-  currency,
-  itemSearch,
-}
+enum VisionMode { indoor, outdoor, currency, itemSearch }
 
 extension VisionModeExtension on VisionMode {
   String get title {
     switch (this) {
       case VisionMode.indoor:
-        return 'Mode Dalam Ruangan';
+        return 'Kenali Barang Sekitar';
       case VisionMode.outdoor:
         return 'Mode Luar Ruangan';
       case VisionMode.currency:
@@ -23,7 +18,7 @@ extension VisionModeExtension on VisionMode {
   String get description {
     switch (this) {
       case VisionMode.indoor:
-        return 'Deteksi rintangan, perabotan & ruang';
+        return 'Peringatan rintangan & ringkasan sekitar';
       case VisionMode.outdoor:
         return 'Deteksi jalan, kendaraan & bahaya trotoar';
       case VisionMode.currency:
@@ -36,7 +31,7 @@ extension VisionModeExtension on VisionMode {
   String get announcement {
     switch (this) {
       case VisionMode.indoor:
-        return 'Mode Dalam Ruangan aktif. Kamera siap mendeteksi perabotan dan rintangan di dalam ruangan.';
+        return 'Kenali Barang Sekitar aktif. Pegang ponsel tegak setinggi dada dan arahkan ke depan. Peringatan otomatis diberikan untuk objek dekat yang dikenali. Ketuk layar untuk ringkasan sekitar. Tetap gunakan tongkat atau pendamping.';
       case VisionMode.outdoor:
         return 'Mode Luar Ruangan aktif. Kamera siap mendeteksi jalan, kendaraan, dan rintangan luar ruangan.';
       case VisionMode.currency:

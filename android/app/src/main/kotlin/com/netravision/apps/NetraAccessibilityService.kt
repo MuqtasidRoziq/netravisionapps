@@ -1,9 +1,6 @@
 package com.netravision.apps
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.GestureDescription
-import android.graphics.Path
-import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -61,34 +58,34 @@ class NetraAccessibilityService : AccessibilityService() {
         }
 
         val pkg = event?.packageName?.toString() ?: ""
-        if (!pkg.contains("whatsapp")) return
+        if (pkg != "com.whatsapp" && pkg != "com.whatsapp.w4b") return
 
         val root = rootInActiveWindow ?: return
 
         when (action) {
             "video_call" -> {
-                val targetKeywords = listOf(
+                val targetLabels = listOf(
                     "telepon video",
                     "panggilan video",
                     "video call",
                     "video_call",
                     "videocall"
                 )
-                if (searchAndClick(root, targetKeywords)) {
+                if (searchAndClick(root, targetLabels)) {
                     Log.d(TAG, "Successfully triggered Video Call click! Watching for call screen or dialog...")
                     pendingAction = "confirm_call"
                     armTime = System.currentTimeMillis()
                 }
             }
             "voice_call" -> {
-                val targetKeywords = listOf(
+                val targetLabels = listOf(
                     "telepon suara",
                     "panggilan suara",
                     "voice call",
                     "voice_call",
                     "audio call"
                 )
-                if (searchAndClick(root, targetKeywords)) {
+                if (searchAndClick(root, targetLabels)) {
                     Log.d(TAG, "Successfully triggered Voice Call click! Watching for call screen or dialog...")
                     pendingAction = "confirm_call"
                     armTime = System.currentTimeMillis()
@@ -103,8 +100,8 @@ class NetraAccessibilityService : AccessibilityService() {
                     return
                 }
                 // Confirmation dialog button (e.g. "Panggil", "Call", "Mulai Panggilan")
-                val confirmKeywords = listOf("panggil", "call", "mulai panggilan")
-                if (searchAndClick(root, confirmKeywords)) {
+                val confirmLabels = listOf("panggil", "call", "mulai panggilan")
+                if (searchAndClick(root, confirmLabels)) {
                     Log.d(TAG, "Confirmed call dialog!")
                     disarm()
                 } else if (System.currentTimeMillis() - armTime > 3500L) {
@@ -112,8 +109,8 @@ class NetraAccessibilityService : AccessibilityService() {
                 }
             }
             "send_chat" -> {
-                val targetKeywords = listOf("kirim", "send")
-                if (searchAndClick(root, targetKeywords)) {
+                val targetLabels = listOf("kirim", "send")
+                if (searchAndClick(root, targetLabels)) {
                     Log.d(TAG, "Successfully triggered Send Chat click!")
                     disarm()
                 }
@@ -137,37 +134,27 @@ class NetraAccessibilityService : AccessibilityService() {
         return false
     }
 
-    private fun searchAndClick(node: AccessibilityNodeInfo, keywords: List<String>): Boolean {
+    private fun searchAndClick(node: AccessibilityNodeInfo, labels: List<String>): Boolean {
         val desc = node.contentDescription?.toString()?.lowercase() ?: ""
         val text = node.text?.toString()?.lowercase() ?: ""
-        val id = node.viewIdResourceName?.lowercase() ?: ""
 
-        for (kw in keywords) {
-            if (desc.contains(kw) || text.contains(kw) || id.contains(kw)) {
-                Log.d(TAG, "Found target view: desc='$desc', text='$text', id='$id'")
-                val rect = Rect()
-                node.getBoundsInScreen(rect)
-                if (!rect.isEmpty) {
-                    dispatchTapGesture(rect.centerX().toFloat(), rect.centerY().toFloat())
-                }
-                if (node.isClickable) {
-                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                }
-                var parent = node.parent
-                while (parent != null) {
-                    if (parent.isClickable) {
-                        parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                        break
-                    }
-                    parent = parent.parent
-                }
-                return true
+        // Cocok persis agar kata umum seperti "call" atau "send" pada isi
+        // chat tidak pernah diperlakukan sebagai tombol. Hanya satu aksi klik
+        // yang dikirim, tanpa gesture sintetis dan tanpa klik parent kedua kali.
+        if (labels.any { it == desc || it == text }) {
+            var clickable: AccessibilityNodeInfo? = node
+            while (clickable != null && !clickable.isClickable) {
+                clickable = clickable.parent
+            }
+            if (clickable != null) {
+                Log.d(TAG, "Clicking confirmed WhatsApp control: desc='$desc', text='$text'")
+                return clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
         }
 
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
-            if (searchAndClick(child, keywords)) {
+            if (searchAndClick(child, labels)) {
                 return true
             }
         }
@@ -175,14 +162,4 @@ class NetraAccessibilityService : AccessibilityService() {
         return false
     }
 
-    private fun dispatchTapGesture(x: Float, y: Float) {
-        val path = Path().apply {
-            moveTo(x, y)
-        }
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 60))
-            .build()
-        dispatchGesture(gesture, null, null)
-        Log.d(TAG, "Dispatched synthetic tap gesture at ($x, $y)")
-    }
 }

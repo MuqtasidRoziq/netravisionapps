@@ -40,20 +40,32 @@ class PilotServer {
 
   Future<void> start() async {
     // Dukung konfigurasi dinamis melalui Environment Variables
-    final effectivePort = int.tryParse(Platform.environment['PORT'] ?? '') ?? port;
-    final effectiveLivekitUrl = Platform.environment['LIVEKIT_URL'] ?? livekitUrl;
+    final effectivePort =
+        int.tryParse(Platform.environment['PORT'] ?? '') ?? port;
+    final effectiveLivekitUrl =
+        Platform.environment['LIVEKIT_URL'] ?? livekitUrl;
     final certPath = Platform.environment['SSL_CERT_PATH'] ?? sslCertPath;
     final keyPath = Platform.environment['SSL_KEY_PATH'] ?? sslKeyPath;
+    // Endpoint pilot tidak memiliki autentikasi produksi. Tetap di loopback
+    // kecuali operator secara sadar membukanya ke jaringan.
+    final bindAddress = Platform.environment['PILOT_ALLOW_NETWORK'] == 'true'
+        ? InternetAddress.anyIPv4
+        : InternetAddress.loopbackIPv4;
 
-    if (certPath != null && keyPath != null && File(certPath).existsSync() && File(keyPath).existsSync()) {
+    if (certPath != null &&
+        keyPath != null &&
+        File(certPath).existsSync() &&
+        File(keyPath).existsSync()) {
       final secContext = SecurityContext()
         ..useCertificateChain(certPath)
         ..usePrivateKey(keyPath);
-      _server = await HttpServer.bindSecure(InternetAddress.anyIPv4, effectivePort, secContext);
+      _server =
+          await HttpServer.bindSecure(bindAddress, effectivePort, secContext);
       // ignore: avoid_print
-      print('NetraVision Pilot Server berjalan dengan HTTPS di port $effectivePort');
+      print(
+          'NetraVision Pilot Server berjalan dengan HTTPS di port $effectivePort');
     } else {
-      _server = await HttpServer.bind(InternetAddress.anyIPv4, effectivePort);
+      _server = await HttpServer.bind(bindAddress, effectivePort);
       // ignore: avoid_print
       print('NetraVision Pilot Server berjalan di port $effectivePort');
     }
@@ -66,8 +78,10 @@ class PilotServer {
     _server!.listen((HttpRequest request) async {
       // Set CORS Headers untuk web testing / mobile companion
       request.response.headers.add('Access-Control-Allow-Origin', '*');
-      request.response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      request.response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Auth-Key');
+      request.response.headers
+          .add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      request.response.headers.add('Access-Control-Allow-Headers',
+          'Content-Type, Authorization, X-Auth-Key');
 
       if (request.method == 'OPTIONS') {
         request.response.statusCode = HttpStatus.noContent;
@@ -91,18 +105,21 @@ class PilotServer {
             return;
           }
 
-                    if (path == '/sw.js') {
-            await _handleServeStaticFile(request, 'server/web/sw.js', 'application/javascript');
+          if (path == '/sw.js') {
+            await _handleServeStaticFile(
+                request, 'server/web/sw.js', 'application/javascript');
             return;
           }
 
           if (path == '/manifest.json') {
-            await _handleServeStaticFile(request, 'server/web/manifest.json', 'application/json');
+            await _handleServeStaticFile(
+                request, 'server/web/manifest.json', 'application/json');
             return;
           }
 
           if (path == '/logo_no_bg.png') {
-            await _handleServeStaticFile(request, 'server/web/logo_no_bg.png', 'image/png');
+            await _handleServeStaticFile(
+                request, 'server/web/logo_no_bg.png', 'image/png');
             return;
           }
 
@@ -115,42 +132,59 @@ class PilotServer {
             final pending = _requests.values
                 .where((r) => r.status == 'pending')
                 .map((r) => {
-                  'id': r.id,
-                  'userName': r.userName,
-                  'taskType': r.taskType,
-                  'taskTarget': r.taskTarget,
-                  'notes': r.notes,
-                  'accessKey': r.accessKey,
-                  'webAssistUrl': '/assist?req=${r.id}&auth=${r.accessKey}',
-                  'createdAt': r.createdAt.toIso8601String(),
-                })
+                      'id': r.id,
+                      'userName': r.userName,
+                      'taskType': r.taskType,
+                      'taskTarget': r.taskTarget,
+                      'notes': r.notes,
+                      'accessKey': r.accessKey,
+                      'webAssistUrl': '/assist?req=${r.id}&auth=${r.accessKey}',
+                      'createdAt': r.createdAt.toIso8601String(),
+                    })
                 .toList();
             _jsonResponse(request, HttpStatus.ok, {'requests': pending});
             return;
           }
 
-          if (path == '/api/health' || path == '/health' || path == '/healthz') {
+          if (path == '/api/health' ||
+              path == '/health' ||
+              path == '/healthz') {
             _jsonResponse(request, HttpStatus.ok, {
               'status': 'ok',
               'version': '2.1.0-hardened',
               'pilot': 'NetraVision Visual Help Pilot Server',
-              'livekitUrl': effectiveLivekitUrl.startsWith('wss://') ? effectiveLivekitUrl.split('@').last : effectiveLivekitUrl,
-              'activeRequests': _requests.values.where((r) => r.status == 'pending' || r.status == 'accepted' || r.status == 'connected').length,
-              'activeCompanions': _companions.values.where((c) => c.isAvailable && c.isFresh(Duration(seconds: presenceTimeoutSeconds))).length,
+              'livekitUrl': effectiveLivekitUrl.startsWith('wss://')
+                  ? effectiveLivekitUrl.split('@').last
+                  : effectiveLivekitUrl,
+              'activeRequests': _requests.values
+                  .where((r) =>
+                      r.status == 'pending' ||
+                      r.status == 'accepted' ||
+                      r.status == 'connected')
+                  .length,
+              'activeCompanions': _companions.values
+                  .where((c) =>
+                      c.isAvailable &&
+                      c.isFresh(Duration(seconds: presenceTimeoutSeconds)))
+                  .length,
             });
             return;
           }
 
           if (path == '/api/companions/available') {
-            final communityId = request.uri.queryParameters['communityId'] ?? 'komunitas_netra_pilot';
-            final freshCompanions = _companions.values.where((c) =>
-                c.communityId == communityId &&
-                c.isAvailable &&
-                c.currentSessionId == null &&
-                c.isFresh(Duration(seconds: presenceTimeoutSeconds))
-            ).map((c) => c.toJson()).toList();
+            final communityId = request.uri.queryParameters['communityId'] ??
+                'komunitas_netra_pilot';
+            final freshCompanions = _companions.values
+                .where((c) =>
+                    c.communityId == communityId &&
+                    c.isAvailable &&
+                    c.currentSessionId == null &&
+                    c.isFresh(Duration(seconds: presenceTimeoutSeconds)))
+                .map((c) => c.toJson())
+                .toList();
 
-            _jsonResponse(request, HttpStatus.ok, {'companions': freshCompanions});
+            _jsonResponse(
+                request, HttpStatus.ok, {'companions': freshCompanions});
             return;
           }
 
@@ -158,7 +192,8 @@ class PilotServer {
             final id = path.replaceFirst('/api/help-requests/', '');
             final req = _requests[id];
             if (req == null) {
-              _jsonResponse(request, HttpStatus.notFound, {'error': 'Permintaan tidak ditemukan'});
+              _jsonResponse(request, HttpStatus.notFound,
+                  {'error': 'Permintaan tidak ditemukan'});
             } else {
               // AMAN: toJson() tidak lagi menyertakan accessKey, userToken, atau companionToken!
               _jsonResponse(request, HttpStatus.ok, req.toJson());
@@ -193,13 +228,15 @@ class PilotServer {
             return;
           }
 
-          if (path.endsWith('/accept') && path.contains('/api/help-requests/')) {
+          if (path.endsWith('/accept') &&
+              path.contains('/api/help-requests/')) {
             final id = path.split('/')[3];
             await _handleAcceptHelpRequest(request, id, body);
             return;
           }
 
-          if (path.endsWith('/connected') && path.contains('/api/help-requests/')) {
+          if (path.endsWith('/connected') &&
+              path.contains('/api/help-requests/')) {
             final id = path.split('/')[3];
             await _handleConnectedHelpRequest(request, id, body);
             return;
@@ -211,32 +248,37 @@ class PilotServer {
             return;
           }
 
-          if (path.endsWith('/cancel') && path.contains('/api/help-requests/')) {
+          if (path.endsWith('/cancel') &&
+              path.contains('/api/help-requests/')) {
             final id = path.split('/')[3];
             await _handleCancelHelpRequest(request, id, body);
             return;
           }
 
-          if (path.endsWith('/complete') && path.contains('/api/help-requests/')) {
+          if (path.endsWith('/complete') &&
+              path.contains('/api/help-requests/')) {
             final id = path.split('/')[3];
             await _handleCompleteHelpRequest(request, id, body);
             return;
           }
 
-          if (path.endsWith('/report') && path.contains('/api/help-requests/')) {
+          if (path.endsWith('/report') &&
+              path.contains('/api/help-requests/')) {
             final id = path.split('/')[3];
             await _handleReport(request, id, body);
             return;
           }
 
-          if (path.endsWith('/snapshot') && path.contains('/api/help-requests/')) {
+          if (path.endsWith('/snapshot') &&
+              path.contains('/api/help-requests/')) {
             final id = path.split('/')[3];
             await _handleSnapshotRelay(request, id, body);
             return;
           }
         }
 
-        _jsonResponse(request, HttpStatus.notFound, {'error': 'Rute tidak ditemukan: $path'});
+        _jsonResponse(request, HttpStatus.notFound,
+            {'error': 'Rute tidak ditemukan: $path'});
       } catch (e, stack) {
         _jsonResponse(request, HttpStatus.internalServerError, {
           'error': 'Kesalahan internal server',
@@ -267,7 +309,8 @@ class PilotServer {
     if (xAuthKey != null && xAuthKey.isNotEmpty) {
       return xAuthKey.trim();
     }
-    final queryAuth = request.uri.queryParameters['auth'] ?? request.uri.queryParameters['accessKey'];
+    final queryAuth = request.uri.queryParameters['auth'] ??
+        request.uri.queryParameters['accessKey'];
     if (queryAuth != null && queryAuth.isNotEmpty) {
       return queryAuth.trim();
     }
@@ -282,11 +325,14 @@ class PilotServer {
 
   // ====================== AUTH & PRESENCE ======================
 
-  Future<void> _handleLogin(HttpRequest request, Map<String, dynamic> body) async {
-    final id = body['id'] as String? ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
+  Future<void> _handleLogin(
+      HttpRequest request, Map<String, dynamic> body) async {
+    final id = body['id'] as String? ??
+        'user_${DateTime.now().millisecondsSinceEpoch}';
     final name = body['name'] as String? ?? 'Pengguna';
     final role = body['role'] as String? ?? 'user';
-    final communityId = body['communityId'] as String? ?? 'komunitas_netra_pilot';
+    final communityId =
+        body['communityId'] as String? ?? 'komunitas_netra_pilot';
 
     if (role == 'companion') {
       _companions[id] = CompanionPresence(
@@ -306,12 +352,14 @@ class PilotServer {
     });
   }
 
-  Future<void> _handleAvailabilityToggle(HttpRequest request, Map<String, dynamic> body) async {
+  Future<void> _handleAvailabilityToggle(
+      HttpRequest request, Map<String, dynamic> body) async {
     final companionId = body['companionId'] as String?;
     final isAvailable = body['isAvailable'] as bool? ?? false;
 
     if (companionId == null || !_companions.containsKey(companionId)) {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Pendamping tidak terdaftar'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Pendamping tidak terdaftar'});
       return;
     }
 
@@ -320,24 +368,29 @@ class PilotServer {
     _jsonResponse(request, HttpStatus.ok, _companions[companionId]!.toJson());
   }
 
-  Future<void> _handleHeartbeat(HttpRequest request, Map<String, dynamic> body) async {
+  Future<void> _handleHeartbeat(
+      HttpRequest request, Map<String, dynamic> body) async {
     final companionId = body['companionId'] as String?;
     if (companionId == null) {
-      _jsonResponse(request, HttpStatus.badRequest, {'error': 'companionId dibutuhkan'});
+      _jsonResponse(
+          request, HttpStatus.badRequest, {'error': 'companionId dibutuhkan'});
       return;
     }
 
     if (_companions.containsKey(companionId)) {
       _companions[companionId]!.lastHeartbeat = DateTime.now();
-      _jsonResponse(request, HttpStatus.ok, {'status': 'pong', 'companionId': companionId});
+      _jsonResponse(request, HttpStatus.ok,
+          {'status': 'pong', 'companionId': companionId});
     } else {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Pendamping tidak ditemukan'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Pendamping tidak ditemukan'});
     }
   }
 
   // ====================== HELP REQUESTS & ATOMIC MATCHING ======================
 
-  Future<void> _handleCreateHelpRequest(HttpRequest request, Map<String, dynamic> body) async {
+  Future<void> _handleCreateHelpRequest(
+      HttpRequest request, Map<String, dynamic> body) async {
     final userId = body['userId'] as String?;
     final userName = body['userName'] as String? ?? 'Pengguna Tunanetra';
     final taskType = body['taskType'] as String? ?? 'generalHelp';
@@ -345,19 +398,26 @@ class PilotServer {
     final unverifiedAiLabel = body['unverifiedAiLabel'] as String?;
     final notes = body['notes'] as String?;
     final sourceScreen = body['sourceScreen'] as String? ?? 'home';
-    final recipientTarget = body['recipientTarget'] as String? ?? 'communityVolunteers';
-    final communityId = body['communityId'] as String? ?? 'komunitas_netra_pilot';
+    final recipientTarget =
+        body['recipientTarget'] as String? ?? 'communityVolunteers';
+    final communityId =
+        body['communityId'] as String? ?? 'komunitas_netra_pilot';
 
     if (userId == null) {
-      _jsonResponse(request, HttpStatus.badRequest, {'error': 'userId tidak boleh kosong'});
+      _jsonResponse(request, HttpStatus.badRequest,
+          {'error': 'userId tidak boleh kosong'});
       return;
     }
 
     // Cegah permintaan ganda: Cek apakah user sudah punya permintaan aktif
-    final activeExisting = _requests.values.where((r) =>
-        r.userId == userId &&
-        (r.status == 'pending' || r.status == 'accepted' || r.status == 'connecting' || r.status == 'connected')
-    ).toList();
+    final activeExisting = _requests.values
+        .where((r) =>
+            r.userId == userId &&
+            (r.status == 'pending' ||
+                r.status == 'accepted' ||
+                r.status == 'connecting' ||
+                r.status == 'connected'))
+        .toList();
 
     if (activeExisting.isNotEmpty) {
       _jsonResponse(request, HttpStatus.conflict, {
@@ -367,8 +427,10 @@ class PilotServer {
       return;
     }
 
-    final id = 'req_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
-    final accessKey = 'key_${Random().nextInt(899999) + 100000}_${Random().nextInt(899999) + 100000}';
+    final id =
+        'req_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
+    final accessKey =
+        'key_${Random().nextInt(899999) + 100000}_${Random().nextInt(899999) + 100000}';
 
     final helpReq = HelpRequest(
       id: id,
@@ -387,13 +449,17 @@ class PilotServer {
     _requests[id] = helpReq;
 
     // Tentukan scheme & host untuk webAssistUrl
-    final isHttps = request.certificate != null || request.headers.value('x-forwarded-proto') == 'https';
+    final isHttps = request.certificate != null ||
+        request.headers.value('x-forwarded-proto') == 'https';
     final scheme = isHttps ? 'https' : 'http';
     final effectivePort = _server?.port ?? port;
     final hostHeader = request.headers.value('host');
     String authority;
     if (hostHeader != null && hostHeader.isNotEmpty) {
-      if (!isHttps && !hostHeader.contains(':') && effectivePort != 80 && effectivePort != 443) {
+      if (!isHttps &&
+          !hostHeader.contains(':') &&
+          effectivePort != 80 &&
+          effectivePort != 443) {
         authority = '$hostHeader:$effectivePort';
       } else {
         authority = hostHeader;
@@ -416,26 +482,31 @@ class PilotServer {
     }
 
     // Kembalikan toCreatorResponse yang secara eksklusif memberikan accessKey ke pembuat
-    _jsonResponse(request, HttpStatus.created, helpReq.toCreatorResponse(webAssistUrl: webAssistUrl));
+    _jsonResponse(request, HttpStatus.created,
+        helpReq.toCreatorResponse(webAssistUrl: webAssistUrl));
   }
 
   /// ATOMIC ACCEPTANCE: Menjamin tepat satu pendamping yang berhasil menerima & verifikasi izin API
-  Future<void> _handleAcceptHelpRequest(HttpRequest request, String requestId, Map<String, dynamic> body) async {
+  Future<void> _handleAcceptHelpRequest(
+      HttpRequest request, String requestId, Map<String, dynamic> body) async {
     final req = _requests[requestId];
     if (req == null) {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Permintaan tidak ditemukan'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Permintaan tidak ditemukan'});
       return;
     }
 
     // TEMUAN 1 FIX: Verifikasi izin akses (authKey ATAU pendamping terdaftar di sistem)
     final callerAuth = _extractAuthKey(request, body);
     final rawCompanionId = body['companionId'] as String?;
-    final isRegisteredCompanion = rawCompanionId != null && _companions.containsKey(rawCompanionId);
+    final isRegisteredCompanion =
+        rawCompanionId != null && _companions.containsKey(rawCompanionId);
     final hasValidAuthKey = callerAuth != null && callerAuth == req.accessKey;
 
     if (!hasValidAuthKey && !isRegisteredCompanion) {
       _jsonResponse(request, HttpStatus.forbidden, {
-        'error': 'Akses ditolak: authKey tidak valid dan pendamping tidak terdaftar.',
+        'error':
+            'Akses ditolak: authKey tidak valid dan pendamping tidak terdaftar.',
       });
       return;
     }
@@ -443,7 +514,8 @@ class PilotServer {
     // ATOMIC CHECK: Hanya jika status masih 'pending', permintaan boleh diambil
     if (req.status != 'pending') {
       _jsonResponse(request, HttpStatus.conflict, {
-        'error': 'Permintaan sudah diambil oleh pendamping lain atau telah dibatalkan/kedaluwarsa.',
+        'error':
+            'Permintaan sudah diambil oleh pendamping lain atau telah dibatalkan/kedaluwarsa.',
         'status': req.status,
         'assignedCompanionId': req.assignedCompanionId,
       });
@@ -467,9 +539,12 @@ class PilotServer {
     final roomName = 'room_${req.id.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}';
     req.livekitRoom = roomName;
 
-    final effectiveLivekitApiKey = Platform.environment['LIVEKIT_API_KEY'] ?? livekitApiKey;
-    final effectiveLivekitSecret = Platform.environment['LIVEKIT_API_SECRET'] ?? livekitApiSecret;
-    final effectiveLivekitUrl = Platform.environment['LIVEKIT_URL'] ?? livekitUrl;
+    final effectiveLivekitApiKey =
+        Platform.environment['LIVEKIT_API_KEY'] ?? livekitApiKey;
+    final effectiveLivekitSecret =
+        Platform.environment['LIVEKIT_API_SECRET'] ?? livekitApiSecret;
+    final effectiveLivekitUrl =
+        Platform.environment['LIVEKIT_URL'] ?? livekitUrl;
 
     // Buat token otentikasi LiveKit dengan masa berlaku ringkas (10 menit)
     req.userToken = LiveKitJwt.createToken(
@@ -514,21 +589,27 @@ class PilotServer {
     });
 
     // Beritahu pendamping lain bahwa permintaan sudah diambil (stop offering)
-    _broadcastToCompanions(req.communityId, {
-      'event': 'request_taken',
-      'requestId': req.id,
-      'acceptedBy': companionName,
-    }, excludeCompanionId: companionId);
+    _broadcastToCompanions(
+        req.communityId,
+        {
+          'event': 'request_taken',
+          'requestId': req.id,
+          'acceptedBy': companionName,
+        },
+        excludeCompanionId: companionId);
 
     // Kirim respons toAcceptorResponse hanya kepada penerima yang sah
-    _jsonResponse(request, HttpStatus.ok, req.toAcceptorResponse(livekitUrl: effectiveLivekitUrl));
+    _jsonResponse(request, HttpStatus.ok,
+        req.toAcceptorResponse(livekitUrl: effectiveLivekitUrl));
   }
 
   /// TEMUAN 4 FIX: Validasi media & penolakan perubahan connected jika sesi sudah dibatalkan/selesai
-  Future<void> _handleConnectedHelpRequest(HttpRequest request, String requestId, Map<String, dynamic> body) async {
+  Future<void> _handleConnectedHelpRequest(
+      HttpRequest request, String requestId, Map<String, dynamic> body) async {
     final req = _requests[requestId];
     if (req == null) {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Permintaan tidak ditemukan'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Permintaan tidak ditemukan'});
       return;
     }
 
@@ -536,17 +617,21 @@ class PilotServer {
     final callerAuth = _extractAuthKey(request, body);
     final callerUserId = body['userId'] as String?;
     final isAuthorized = (callerAuth != null && callerAuth == req.accessKey) ||
-        (callerUserId != null && (callerUserId == req.userId || callerUserId == req.assignedCompanionId));
+        (callerUserId != null &&
+            (callerUserId == req.userId ||
+                callerUserId == req.assignedCompanionId));
 
     if (!isAuthorized) {
-      _jsonResponse(request, HttpStatus.forbidden, {'error': 'Akses ditolak: otorisasi tidak valid'});
+      _jsonResponse(request, HttpStatus.forbidden,
+          {'error': 'Akses ditolak: otorisasi tidak valid'});
       return;
     }
 
     // TOLAK jika status bukan accepted / connecting (misal sudah cancelled, completed, expired, atau failed)
     if (req.status != 'accepted' && req.status != 'connecting') {
       _jsonResponse(request, HttpStatus.conflict, {
-        'error': 'Tidak dapat mengubah status menjadi connected: status permintaan saat ini adalah ${req.status}',
+        'error':
+            'Tidak dapat mengubah status menjadi connected: status permintaan saat ini adalah ${req.status}',
         'currentStatus': req.status,
       });
       return;
@@ -567,33 +652,41 @@ class PilotServer {
       _sendToUser(req.assignedCompanionId!, connectedEvent);
     }
 
-    _jsonResponse(request, HttpStatus.ok, {'status': 'connected', 'requestId': req.id});
+    _jsonResponse(
+        request, HttpStatus.ok, {'status': 'connected', 'requestId': req.id});
   }
 
   /// TEMUAN 5 FIX: Kegagalan calon pendamping (sebelum menerima) TIDAK menggagalkan seluruh permintaan!
-  Future<void> _handleFailHelpRequest(HttpRequest request, String requestId, Map<String, dynamic> body) async {
+  Future<void> _handleFailHelpRequest(
+      HttpRequest request, String requestId, Map<String, dynamic> body) async {
     final req = _requests[requestId];
     if (req == null) {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Permintaan tidak ditemukan'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Permintaan tidak ditemukan'});
       return;
     }
 
     // Jika status masih pending (belum di-accept), kegagalan browser seorang pendamping tidak boleh membatalkan tiket
     if (req.status == 'pending') {
       _jsonResponse(request, HttpStatus.ok, {
-        'message': 'Kegagalan kandidat pendamping dicatat. Tiket bantuan tetap terbuka untuk pendamping lain.',
+        'message':
+            'Kegagalan kandidat pendamping dicatat. Tiket bantuan tetap terbuka untuk pendamping lain.',
         'status': req.status,
       });
       return;
     }
 
     final callerAuth = _extractAuthKey(request, body);
-    final callerUserId = body['userId'] as String? ?? body['companionId'] as String?;
+    final callerUserId =
+        body['userId'] as String? ?? body['companionId'] as String?;
     final isAuthorized = (callerAuth != null && callerAuth == req.accessKey) ||
-        (callerUserId != null && (callerUserId == req.userId || callerUserId == req.assignedCompanionId));
+        (callerUserId != null &&
+            (callerUserId == req.userId ||
+                callerUserId == req.assignedCompanionId));
 
     if (!isAuthorized) {
-      _jsonResponse(request, HttpStatus.forbidden, {'error': 'Akses ditolak: bukan peserta sesi'});
+      _jsonResponse(request, HttpStatus.forbidden,
+          {'error': 'Akses ditolak: bukan peserta sesi'});
       return;
     }
 
@@ -602,7 +695,8 @@ class PilotServer {
     req.cancelReason = reason;
     req.cancelledAt = DateTime.now();
 
-    if (req.assignedCompanionId != null && _companions.containsKey(req.assignedCompanionId)) {
+    if (req.assignedCompanionId != null &&
+        _companions.containsKey(req.assignedCompanionId)) {
       _companions[req.assignedCompanionId!]!.currentSessionId = null;
     }
 
@@ -619,28 +713,37 @@ class PilotServer {
 
     await _teardownLiveKitRoom(req.livekitRoom);
 
-    _jsonResponse(request, HttpStatus.ok, {'status': 'failed', 'reason': reason});
+    _jsonResponse(
+        request, HttpStatus.ok, {'status': 'failed', 'reason': reason});
   }
 
-  Future<void> _handleCancelHelpRequest(HttpRequest request, String requestId, Map<String, dynamic> body) async {
+  Future<void> _handleCancelHelpRequest(
+      HttpRequest request, String requestId, Map<String, dynamic> body) async {
     final req = _requests[requestId];
     if (req == null) {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Permintaan tidak ditemukan'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Permintaan tidak ditemukan'});
       return;
     }
 
     final callerAuth = _extractAuthKey(request, body);
     final callerUserId = body['userId'] as String?;
     final isAuthorized = (callerAuth != null && callerAuth == req.accessKey) ||
-        (callerUserId != null && (callerUserId == req.userId || callerUserId == req.assignedCompanionId));
+        (callerUserId != null &&
+            (callerUserId == req.userId ||
+                callerUserId == req.assignedCompanionId));
 
     if (!isAuthorized) {
-      _jsonResponse(request, HttpStatus.forbidden, {'error': 'Akses ditolak: otorisasi pembatalan tidak sah'});
+      _jsonResponse(request, HttpStatus.forbidden,
+          {'error': 'Akses ditolak: otorisasi pembatalan tidak sah'});
       return;
     }
 
     if (req.status == 'completed' || req.status == 'cancelled') {
-      _jsonResponse(request, HttpStatus.ok, {'message': 'Permintaan memang sudah berakhir', 'status': req.status});
+      _jsonResponse(request, HttpStatus.ok, {
+        'message': 'Permintaan memang sudah berakhir',
+        'status': req.status
+      });
       return;
     }
 
@@ -652,7 +755,8 @@ class PilotServer {
     req.userToken = null;
     req.companionToken = null;
 
-    if (req.assignedCompanionId != null && _companions.containsKey(req.assignedCompanionId)) {
+    if (req.assignedCompanionId != null &&
+        _companions.containsKey(req.assignedCompanionId)) {
       _companions[req.assignedCompanionId!]!.currentSessionId = null;
     }
 
@@ -674,20 +778,25 @@ class PilotServer {
   }
 
   /// TEMUAN 2 FIX: Pencabutan token & pemutusan room LiveKit secara tuntas
-  Future<void> _handleCompleteHelpRequest(HttpRequest request, String requestId, Map<String, dynamic> body) async {
+  Future<void> _handleCompleteHelpRequest(
+      HttpRequest request, String requestId, Map<String, dynamic> body) async {
     final req = _requests[requestId];
     if (req == null) {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Permintaan tidak ditemukan'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Permintaan tidak ditemukan'});
       return;
     }
 
     final callerAuth = _extractAuthKey(request, body);
     final callerUserId = body['userId'] as String?;
     final isAuthorized = (callerAuth != null && callerAuth == req.accessKey) ||
-        (callerUserId != null && (callerUserId == req.userId || callerUserId == req.assignedCompanionId));
+        (callerUserId != null &&
+            (callerUserId == req.userId ||
+                callerUserId == req.assignedCompanionId));
 
     if (!isAuthorized) {
-      _jsonResponse(request, HttpStatus.forbidden, {'error': 'Akses ditolak: otorisasi penyelesaian tidak sah'});
+      _jsonResponse(request, HttpStatus.forbidden,
+          {'error': 'Akses ditolak: otorisasi penyelesaian tidak sah'});
       return;
     }
 
@@ -695,7 +804,8 @@ class PilotServer {
     req.completedAt = DateTime.now();
     req.isRoomClosed = true;
 
-    if (req.assignedCompanionId != null && _companions.containsKey(req.assignedCompanionId)) {
+    if (req.assignedCompanionId != null &&
+        _companions.containsKey(req.assignedCompanionId)) {
       _companions[req.assignedCompanionId!]!.currentSessionId = null;
     }
 
@@ -724,16 +834,20 @@ class PilotServer {
   Future<void> _teardownLiveKitRoom(String? roomName) async {
     if (roomName == null || roomName.isEmpty) return;
 
-    final effectiveLivekitApiKey = Platform.environment['LIVEKIT_API_KEY'] ?? livekitApiKey;
-    final effectiveLivekitSecret = Platform.environment['LIVEKIT_API_SECRET'] ?? livekitApiSecret;
-    final effectiveLivekitUrl = Platform.environment['LIVEKIT_URL'] ?? livekitUrl;
+    final effectiveLivekitApiKey =
+        Platform.environment['LIVEKIT_API_KEY'] ?? livekitApiKey;
+    final effectiveLivekitSecret =
+        Platform.environment['LIVEKIT_API_SECRET'] ?? livekitApiSecret;
+    final effectiveLivekitUrl =
+        Platform.environment['LIVEKIT_URL'] ?? livekitUrl;
 
     // Ubah wss:// menjadi https:// untuk REST API endpoint
     String httpEndpoint = effectiveLivekitUrl
         .replaceAll('wss://', 'https://')
         .replaceAll('ws://', 'http://');
 
-    if (!httpEndpoint.startsWith('http://') && !httpEndpoint.startsWith('https://')) {
+    if (!httpEndpoint.startsWith('http://') &&
+        !httpEndpoint.startsWith('https://')) {
       httpEndpoint = 'https://$httpEndpoint';
     }
 
@@ -750,21 +864,25 @@ class PilotServer {
         validFor: const Duration(minutes: 2),
       );
 
-      final deleteUri = Uri.parse('$httpEndpoint/twirp/livekit.RoomService/DeleteRoom');
-      await http.post(
-        deleteUri,
-        headers: {
-          'Authorization': 'Bearer $adminToken',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'room': roomName}),
-      ).timeout(const Duration(seconds: 2));
+      final deleteUri =
+          Uri.parse('$httpEndpoint/twirp/livekit.RoomService/DeleteRoom');
+      await http
+          .post(
+            deleteUri,
+            headers: {
+              'Authorization': 'Bearer $adminToken',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'room': roomName}),
+          )
+          .timeout(const Duration(seconds: 2));
     } catch (_) {
       // Pada mode mock internal atau pilot offline, room sudah ditandai isRoomClosed di state
     }
   }
 
-  Future<void> _handleReport(HttpRequest request, String requestId, Map<String, dynamic> body) async {
+  Future<void> _handleReport(
+      HttpRequest request, String requestId, Map<String, dynamic> body) async {
     final reportedBy = body['reportedBy'] as String? ?? 'unknown';
     final reason = body['reason'] as String? ?? 'No reason specified';
 
@@ -782,10 +900,12 @@ class PilotServer {
     });
   }
 
-  Future<void> _handleSnapshotRelay(HttpRequest request, String requestId, Map<String, dynamic> body) async {
+  Future<void> _handleSnapshotRelay(
+      HttpRequest request, String requestId, Map<String, dynamic> body) async {
     final req = _requests[requestId];
     if (req == null) {
-      _jsonResponse(request, HttpStatus.notFound, {'error': 'Permintaan tidak ditemukan'});
+      _jsonResponse(request, HttpStatus.notFound,
+          {'error': 'Permintaan tidak ditemukan'});
       return;
     }
 
@@ -800,7 +920,8 @@ class PilotServer {
 
   // ====================== SERVING WEB PENDAMPING ======================
 
-  Future<void> _handleServeStaticFile(HttpRequest request, String filePath, String contentType) async {
+  Future<void> _handleServeStaticFile(
+      HttpRequest request, String filePath, String contentType) async {
     try {
       var file = File(filePath);
       if (!await file.exists()) {
@@ -821,8 +942,6 @@ class PilotServer {
     }
   }
 
-
-
   Future<void> _handleServeCompanionDashboard(HttpRequest request) async {
     request.response.headers.contentType = ContentType.html;
     request.response.statusCode = HttpStatus.ok;
@@ -836,11 +955,13 @@ class PilotServer {
         final html = await file.readAsString();
         request.response.write(html);
       } else {
-        request.response.write(_renderErrorHtml('Dashboard Tidak Ditemukan', 'File companion.html tidak tersedia.'));
+        request.response.write(_renderErrorHtml('Dashboard Tidak Ditemukan',
+            'File companion.html tidak tersedia.'));
       }
     } catch (e) {
       request.response.statusCode = HttpStatus.internalServerError;
-      request.response.write(_renderErrorHtml('Kesalahan Server', 'Gagal membaca dashboard relawan: $e'));
+      request.response.write(_renderErrorHtml(
+          'Kesalahan Server', 'Gagal membaca dashboard relawan: $e'));
     }
     await request.response.close();
   }
@@ -897,7 +1018,8 @@ class PilotServer {
                 ? 'Memahami Tampilan Perangkat'
                 : 'Bantuan Umum Visual';
 
-    final userAlias = req.userId.length >= 4 ? req.userId.substring(0, 4) : req.userId;
+    final userAlias =
+        req.userId.length >= 4 ? req.userId.substring(0, 4) : req.userId;
 
     html = html
         .replaceAll('{{TASK_TITLE}}', taskLabel)
@@ -957,15 +1079,18 @@ class PilotServer {
     final timeoutDuration = Duration(seconds: requestTimeoutSeconds);
 
     for (final req in _requests.values) {
-      if (req.status == 'pending' && now.difference(req.createdAt) > timeoutDuration) {
+      if (req.status == 'pending' &&
+          now.difference(req.createdAt) > timeoutDuration) {
         req.status = 'expired';
         req.cancelledAt = now;
-        req.cancelReason = 'Timeout: Tidak ada pendamping yang tersedia dalam batas waktu pilot';
+        req.cancelReason =
+            'Timeout: Tidak ada pendamping yang tersedia dalam batas waktu pilot';
 
         _sendToUser(req.userId, {
           'event': 'request_expired',
           'requestId': req.id,
-          'message': 'Belum ada relawan yang menjawab dalam $requestTimeoutSeconds detik.',
+          'message':
+              'Belum ada relawan yang menjawab dalam $requestTimeoutSeconds detik.',
         });
 
         _broadcastToCompanions(req.communityId, {
@@ -979,19 +1104,22 @@ class PilotServer {
           now.difference(req.acceptedAt!) > const Duration(seconds: 15)) {
         req.status = 'failed';
         req.cancelledAt = now;
-        req.cancelReason = 'Timeout: Pendamping menerima namun media tidak tersambung dalam 15 detik.';
+        req.cancelReason =
+            'Timeout: Pendamping menerima namun media tidak tersambung dalam 15 detik.';
 
         _sendToUser(req.userId, {
           'event': 'connection_failed',
           'requestId': req.id,
-          'reason': 'Pendamping menerima namun koneksi media tidak tersambung dalam 15 detik.',
+          'reason':
+              'Pendamping menerima namun koneksi media tidak tersambung dalam 15 detik.',
         });
 
         if (req.assignedCompanionId != null) {
           _sendToUser(req.assignedCompanionId!, {
             'event': 'connection_failed',
             'requestId': req.id,
-            'reason': 'Batas waktu 15 detik terlewati sebelum media tersambung.',
+            'reason':
+                'Batas waktu 15 detik terlewati sebelum media tersambung.',
           });
         }
       }
@@ -1055,7 +1183,8 @@ class PilotServer {
     }
   }
 
-  void _broadcastToCompanions(String communityId, Map<String, dynamic> event, {String? excludeCompanionId}) {
+  void _broadcastToCompanions(String communityId, Map<String, dynamic> event,
+      {String? excludeCompanionId}) {
     final payload = jsonEncode(event);
     for (final entry in _socketToUser.entries) {
       final uid = entry.value;
@@ -1070,7 +1199,8 @@ class PilotServer {
     }
   }
 
-  void _jsonResponse(HttpRequest request, int statusCode, Map<String, dynamic> data) {
+  void _jsonResponse(
+      HttpRequest request, int statusCode, Map<String, dynamic> data) {
     request.response.statusCode = statusCode;
     request.response.headers.contentType = ContentType.json;
     request.response.write(jsonEncode(data));

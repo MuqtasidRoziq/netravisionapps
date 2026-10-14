@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("CORS_ALLOWED_ORIGIN") || "null",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -11,6 +11,15 @@ serve(async (req) => {
   }
 
   try {
+    const authorization = req.headers.get("Authorization") || "";
+    const expectedSecret = Deno.env.get("ALERT_FUNCTION_SECRET");
+    if (!expectedSecret || authorization !== `Bearer ${expectedSecret}`) {
+      return new Response(
+        JSON.stringify({ error: "Tidak terautorisasi" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { requestId, userName, description } = await req.json();
 
     const fonnteToken = Deno.env.get("FONNTE_TOKEN");

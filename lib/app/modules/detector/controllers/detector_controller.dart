@@ -13,6 +13,7 @@ import '../../../data/models/visual_help_models.dart';
 import '../../../routes/app_pages.dart';
 import '../../../services/compass_service.dart';
 import '../../../services/directions_service.dart';
+import '../../../services/indoor_haptic_service.dart';
 import '../../../services/location_service.dart';
 import '../../../services/places_service.dart';
 import '../../../services/tts_service.dart';
@@ -20,11 +21,11 @@ import '../../../services/vibration_service.dart';
 import '../../../utils/helpers/danger_speech_policy.dart';
 import '../../../utils/helpers/detection_filter.dart';
 import '../../../utils/helpers/geo_math.dart';
+import '../../../utils/helpers/indoor_assist_engine.dart';
 import '../../../utils/helpers/navigation_models.dart';
 import '../../../utils/helpers/object_speech_helper.dart';
 import '../../../utils/helpers/spatial_estimator.dart';
 import '../../../services/currency_ocr_service.dart';
-
 
 /// Orkestrasi deteksi NetraVision di atas plugin `ultralytics_yolo`.
 ///
@@ -117,6 +118,15 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   final List<int> _recentClassIndices = [];
   int _emptyCurrencyFrames = 0;
 
+  // ================= Pendamping Mode Dalam Ruangan =================
+  // State ini sepenuhnya terpisah agar kebijakan Indoor tidak mengubah Mode
+  // Luar Ruangan, Baca Uang, maupun Cari Barang.
+  final IndoorAlertGate _indoorAlertGate = IndoorAlertGate();
+  IndoorScene _latestIndoorScene = const IndoorScene(targets: []);
+  DateTime _latestIndoorSceneAt = DateTime.fromMillisecondsSinceEpoch(0);
+  int _indoorEmptyFrames = 0;
+  int _indoorNoHazardFrames = 0;
+
   // Verifikasi Angka Nominal (On-Device Google ML Kit OCR)
   CurrencyOcrService? _currencyOcr;
   bool _isOcrBusy = false;
@@ -181,6 +191,10 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       case AppLifecycleState.paused:
         // Hentikan suara & preview saat app ke background agar hemat baterai.
         _currencyOcrTimer?.cancel();
+        if (mode == VisionMode.indoor) {
+          _indoorAlertGate.reset();
+          IndoorHapticService.stop();
+        }
         ttsService.stop();
         vibrationService.stop();
         yoloController.pause();
@@ -191,6 +205,9 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
           if (mode == VisionMode.currency) {
             yoloController.setShowOverlays(false);
             _startCurrencyOcrTimer();
+          } else if (mode == VisionMode.indoor) {
+            _indoorAlertGate.reset();
+            currentStatusText.value = 'Memindai jalur di depan...';
           }
         }
         break;
@@ -210,6 +227,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       yoloController.setShowOverlays(false);
       _startCurrencyOcrTimer();
       currentStatusText.value = 'Arahkan uang ke kamera...';
+    } else if (mode == VisionMode.indoor) {
+      currentStatusText.value = 'Memindai jalur di depan...';
     } else if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
       currentStatusText.value = 'Mencari "$targetItem" di depan Anda...';
     } else if (mode == VisionMode.outdoor && destinationPoint.value == null) {
@@ -231,16 +250,30 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   /// Dipanggil [YOLOView] bila model gagal dimuat.
   void handleModelError(Object error, String modelPath, YOLOTask? task) {
+    if (mode == VisionMode.indoor) {
+      currentStatusText.value = 'Kenali Barang Sekitar tidak dapat dimulai.';
+      ttsService.speak(
+        'Kenali Barang Sekitar tidak dapat dimulai. Pastikan izin kamera aktif dan file model tersedia, lalu coba kembali.',
+        isUrgent: true,
+      );
+      return;
+    }
     currentStatusText.value = 'Gagal memuat model. Periksa file assets.';
     ttsService.speak('Peringatan: Gagal memuat model deteksi.');
   }
 
   /// Callback hasil inferensi per frame dari [YOLOView].
   void handleResults(List<YOLOResult> results) {
-    if (isPaused.value || results.isEmpty) return;
+    if (isPaused.value) return;
+
+    // Frame kosong penting untuk Indoor: objek lama dan getaran harus bisa
+    // kedaluwarsa. Perilaku mode lain dipertahankan seperti sebelumnya.
+    if (results.isEmpty && mode != VisionMode.indoor) return;
+
     // Pada mode jalan: jangan deteksi sebelum user menentukan tujuan
     if (mode == VisionMode.outdoor && destinationPoint.value == null) {
-      if (activeDetectionBox.value != null || activeDetectionLabel.value.isNotEmpty) {
+      if (activeDetectionBox.value != null ||
+          activeDetectionLabel.value.isNotEmpty) {
         activeDetectionBox.value = null;
         activeDetectionLabel.value = '';
       }
@@ -248,7 +281,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
 
     final now = DateTime.now();
-    if (now.difference(_lastFrameTime).inMilliseconds < _frameIntervalMs) {
+    final frameIntervalMs = mode == VisionMode.indoor ? 250 : _frameIntervalMs;
+    if (now.difference(_lastFrameTime).inMilliseconds < frameIntervalMs) {
       return;
     }
     _lastFrameTime = now;
@@ -257,28 +291,45 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   }
 
   void _processDetectionResults(List<YOLOResult> results) {
+    if (mode == VisionMode.indoor) {
+      _processIndoorResults(results);
+      return;
+    }
+
     // 1. Saring label yang layak diumumkan + ambang batas keyakinan + (khusus uang)
     //    bentuk kotak & rasio aspek yang memang valid uang Rupiah.
     var validDetections = results
         .where((r) => r.confidence >= modelConfig.confidenceThreshold)
-        .where((r) => ObjectSpeechHelper.shouldAnnounce(r.className, mode,
-            classIndex: r.classIndex))
-        .where((r) =>
-            mode != VisionMode.currency ||
-            DetectionFilter.isPlausibleMoneyBox(r.normalizedBox,
-                label: r.className))
+        .where(
+          (r) => ObjectSpeechHelper.shouldAnnounce(
+            r.className,
+            mode,
+            classIndex: r.classIndex,
+          ),
+        )
+        .where(
+          (r) =>
+              mode != VisionMode.currency ||
+              DetectionFilter.isPlausibleMoneyBox(
+                r.normalizedBox,
+                label: r.className,
+              ),
+        )
         .toList();
 
     // 1b. Khusus mode pencarian barang: hanya tampilkan yang cocok target.
     if (mode == VisionMode.itemSearch && targetItem.isNotEmpty) {
       final target = targetItem.toLowerCase();
       validDetections = validDetections.where((r) {
-        final label = ObjectSpeechHelper.resolveLabel(r.className,
-                classIndex: r.classIndex)
-            .toLowerCase();
+        final label = ObjectSpeechHelper.resolveLabel(
+          r.className,
+          classIndex: r.classIndex,
+        ).toLowerCase();
         // Cocokkan bila label mengandung kata kunci target atau sebaliknya
         return label.contains(target) ||
-            target.split(' ').any((word) => word.length > 2 && label.contains(word));
+            target
+                .split(' ')
+                .any((word) => word.length > 2 && label.contains(word));
       }).toList();
       // Jika tidak ada yang cocok, jangan umumkan apa pun
       if (validDetections.isEmpty) return;
@@ -305,16 +356,16 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
     _emptyCurrencyFrames = 0;
 
-
     // 2. Prioritas: rintangan berbahaya langsung; selain itu ambil deteksi
     //    terbaik (confidence × luas) — uang asli besar menang atas palsu kecil.
-    final dangerous =
-        validDetections
-            .where(
-              (d) => ObjectSpeechHelper.isDangerousObstacle(d.className,
-                  classIndex: d.classIndex),
-            )
-            .toList();
+    final dangerous = validDetections
+        .where(
+          (d) => ObjectSpeechHelper.isDangerousObstacle(
+            d.className,
+            classIndex: d.classIndex,
+          ),
+        )
+        .toList();
     final bool isDangerous = dangerous.isNotEmpty;
     final YOLOResult targetDetection = isDangerous
         ? dangerous.first
@@ -336,8 +387,12 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       _recentClassIndices.removeAt(0);
     }
     if (!isDangerous &&
-        !DetectionFilter.isStable(_recentClassIndices, targetDetection.classIndex,
-            windowSize: windowSize, requiredHits: requiredHits)) {
+        !DetectionFilter.isStable(
+          _recentClassIndices,
+          targetDetection.classIndex,
+          windowSize: windowSize,
+          requiredHits: requiredHits,
+        )) {
       return;
     }
 
@@ -346,7 +401,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       _runCurrencyOcrVerification();
     }
 
-    final bool hasRecentOcrVerification = mode == VisionMode.currency &&
+    final bool hasRecentOcrVerification =
+        mode == VisionMode.currency &&
         _lastOcrVerifiedNominal != null &&
         DateTime.now().difference(_lastOcrVerifiedTime).inMilliseconds < 4500;
 
@@ -361,18 +417,22 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
     final String rawLabel =
         (mode == VisionMode.currency && hasRecentOcrVerification)
-            ? _lastOcrVerifiedNominal!
-            : targetDetection.className;
+        ? _lastOcrVerifiedNominal!
+        : targetDetection.className;
     final String detectedLabel = (mode == VisionMode.currency)
         ? rawLabel
-        : ObjectSpeechHelper.resolveLabel(rawLabel,
-            classIndex: targetDetection.classIndex);
+        : ObjectSpeechHelper.resolveLabel(
+            rawLabel,
+            classIndex: targetDetection.classIndex,
+          );
     lastDetectedObject.value = detectedLabel;
 
     if (mode == VisionMode.currency && hasRecentOcrVerification) {
       activeDetectionBox.value = targetDetection.normalizedBox;
-      activeDetectionLabel.value =
-          ObjectSpeechHelper.formatDisplayName(detectedLabel, mode);
+      activeDetectionLabel.value = ObjectSpeechHelper.formatDisplayName(
+        detectedLabel,
+        mode,
+      );
     } else {
       activeDetectionBox.value = null;
       activeDetectionLabel.value = '';
@@ -382,16 +442,22 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         ? SpatialEstimator.of(targetDetection)
         : null;
 
-    final displayName =
-        ObjectSpeechHelper.formatDisplayName(detectedLabel, mode, spatial: spatial);
+    final displayName = ObjectSpeechHelper.formatDisplayName(
+      detectedLabel,
+      mode,
+      spatial: spatial,
+    );
     currentStatusText.value = isDangerous
         ? '⚠️ $displayName'
         : (mode == VisionMode.currency
-            ? 'Terdeteksi: $displayName (Validasi Angka)'
-            : 'Terdeteksi: $displayName');
+              ? 'Terdeteksi: $displayName (Validasi Angka)'
+              : 'Terdeteksi: $displayName');
 
-    final speechText =
-        ObjectSpeechHelper.formatForTts(detectedLabel, mode, spatial: spatial);
+    final speechText = ObjectSpeechHelper.formatForTts(
+      detectedLabel,
+      mode,
+      spatial: spatial,
+    );
 
     // Gating: bahaya diredam ("Awas" saat pertama, memburuk, atau pengingat
     // periodik). Kalimat biasa hanya bila label/band berubah atau cooldown
@@ -399,37 +465,36 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     final announceTime = DateTime.now();
     final band = spatial?.band;
 
-    final DangerSpeechDecision dangerDecision =
-        isDangerous
-            ? DangerSpeechPolicy.decide(
-                firstDanger: !_lastFrameWasDanger,
-                worsened: DangerSpeechPolicy.worsened(
-                  label: detectedLabel,
-                  band: band,
-                  meters: spatial?.meters,
-                  prevLabel: _lastDangerLabel,
-                  prevBand: _lastDangerBand,
-                  prevMeters: _lastDangerMeters,
-                ),
-                msSinceLast: announceTime
-                    .difference(_lastDangerSpeakTime)
-                    .inMilliseconds,
-                escalationMinGapMs: _dangerReannounceMinGapMs,
-                periodicCooldownMs: _dangerCooldownMs,
-              )
-            : const DangerSpeechDecision(speak: false, urgent: false);
+    final DangerSpeechDecision dangerDecision = isDangerous
+        ? DangerSpeechPolicy.decide(
+            firstDanger: !_lastFrameWasDanger,
+            worsened: DangerSpeechPolicy.worsened(
+              label: detectedLabel,
+              band: band,
+              meters: spatial?.meters,
+              prevLabel: _lastDangerLabel,
+              prevBand: _lastDangerBand,
+              prevMeters: _lastDangerMeters,
+            ),
+            msSinceLast: announceTime
+                .difference(_lastDangerSpeakTime)
+                .inMilliseconds,
+            escalationMinGapMs: _dangerReannounceMinGapMs,
+            periodicCooldownMs: _dangerCooldownMs,
+          )
+        : const DangerSpeechDecision(speak: false, urgent: false);
 
     final bool changed =
         !isDangerous &&
-        (detectedLabel != _lastAnnouncedLabel ||
-            band != _lastAnnouncedBand);
+        (detectedLabel != _lastAnnouncedLabel || band != _lastAnnouncedBand);
     final bool cooldownPassed =
         announceTime.difference(_lastAnnounceTime).inMilliseconds >=
         _announceCooldownMs;
 
     // Untuk mode baca uang: JANGAN spam suara setiap interval cooldown bila uangnya sama.
     // Tunanetra dapat mengetuk layar kapan saja (On-Demand Repeat) jika ingin mendengar ulang nominal.
-    final bool shouldSpeak = dangerDecision.speak ||
+    final bool shouldSpeak =
+        dangerDecision.speak ||
         changed ||
         (cooldownPassed && !isDangerous && mode != VisionMode.currency);
 
@@ -472,6 +537,70 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  /// Mode Indoor memakai kebijakan khusus: audio otomatis hanya untuk
+  /// rintangan dekat yang masuk koridor jalan. Objek lain tetap tersedia lewat
+  /// ringkasan on-demand saat pengguna mengetuk layar.
+  void _processIndoorResults(List<YOLOResult> results) {
+    final scene = IndoorAssistEngine.analyze(
+      results
+          .where(
+            (result) => result.confidence >= modelConfig.confidenceThreshold,
+          )
+          .map(
+            (result) => IndoorObservation(
+              label: result.className,
+              confidence: result.confidence,
+              box: result.normalizedBox,
+            ),
+          ),
+    );
+    final now = DateTime.now();
+    _latestIndoorScene = scene;
+    _latestIndoorSceneAt = now;
+
+    if (scene.targets.isEmpty) {
+      _indoorEmptyFrames++;
+      _indoorNoHazardFrames++;
+      _indoorAlertGate.evaluate(null, now);
+      if (_indoorEmptyFrames >= 3) {
+        lastDetectedObject.value = '';
+        currentStatusText.value = 'Memindai jalur di depan...';
+      }
+      if (_indoorNoHazardFrames == 2) {
+        _indoorAlertGate.reset();
+        IndoorHapticService.stop();
+        vibrationService.stop();
+      }
+      return;
+    }
+
+    _indoorEmptyFrames = 0;
+    final hazard = scene.primaryHazard;
+    lastDetectedObject.value = (hazard ?? scene.targets.first).label;
+    currentStatusText.value = IndoorAssistEngine.statusText(scene);
+
+    final decision = _indoorAlertGate.evaluate(hazard, now);
+    if (decision.speak && hazard != null) {
+      ttsService.speak(
+        IndoorAssistEngine.warningSpeech(hazard),
+        isUrgent: decision.urgent,
+      );
+      IndoorHapticService.alert(hazard.risk);
+    }
+
+    if (hazard == null) {
+      _indoorNoHazardFrames++;
+      if (_indoorNoHazardFrames == 2) {
+        _indoorAlertGate.reset();
+        IndoorHapticService.stop();
+        vibrationService.stop();
+      }
+      return;
+    }
+
+    _indoorNoHazardFrames = 0;
+  }
+
   // ====================== Validasi Nominal Uang (OCR) ======================
 
   void _startCurrencyOcrTimer() {
@@ -485,7 +614,10 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   /// Memverifikasi angka nominal uang kertas Rupiah menggunakan Google ML Kit OCR on-device.
   Future<void> _runCurrencyOcrVerification({bool isUrgent = false}) async {
-    if (_isOcrBusy || _currencyOcr == null || mode != VisionMode.currency || isPaused.value) {
+    if (_isOcrBusy ||
+        _currencyOcr == null ||
+        mode != VisionMode.currency ||
+        isPaused.value) {
       return;
     }
 
@@ -497,9 +629,13 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     _isOcrBusy = true;
 
     try {
-      final Uint8List? bytes = await yoloController.capturePhoto(withOverlays: false);
+      final Uint8List? bytes = await yoloController.capturePhoto(
+        withOverlays: false,
+      );
       if (bytes != null && bytes.isNotEmpty) {
-        final String? recognizedNominal = await _currencyOcr?.recognizeRupiah(bytes);
+        final String? recognizedNominal = await _currencyOcr?.recognizeRupiah(
+          bytes,
+        );
         if (recognizedNominal != null) {
           _consecutiveEmptyOcrCount = 0;
           _lastOcrVerifiedNominal = recognizedNominal;
@@ -558,19 +694,17 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     if (!granted) {
       navStatus.value = 'Lokasi tidak tersedia';
       ttsService.speak(
-          'Peringatan: izin lokasi belum aktif. Peta navigasi tidak dapat dipakai.');
+        'Peringatan: izin lokasi belum aktif. Peta navigasi tidak dapat dipakai.',
+      );
       return;
     }
 
     userPosition.value = await locationService.currentPosition();
 
-    _positionSub = locationService.positionStream().listen(
-      (position) {
-        userPosition.value = position;
-        _feedNavigation(position);
-      },
-      onError: (_) {},
-    );
+    _positionSub = locationService.positionStream().listen((position) {
+      userPosition.value = position;
+      _feedNavigation(position);
+    }, onError: (_) {});
 
     _compassSub = compassService.headingStream().listen(
       (heading) => userHeading.value = heading,
@@ -625,7 +759,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     navStatus.value = 'Silakan sebutkan tujuan...';
     Future.delayed(const Duration(milliseconds: 1400), () {
       if (!isOutdoor.value) return;
-      final h = compassService.lastHeading ??
+      final h =
+          compassService.lastHeading ??
           (userHeading.value > 0 ? userHeading.value : null);
       final greeting = (h != null)
           ? 'Mode jalan aktif. Anda sedang menghadap ke arah ${CompassService.headingToCardinalDirection(h)}. Silakan bicara, Anda mau ke mana?'
@@ -681,13 +816,15 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     if (raw.isEmpty) {
       navStatus.value = 'Tidak ada suara terdeteksi';
       ttsService.speak(
-          'Tidak ada suara terdeteksi. Ketuk tombol mikrofon untuk mencoba lagi.');
+        'Tidak ada suara terdeteksi. Ketuk tombol mikrofon untuk mencoba lagi.',
+      );
       return;
     }
     final query = extractDestinationQuery(raw);
     if (query.isEmpty) {
       ttsService.speak(
-          'Apa tujuan Anda? Coba sebutkan nama atau jenis tempat, misalnya warung.');
+        'Apa tujuan Anda? Coba sebutkan nama atau jenis tempat, misalnya warung.',
+      );
       return;
     }
     _routeToQuery(query);
@@ -708,19 +845,25 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       navStatus.value = 'Mencari $query...';
       ttsService.speak('Mencari $query di sekitar Anda.');
 
-      final place = await placesService.searchBest(query: query, center: origin);
+      final place = await placesService.searchBest(
+        query: query,
+        center: origin,
+      );
       if (place == null) {
         navStatus.value = 'Tempat tidak ditemukan';
         ttsService.speak(
-            "Tidak ditemukan '$query' di sekitar. Coba sebutkan nama atau jenis tempat lain.");
+          "Tidak ditemukan '$query' di sekitar. Coba sebutkan nama atau jenis tempat lain.",
+        );
         return;
       }
 
-      final placeDist = place.distanceMeters ?? haversineMeters(origin, place.point);
+      final placeDist =
+          place.distanceMeters ?? haversineMeters(origin, place.point);
       final placeName = _cleanPlaceName(place.name);
       navStatus.value = 'Menuju $placeName';
       ttsService.speak(
-          'Menuju $placeName, ${formatDistanceMeters(placeDist)}. Membuat rute.');
+        'Menuju $placeName, ${formatDistanceMeters(placeDist)}. Membuat rute.',
+      );
       destinationPoint.value = place.point;
       yoloController.setShowOverlays(true);
 
@@ -739,11 +882,13 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       navStatus.value =
           'Rute ke $placeName, ${formatDistanceMeters(route.totalMeters)}';
 
-      final first =
-          route.steps.isNotEmpty ? route.steps.first.instruction : 'ikuti rute';
+      final first = route.steps.isNotEmpty
+          ? route.steps.first.instruction
+          : 'ikuti rute';
       ttsService.speak(
-          'Rute ditemukan, ${formatDistanceMeters(route.totalMeters)} menuju '
-          '$placeName. ${_capitalize(first)}.');
+        'Rute ditemukan, ${formatDistanceMeters(route.totalMeters)} menuju '
+        '$placeName. ${_capitalize(first)}.',
+      );
     } on PlacesException catch (e) {
       navStatus.value = e.message;
       ttsService.speak(e.message);
@@ -753,7 +898,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     } catch (_) {
       navStatus.value = 'Gagal membuat rute';
       ttsService.speak(
-          'Terjadi kesalahan saat membuat rute. Pastikan internet terhubung dan API Google aktif.');
+        'Terjadi kesalahan saat membuat rute. Pastikan internet terhubung dan API Google aktif.',
+      );
     } finally {
       _navBusy = false;
     }
@@ -777,11 +923,25 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   void handleScreenTap() {
     HapticFeedback.mediumImpact();
+    if (mode == VisionMode.indoor) {
+      final isFresh =
+          DateTime.now().difference(_latestIndoorSceneAt) <
+          const Duration(seconds: 3);
+      final scene = isFresh
+          ? _latestIndoorScene
+          : const IndoorScene(targets: []);
+      ttsService.speak(IndoorAssistEngine.sceneSummary(scene), isUrgent: true);
+      return;
+    }
+
     if (mode == VisionMode.currency) {
       if (_lastOcrVerifiedNominal != null &&
-          DateTime.now().difference(_lastOcrVerifiedTime).inMilliseconds < 5000) {
-        final speech =
-            ObjectSpeechHelper.formatForTts(_lastOcrVerifiedNominal!, mode);
+          DateTime.now().difference(_lastOcrVerifiedTime).inMilliseconds <
+              5000) {
+        final speech = ObjectSpeechHelper.formatForTts(
+          _lastOcrVerifiedNominal!,
+          mode,
+        );
         ttsService.speak(speech, isUrgent: true);
       }
       _runCurrencyOcrVerification(isUrgent: true);
@@ -789,7 +949,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
 
     if (mode == VisionMode.outdoor && destinationPoint.value == null) {
-      final h = compassService.lastHeading ??
+      final h =
+          compassService.lastHeading ??
           (userHeading.value > 0 ? userHeading.value : null);
       final headingStr = (h != null)
           ? ' Anda sedang menghadap ke arah ${CompassService.headingToCardinalDirection(h)}.'
@@ -802,12 +963,16 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
 
     if (lastDetectedObject.value.isNotEmpty) {
-      final speech =
-          ObjectSpeechHelper.formatForTts(lastDetectedObject.value, mode);
+      final speech = ObjectSpeechHelper.formatForTts(
+        lastDetectedObject.value,
+        mode,
+      );
       ttsService.speak(speech, isUrgent: true);
     } else {
-      ttsService.speak('Belum ada objek terdeteksi di depan Anda.',
-          isUrgent: true);
+      ttsService.speak(
+        'Belum ada objek terdeteksi di depan Anda.',
+        isUrgent: true,
+      );
     }
   }
 
@@ -816,12 +981,21 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     if (isPaused.value) {
       _currencyOcrTimer?.cancel();
       yoloController.pause();
+      if (mode == VisionMode.indoor) {
+        _indoorAlertGate.reset();
+        IndoorHapticService.stop();
+        vibrationService.stop();
+      }
       ttsService.speak('Deteksi dijeda');
     } else {
       yoloController.resume();
       if (mode == VisionMode.currency) {
         yoloController.setShowOverlays(false);
         _startCurrencyOcrTimer();
+      }
+      if (mode == VisionMode.indoor) {
+        currentStatusText.value = 'Memindai jalur di depan...';
+        _indoorAlertGate.reset();
       }
       ttsService.speak('Deteksi dilanjutkan');
     }
@@ -856,7 +1030,9 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         break;
     }
 
-    final detected = lastDetectedObject.value.isNotEmpty ? lastDetectedObject.value : null;
+    final detected = lastDetectedObject.value.isNotEmpty
+        ? lastDetectedObject.value
+        : null;
 
     final context = TaskContext(
       taskType: taskType,
@@ -871,7 +1047,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     });
   }
 
-  // Status Hitung Mundur Darurat (SOS) dari Layar Deteksi Kamera
+  // Status hitung mundur permintaan bantuan mendesak dari layar kamera.
+  // Ini bukan pengganti nomor layanan darurat atau pendamping di lokasi.
   final RxBool isSosCountdownActive = false.obs;
   final RxInt sosCountdownSeconds = 5.obs;
   Timer? _sosCountdownTimer;
@@ -884,7 +1061,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     HapticFeedback.heavyImpact();
 
     ttsService.speak(
-      'Peringatan darurat aktif. Ketuk layar untuk membatalkan.',
+      'Permintaan bantuan mendesak aktif. Ketuk layar untuk membatalkan.',
       isUrgent: true,
     );
 
@@ -908,19 +1085,23 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     _sosCountdownTimer?.cancel();
     isSosCountdownActive.value = false;
     HapticFeedback.mediumImpact();
-    ttsService.speak('Panggilan darurat dibatalkan.', isUrgent: true);
+    ttsService.speak('Permintaan bantuan dibatalkan.', isUrgent: true);
   }
 
   void _dispatchSosCall() async {
     isSosCountdownActive.value = false;
     HapticFeedback.heavyImpact();
-    ttsService.speak('Menghubungkan panggilan darurat sekarang...', isUrgent: true);
+    ttsService.speak(
+      'Menghubungkan ke relawan bantuan visual. Ini bukan panggilan layanan darurat.',
+      isUrgent: true,
+    );
 
     String? locationNotes;
     try {
       final geo = userPosition.value ?? await locationService.currentPosition();
       if (geo != null) {
-        locationNotes = 'Lokasi: https://maps.google.com/?q=${geo.lat},${geo.lng}';
+        locationNotes =
+            'Lokasi: https://maps.google.com/?q=${geo.lat},${geo.lng}';
       }
     } catch (_) {}
 
@@ -928,7 +1109,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       Routes.VISUAL_HELP,
       arguments: TaskContext(
         taskType: TaskType.generalHelp,
-        targetName: '🚨 PANGGILAN DARURAT (SOS)',
+        targetName: 'Permintaan bantuan mendesak',
         sourceScreen: 'emergency_sos',
         notes: locationNotes,
       ),
@@ -944,6 +1125,11 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     if (mode == VisionMode.currency) {
       yoloController.setShowOverlays(false);
       _startCurrencyOcrTimer();
+    }
+    if (mode == VisionMode.indoor) {
+      _indoorAlertGate.reset();
+      IndoorHapticService.stop();
+      currentStatusText.value = 'Memindai jalur di depan...';
     }
     ttsService.speak('Kamera deteksi diaktifkan kembali');
   }
