@@ -18,6 +18,14 @@ class AppConfig {
     defaultValue: 'sb_publishable_70z0vuV78vUWMDXud-DTRQ_qVXnfbTG',
   );
 
+  static const String supabaseUserJwt = String.fromEnvironment(
+    'SUPABASE_USER_JWT',
+    defaultValue: '',
+  );
+
+  static bool get hasAuthenticatedCloudSession =>
+      supabaseUserJwt.trim().isNotEmpty;
+
   /// URL LiveKit Cloud Server untuk streaming WebRTC
   static const String livekitCloudUrl = String.fromEnvironment(
     'LIVEKIT_URL',
