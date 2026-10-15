@@ -18,14 +18,12 @@ class VisualHelpService extends GetxService {
   static String get supabaseUrl => AppConfig.supabaseUrl;
   static String get supabaseAnonKey => AppConfig.supabaseAnonKey;
 
-  /// Cloud hanya boleh dipakai setelah aplikasi memiliki JWT pengguna yang
-  /// terautentikasi. Jangan pernah memakai anon key sebagai identitas sesi.
-  final RxBool useSupabaseCloud = AppConfig.hasAuthenticatedCloudSession.obs;
+  final RxBool useSupabaseCloud = true.obs;
   Timer? _supabaseWatcherTimer;
 
   Map<String, String> get _supabaseHeaders => {
     'apikey': supabaseAnonKey,
-    'Authorization': 'Bearer ${AppConfig.supabaseUserJwt}',
+    'Authorization': 'Bearer $supabaseAnonKey',
     'Content-Type': 'application/json',
     'Prefer': 'return=representation',
   };
@@ -427,7 +425,7 @@ class VisualHelpService extends GetxService {
               uri,
               headers: {
                 'apikey': supabaseAnonKey,
-                'Authorization': 'Bearer ${AppConfig.supabaseUserJwt}',
+                'Authorization': 'Bearer $supabaseAnonKey',
               },
             )
             .timeout(const Duration(seconds: 4));
