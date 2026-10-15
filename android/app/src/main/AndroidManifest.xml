@@ -53,7 +53,7 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
-        <!-- Layanan Aksesibilitas Native untuk Auto-Klik Panggilan WhatsApp & Kirim Pesan Darurat -->
+        <!-- Layanan Aksesibilitas Native (Dibekukan sementara agar APK ramah Play Protect dan tidak diblokir saat sideload)
         <service 
             android:name="com.netravision.apps.NetraAccessibilityService" 
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" 
@@ -65,6 +65,7 @@
                 android:name="android.accessibilityservice" 
                 android:resource="@xml/accessibilityservice" />
         </service>
+        -->
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
