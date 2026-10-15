@@ -1144,17 +1144,24 @@
 
     function sanitizeDescription(desc) {
       if (!desc) return 'Bantuan Umum Visual';
-      return String(desc)
-        .replace(/\s*\(\+?[\d\s-]+\)/g, '')
-        .replace(/\b(\+?62|08)[\d\s-]{7,15}\b/g, '')
-        .trim() || 'Bantuan Umum Visual';
+      let clean = String(desc)
+        .replace(/\s*\([^\)]*?(?:08|\+?62|\d{8,})[^\)]*?\)/gi, '')
+        .replace(/(?:\+?62|0)8[\d\s\-\.]{7,14}\b/g, '')
+        .replace(/\b\d{8,15}\b/g, '')
+        .replace(/\s*[-–:]\s*$/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      return clean || 'Bantuan Umum Visual';
     }
 
     function sanitizeName(name) {
       if (!name) return 'Pengguna Netra';
-      const clean = String(name)
-        .replace(/\s*\(\+?[\d\s-]+\)/g, '')
-        .replace(/\b(\+?62|08)[\d\s-]{7,15}\b/g, '')
+      let clean = String(name)
+        .replace(/\s*\([^\)]*?(?:08|\+?62|\d{8,})[^\)]*?\)/gi, '')
+        .replace(/(?:\+?62|0)8[\d\s\-\.]{7,14}\b/g, '')
+        .replace(/\b\d{8,15}\b/g, '')
+        .replace(/\s*[-–:]\s*$/g, '')
+        .replace(/\s{2,}/g, ' ')
         .trim();
       return clean || 'Pengguna Netra';
     }
@@ -1420,7 +1427,34 @@
           return;
         }
 
-        renderRequests(data || []);
+        const now = Date.now();
+        const validRequests = [];
+        const expiredIds = [];
+
+        for (const req of (data || [])) {
+          // Jangan tampilkan permintaan panggilan untuk kontak keluarga (trustedContacts) ke relawan umum
+          if (req.mode === 'trustedContacts') continue;
+
+          // Permintaan yang dibuat lebih dari 3 menit lalu dianggap timeout / kedaluwarsa
+          const createdAt = req.created_at ? new Date(req.created_at).getTime() : 0;
+          if (createdAt && (now - createdAt > 3 * 60 * 1000)) {
+            expiredIds.push(req.id);
+            continue;
+          }
+
+          validRequests.push(req);
+        }
+
+        // Otomatis tandai sesi kedaluwarsa di Supabase di latar belakang agar database bersih
+        if (expiredIds.length > 0) {
+          sb.from('help_requests')
+            .update({ status: 'expired', updated_at: new Date().toISOString() })
+            .in('id', expiredIds)
+            .then(() => {})
+            .catch(() => {});
+        }
+
+        renderRequests(validRequests);
       } catch (err) {
         console.error('Connection error:', err);
       }
