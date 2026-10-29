@@ -3,6 +3,7 @@ enum VisionMode {
   indoor,
   outdoor,
   currency,
+  itemSearch,
   findObject,
 }
 
@@ -10,13 +11,14 @@ extension VisionModeExtension on VisionMode {
   String get title {
     switch (this) {
       case VisionMode.indoor:
-        return 'Mode Indoor';
+        return 'Mode Dalam Ruangan';
       case VisionMode.outdoor:
-        return 'Mode Outdoor';
+        return 'Mode Luar Ruangan';
       case VisionMode.currency:
         return 'Mode Baca Uang';
+      case VisionMode.itemSearch:
       case VisionMode.findObject:
-        return 'Mode Cari Objek';
+        return 'Cari Barang';
     }
   }
 
@@ -28,21 +30,23 @@ extension VisionModeExtension on VisionMode {
         return 'Deteksi jalan, kendaraan & bahaya trotoar';
       case VisionMode.currency:
         return 'Pindai nominal uang kertas rupiah';
+      case VisionMode.itemSearch:
       case VisionMode.findObject:
-        return 'Cari & pandu ke satu objek target spesifik';
+        return 'Cari barang spesifik dengan suara';
     }
   }
 
   String get announcement {
     switch (this) {
       case VisionMode.indoor:
-        return 'Mode Indoor aktif. Kamera siap mendeteksi perabotan dan rintangan di dalam ruangan.';
+        return 'Mode Dalam Ruangan aktif. Kamera siap mendeteksi perabotan dan rintangan di dalam ruangan.';
       case VisionMode.outdoor:
-        return 'Mode Outdoor aktif. Kamera siap mendeteksi jalan, kendaraan, dan rintangan luar ruangan.';
+        return 'Mode Luar Ruangan aktif. Kamera siap mendeteksi jalan, kendaraan, dan rintangan luar ruangan.';
       case VisionMode.currency:
         return 'Mode Baca Uang aktif. Arahkan uang rupiah ke kamera.';
+      case VisionMode.itemSearch:
       case VisionMode.findObject:
-        return 'Mode Cari Objek aktif. Arahkan kamera ke sekeliling ruangan untuk menemukan target.';
+        return 'Mode Cari Barang aktif. Arahkan kamera ke sekitar Anda.';
     }
   }
 }

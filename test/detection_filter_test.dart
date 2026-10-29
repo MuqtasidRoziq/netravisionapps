@@ -8,10 +8,11 @@ YOLOResult _box({
   required int classIndex,
   required double confidence,
   required Rect normalized,
+  String? className,
 }) {
   return YOLOResult(
     classIndex: classIndex,
-    className: 'class_$classIndex',
+    className: className ?? 'class_$classIndex',
     confidence: confidence,
     boundingBox: Rect.zero,
     normalizedBox: normalized,
@@ -56,11 +57,78 @@ void main() {
       );
     });
 
-    test('menerima uang berukuran wajar di tengah bingkai', () {
-      // Luas = 9% frame, tidak menempel tepi.
+    test('menerima uang kertas berukuran wajar di tengah bingkai', () {
+      // Luas = 9.9% frame, rasio ~2.05 (proporsional uang Rupiah asli), di tengah bingkai.
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.25, 0.35, 0.45, 0.22),
+          label: '5000',
+        ),
+        isTrue,
+      );
+    });
+
+    test('menolak objek dengan lebar/tinggi terlalu kecil (< 14% sisi pendek)', () {
+      // Tombol keyboard kecil atau noise misalnya lebar 0.08
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.3, 0.3, 0.08, 0.08),
+          label: '5000',
+        ),
+        isFalse,
+      );
+    });
+
+    test('menolak koin lonjong / tombol keyboard (aspect ratio > 1.25)', () {
+      // Objek memanjang: w=0.35, h=0.20 -> rasio 1.75 > 1.25
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.3, 0.3, 0.35, 0.20),
+          label: 'coin_1000',
+        ),
+        isFalse,
+      );
+    });
+
+    test('menerima koin asli mendekati lingkaran (aspect ratio 0.85 s/d 1.25)', () {
+      // Objek koin: w=0.25, h=0.25 -> rasio 1.0 (dalam rentang 0.85..1.25)
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.35, 0.35, 0.25, 0.25),
+          label: 'coin_1000',
+        ),
+        isTrue,
+      );
+    });
+
+    test('menolak uang kertas sangat pipih / kabel / list meja (aspect ratio > 2.65)', () {
+      // Objek garis sangat panjang: w=0.8, h=0.15 -> rasio 5.3 > 2.65
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.1, 0.4, 0.8, 0.15),
+          label: '10000',
+        ),
+        isFalse,
+      );
+    });
+
+    test('menolak objek bujur sangkar / laptop / buku / kotak (aspect ratio < 1.35)', () {
+      // Objek bujur sangkar w=0.3, h=0.3 -> rasio 1.0 < 1.35 (bukan uang kertas)
       expect(
         DetectionFilter.isPlausibleMoneyBox(
           const Rect.fromLTWH(0.3, 0.3, 0.3, 0.3),
+          label: '5000',
+        ),
+        isFalse,
+      );
+    });
+
+    test('menerima uang kertas proporsional (aspect ratio 1.35 s/d 2.65)', () {
+      // Uang kertas normal: w=0.5, h=0.25 -> rasio 2.0 (sesuai uang Rupiah)
+      expect(
+        DetectionFilter.isPlausibleMoneyBox(
+          const Rect.fromLTWH(0.2, 0.3, 0.5, 0.25),
+          label: '10000',
         ),
         isTrue,
       );
@@ -85,18 +153,115 @@ void main() {
     });
   });
 
+  group('DetectionFilter.selectClosest', () {
+    test('mengembalikan satu-satunya kandidat bila hanya ada 1', () {
+      final chair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.25, 0.25, 0.5, 0.5),
+      );
+      expect(DetectionFilter.selectClosest([chair]), chair);
+    });
+
+    test('memprioritaskan objek lebih dekat daripada objek berbahaya yang jauh', () {
+      // Objek dekat: kursi di dalam ruangan (~0.85 m, aman)
+      final closeChair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.8,
+        normalized: const Rect.fromLTWH(0.25, 0.2, 0.5, 0.5),
+      );
+      // Objek jauh: mobil di luar jendela (> 10 m, berbahaya)
+      final farCar = _box(
+        classIndex: 2,
+        className: 'mobil',
+        confidence: 0.95,
+        normalized: const Rect.fromLTWH(0.1, 0.1, 0.15, 0.15),
+      );
+
+      final selected = DetectionFilter.selectClosest([farCar, closeChair]);
+      expect(selected, closeChair,
+          reason: 'Kursi yang dekat harus dipilih daripada mobil yang jauh');
+    });
+
+    test('memprioritaskan bahaya bila jarak sebanding (selisih <= 0.6 m)', () {
+      // Dua objek dengan estimasi jarak berdekatan
+      // Motor (berbahaya)
+      final motor = _box(
+        classIndex: 5,
+        className: 'sepeda motor',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.3, 0.2, 0.38, 0.45),
+      );
+      // Kursi (aman) pada jarak relatif mirip
+      final chair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.3, 0.2, 0.25, 0.3),
+      );
+
+      final selected = DetectionFilter.selectClosest([chair, motor]);
+      expect(selected, motor,
+          reason: 'Objek berbahaya harus menang jika berada pada jarak sebanding');
+    });
+
+    test('memprioritaskan objek di zona depan dibanding samping pada jarak mirip', () {
+      // Kursi di kiri (cx < 0.35)
+      final sideChair = _box(
+        classIndex: 13,
+        className: 'kursi',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.05, 0.3, 0.25, 0.3),
+      );
+      // Meja makan di depan (cx 0.5, aman)
+      final frontTable = _box(
+        classIndex: 20,
+        className: 'meja makan',
+        confidence: 0.85,
+        normalized: const Rect.fromLTWH(0.38, 0.3, 0.25, 0.3),
+      );
+
+      final selected = DetectionFilter.selectClosest([sideChair, frontTable]);
+      expect(selected, frontTable,
+          reason: 'Objek di depan jalur jalan harus menang dibanding objek samping');
+    });
+  });
+
   group('DetectionFilter.isStable', () {
     test('belum stabil bila jendela belum penuh', () {
       expect(DetectionFilter.isStable([1, 1], 1), isFalse);
     });
 
-    test('stabil bila classIndex muncul 2 dari 3 frame terakhir', () {
+    test('stabil bila classIndex muncul 2 dari 3 frame terakhir (default)', () {
       expect(DetectionFilter.isStable([1, 1, 2], 1), isTrue);
       expect(DetectionFilter.isStable([3, 1, 1], 1), isTrue);
     });
 
     test('tidak stabil bila hanya 1 dari 3 frame', () {
       expect(DetectionFilter.isStable([1, 2, 3], 1), isFalse);
+    });
+
+    test('mode baca uang stabil bila muncul 3 dari 4 frame', () {
+      expect(
+        DetectionFilter.isStable(
+          [5, 5, 5, 2],
+          5,
+          windowSize: DetectionFilter.currencyTemporalWindowSize,
+          requiredHits: DetectionFilter.currencyTemporalRequiredHits,
+        ),
+        isTrue,
+      );
+      expect(
+        DetectionFilter.isStable(
+          [5, 5, 2, 3],
+          5,
+          windowSize: DetectionFilter.currencyTemporalWindowSize,
+          requiredHits: DetectionFilter.currencyTemporalRequiredHits,
+        ),
+        isFalse,
+      );
     });
   });
 }

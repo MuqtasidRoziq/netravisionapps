@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/semester7/iconfest/netravisionapps/linux"
+    "cmake.sourceDirectory": "D:/semester7/iconfest/netravisionapps/linux",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

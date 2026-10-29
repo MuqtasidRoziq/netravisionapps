@@ -74,7 +74,7 @@ class OutdoorNavigationController extends GetxController {
   /// Fitur "Di mana saya sekarang?"
   Future<void> announceWhereAmI() async {
     HapticFeedback.mediumImpact();
-    final pos = locationService.currentPosition.value;
+    final pos = locationService.currentGpsPosition.value;
     final heading = locationService.currentHeading.value;
     final cardinal = locationService.headingToCardinal(heading);
     final address = locationService.currentAddress.value;
@@ -181,7 +181,7 @@ class OutdoorNavigationController extends GetxController {
   /// Memantau pergerakan pengguna sepanjang rute
   void _listenToNavigationProgress() {
     _navPositionSub?.cancel();
-    _navPositionSub = locationService.currentPosition.listen((pos) {
+    _navPositionSub = locationService.currentGpsPosition.listen((pos) {
       if (pos == null || state.value != OutdoorState.navigating) return;
 
       final route = activeRoute.value;

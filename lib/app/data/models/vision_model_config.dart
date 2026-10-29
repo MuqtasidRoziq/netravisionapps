@@ -25,15 +25,15 @@ class VisionModelConfig {
 
   static const Map<VisionMode, VisionModelConfig> byMode = {
     VisionMode.currency: VisionModelConfig(
-      modelPath: 'assets/models/rupiah/rupiah.tflite',
+      modelPath: 'assets/models/rupiah/best.tflite',
       task: YOLOTask.detect,
-      confidenceThreshold: 0.60,
-      iouThreshold: 0.50,
+      confidenceThreshold: 0.80,
+      iouThreshold: 0.45,
     ),
     VisionMode.outdoor: VisionModelConfig(
       modelPath: 'assets/models/outdoor/netravision_out.tflite',
-      task: YOLOTask.segment,
-      confidenceThreshold: 0.45,
+      task: YOLOTask.detect,
+      confidenceThreshold: 0.35,
       iouThreshold: 0.45,
     ),
     // Model indoor: YOLO11n 50 kelas indoor terpilih (mencakup perabotan, alat makan,
@@ -41,19 +41,25 @@ class VisionModelConfig {
     VisionMode.indoor: VisionModelConfig(
       modelPath: 'assets/models/indoor/indoor_objects.tflite',
       task: YOLOTask.detect,
-      confidenceThreshold: 0.45,
+      confidenceThreshold: 0.25,
       iouThreshold: 0.45,
     ),
-    // Pencarian Objek Tunggal: memanfaatkan model indoor (50 kelas) dengan ambang
-    // batas responsif (0.25) agar target tidak mudah hilang saat kamera bergerak.
+    // Mode Cari Barang: gunakan model indoor dengan threshold
+    // sensitif agar dapat mendeteksi barang yang dicari user.
+    VisionMode.itemSearch: VisionModelConfig(
+      modelPath: 'assets/models/indoor/indoor_objects.tflite',
+      task: YOLOTask.detect,
+      confidenceThreshold: 0.25,
+      iouThreshold: 0.40,
+    ),
     VisionMode.findObject: VisionModelConfig(
       modelPath: 'assets/models/indoor/indoor_objects.tflite',
       task: YOLOTask.detect,
       confidenceThreshold: 0.25,
-      iouThreshold: 0.45,
+      iouThreshold: 0.40,
     ),
   };
 
   static VisionModelConfig forMode(VisionMode mode) =>
-      byMode[mode] ?? byMode[VisionMode.outdoor]!;
+      byMode[mode] ?? byMode[VisionMode.indoor]!;
 }

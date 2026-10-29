@@ -8,14 +8,14 @@ void main() {
   group('VisionModelConfig mapping model ↔ fitur', () {
     test('Mode Baca Uang memakai model rupiah dengan task detect', () {
       final config = VisionModelConfig.forMode(VisionMode.currency);
-      expect(config.modelPath, 'assets/models/rupiah/rupiah.tflite');
+      expect(config.modelPath, 'assets/models/rupiah/best.tflite');
       expect(config.task, YOLOTask.detect);
     });
 
-    test('Mode Outdoor memakai model segmentasi jalan', () {
+    test('Mode Outdoor memakai model outdoor netravision_out.tflite', () {
       final config = VisionModelConfig.forMode(VisionMode.outdoor);
       expect(config.modelPath, 'assets/models/outdoor/netravision_out.tflite');
-      expect(config.task, YOLOTask.segment);
+      expect(config.task, YOLOTask.detect);
     });
 
     test('Mode Indoor memakai model indoor khusus (detect 50 kelas indoor)', () {
@@ -24,17 +24,17 @@ void main() {
       expect(config.task, YOLOTask.detect);
     });
 
-    test('Mode Cari Objek memakai model indoor_objects.tflite dengan task detect', () {
-      final config = VisionModelConfig.forMode(VisionMode.findObject);
+    test('Mode Cari Barang memakai model indoor_objects.tflite dengan task detect', () {
+      final config = VisionModelConfig.forMode(VisionMode.itemSearch);
       expect(config.modelPath, 'assets/models/indoor/indoor_objects.tflite');
       expect(config.task, YOLOTask.detect);
       expect(config.confidenceThreshold, 0.25);
     });
 
-    test('Mode Baca Uang punya ambang confidence lebih ketat (> 0.55)', () {
+    test('Mode Baca Uang punya ambang confidence lebih ketat (> 0.75)', () {
       final currency = VisionModelConfig.forMode(VisionMode.currency);
       final outdoor = VisionModelConfig.forMode(VisionMode.outdoor);
-      expect(currency.confidenceThreshold, 0.60);
+      expect(currency.confidenceThreshold, 0.80);
       expect(currency.confidenceThreshold, greaterThan(outdoor.confidenceThreshold));
     });
   });

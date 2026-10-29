@@ -4,30 +4,33 @@ import 'package:netravisionapps/app/utils/helpers/tts_policy.dart';
 void main() {
   const debounce = Duration(milliseconds: 2000);
 
-  group('TtsPolicy.decide', () {
-    test('permintaan mendesak selalu menyerobot (preempt)', () {
-      expect(
-        TtsPolicy.decide(
-          text: 'Awas, ada mobil di depan!',
-          urgent: true,
-          isSpeaking: true,
-          lastSpoken: 'Ada kursi di depan',
-          sinceLast: Duration.zero,
-          debounce: debounce,
-        ),
-        TtsAction.preempt,
-      );
-    });
+  TtsAction decide({
+    required String text,
+    required TtsPriority priority,
+    TtsPriority currentPriority = TtsPriority.normal,
+    bool isSpeaking = true,
+    String lastSpoken = '',
+    Duration sinceLast = const Duration(milliseconds: 800),
+  }) {
+    return TtsPolicy.decide(
+      text: text,
+      priority: priority,
+      currentPriority: currentPriority,
+      isSpeaking: isSpeaking,
+      lastSpoken: lastSpoken,
+      sinceLast: sinceLast,
+      debounce: debounce,
+    );
+  }
 
-    test('teks sama dalam masa debounce diabaikan', () {
+  group('TtsPolicy.decide', () {
+    test('teks sama dalam masa debounce diabaikan walau bahaya', () {
       expect(
-        TtsPolicy.decide(
-          text: 'Ada kursi di depan',
-          urgent: false,
-          isSpeaking: false,
-          lastSpoken: 'Ada kursi di depan',
+        decide(
+          text: 'Awas, ada mobil di depan!',
+          priority: TtsPriority.danger,
+          lastSpoken: 'Awas, ada mobil di depan!',
           sinceLast: const Duration(milliseconds: 500),
-          debounce: debounce,
         ),
         TtsAction.ignore,
       );
@@ -35,43 +38,92 @@ void main() {
 
     test('teks sama setelah debounce lewat tetap diucapkan', () {
       expect(
-        TtsPolicy.decide(
+        decide(
           text: 'Ada kursi di depan',
-          urgent: false,
+          priority: TtsPriority.normal,
           isSpeaking: false,
           lastSpoken: 'Ada kursi di depan',
           sinceLast: const Duration(milliseconds: 2500),
-          debounce: debounce,
         ),
         TtsAction.speakNow,
-      );
-    });
-
-    test('saat sedang bicara, kalimat biasa disimpan sebagai pending', () {
-      expect(
-        TtsPolicy.decide(
-          text: 'Ada meja di samping kiri, dekat di depan Anda',
-          urgent: false,
-          isSpeaking: true,
-          lastSpoken: 'Ada kursi di depan',
-          sinceLast: const Duration(milliseconds: 800),
-          debounce: debounce,
-        ),
-        TtsAction.enqueue,
       );
     });
 
     test('saat idle, kalimat baru langsung diucapkan', () {
       expect(
-        TtsPolicy.decide(
+        decide(
           text: 'Ada meja di depan',
-          urgent: false,
+          priority: TtsPriority.normal,
           isSpeaking: false,
           lastSpoken: 'Ada kursi di depan',
-          sinceLast: const Duration(milliseconds: 800),
-          debounce: debounce,
         ),
         TtsAction.speakNow,
+      );
+    });
+
+    test('info biasa saat sedang bicara disimpan sebagai pending', () {
+      expect(
+        decide(
+          text: 'Ada meja di samping kiri',
+          priority: TtsPriority.normal,
+          currentPriority: TtsPriority.normal,
+        ),
+        TtsAction.enqueue,
+      );
+    });
+
+    test('bahaya menyerobot arahan navigasi (bahaya dulu)', () {
+      expect(
+        decide(
+          text: 'Awas, ada mobil di depan!',
+          priority: TtsPriority.danger,
+          currentPriority: TtsPriority.navigation,
+        ),
+        TtsAction.preempt,
+      );
+    });
+
+    test('bahaya tidak menyerobot SOS', () {
+      expect(
+        decide(
+          text: 'Awas!',
+          priority: TtsPriority.danger,
+          currentPriority: TtsPriority.sos,
+        ),
+        TtsAction.enqueue,
+      );
+    });
+
+    test('SOS selalu menyerobot', () {
+      expect(
+        decide(
+          text: 'Menghubungkan panggilan darurat',
+          priority: TtsPriority.sos,
+          currentPriority: TtsPriority.danger,
+        ),
+        TtsAction.preempt,
+      );
+    });
+
+    test('arahan navigasi menyerobot info biasa', () {
+      expect(
+        decide(
+          text: 'Belok kanan di depan',
+          priority: TtsPriority.navigation,
+          currentPriority: TtsPriority.normal,
+        ),
+        TtsAction.preempt,
+      );
+    });
+
+    test('arahan navigasi tidak saling memotong (anti tabrak-menabrak)', () {
+      expect(
+        decide(
+          text: 'Lurus terus 50 meter',
+          priority: TtsPriority.navigation,
+          currentPriority: TtsPriority.navigation,
+        ),
+        TtsAction.enqueue,
       );
     });
   });

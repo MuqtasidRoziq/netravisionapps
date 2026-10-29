@@ -505,7 +505,7 @@ class OutdoorNavigationView extends GetView<OutdoorNavigationController> {
 
     final stepIdx = controller.currentStepIndex.value;
     final currentStep = stepIdx < route.steps.length ? route.steps[stepIdx] : route.steps.last;
-    final userPos = controller.locationService.currentPosition.value;
+    final userPos = controller.locationService.currentGpsPosition.value;
     final userLatLng = userPos != null ? LatLng(userPos.latitude, userPos.longitude) : route.polylinePoints.first;
 
     return Column(

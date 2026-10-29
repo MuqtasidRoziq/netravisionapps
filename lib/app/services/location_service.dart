@@ -7,11 +7,14 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
-/// Service pengelola GPS presisi tinggi dan Kompas digital untuk navigasi tunanetra.
+import '../utils/helpers/geo_math.dart';
+
+/// Layanan posisi GPS presisi tinggi dan Kompas digital untuk navigasi tunanetra.
 ///
-/// Dilengkapi peredam lonjakan GPS (anti-jitter) dan konversi sudut arah jarum jam (clock-face).
+/// Menyediakan dukungan backwards-compatibility untuk [GeoPoint] stream
+/// sekaligus observable reactive [Position] untuk modul Outdoor Navigation baru.
 class LocationService extends GetxService {
-  final Rx<Position?> currentPosition = Rx<Position?>(null);
+  final Rx<Position?> currentGpsPosition = Rx<Position?>(null);
   final RxDouble currentHeading = 0.0.obs;
   final RxString currentAddress = 'Mencari lokasi GPS Anda...'.obs;
   final RxBool hasLocationPermission = false.obs;
@@ -68,6 +71,11 @@ class LocationService extends GetxService {
     return true;
   }
 
+  /// Alias kompatibilitas remote
+  Future<bool> ensurePermission() async {
+    return checkAndRequestPermissions();
+  }
+
   /// Memulai pemantauan lokasi GPS real-time dan kompas
   Future<void> startTracking() async {
     final granted = await checkAndRequestPermissions();
@@ -84,7 +92,6 @@ class LocationService extends GetxService {
       _handleNewPosition(initial);
       updateCurrentAddress(initial.latitude, initial.longitude);
     } catch (_) {
-      // Fallback ke posisi terakhir jika timeout
       final lastKnown = await Geolocator.getLastKnownPosition();
       if (lastKnown != null) {
         _handleNewPosition(lastKnown);
@@ -102,9 +109,7 @@ class LocationService extends GetxService {
       locationSettings: locationSettings,
     ).listen(
       _handleNewPosition,
-      onError: (err) {
-        // GPS error handling
-      },
+      onError: (_) {},
     );
 
     // Dengarkan sensor kompas digital
@@ -112,7 +117,6 @@ class LocationService extends GetxService {
     _compassSubscription = FlutterCompass.events?.listen((event) {
       final heading = event.heading;
       if (heading != null) {
-        // Normalisasi 0..360 derajat
         final normalized = (heading + 360) % 360;
         currentHeading.value = normalized;
       }
@@ -138,13 +142,11 @@ class LocationService extends GetxService {
         newPos.longitude,
       );
 
-      // Jika lonjakan > 50 meter dalam tempo < 1 detik (teleport/glitch), abaikan
       final elapsedSec = now.difference(_lastPositionUpdateTime).inMilliseconds / 1000.0;
       if (elapsedSec > 0 && (dist / elapsedSec) > 30.0) {
         return;
       }
 
-      // Jika pengguna sedang diam (kecepatan < 0.3 m/s dan jarak < 2m), pertahankan posisi lama
       if (newPos.speed < 0.3 && dist < 2.0) {
         return;
       }
@@ -152,9 +154,8 @@ class LocationService extends GetxService {
 
     _lastConfirmedPosition = newPos;
     _lastPositionUpdateTime = now;
-    currentPosition.value = newPos;
+    currentGpsPosition.value = newPos;
 
-    // Perbarui alamat nama jalan jika sudah bergeser > 30 meter
     if (_lastGeocodedPoint == null ||
         Geolocator.distanceBetween(
               _lastGeocodedPoint!.latitude,
@@ -199,10 +200,51 @@ class LocationService extends GetxService {
         }
       }
     } catch (_) {
-      // Offline fallback: tetap gunakan status koordinat
-      if (currentPosition.value != null) {
+      if (currentGpsPosition.value != null) {
         currentAddress.value = 'Area sekitar lokasi Anda';
       }
+    }
+  }
+
+  /// Stream posisi GeoPoint (kompatibilitas kode DetectorController & DirectionsService)
+  Stream<GeoPoint> positionStream() {
+    return Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 2,
+      ),
+    ).map((position) => GeoPoint(
+          position.latitude,
+          position.longitude,
+          accuracy: position.accuracy,
+        ));
+  }
+
+  /// Ambil posisi terakhir yang tersimpan (instan)
+  Future<GeoPoint?> lastKnownPosition() async {
+    try {
+      final position = await Geolocator.getLastKnownPosition();
+      if (position != null) {
+        return GeoPoint(position.latitude, position.longitude, accuracy: position.accuracy);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Ambil posisi GeoPoint sekali (kompatibilitas DetectorController)
+  Future<GeoPoint?> currentPosition({
+    Duration timeLimit = const Duration(seconds: 12),
+  }) async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: timeLimit,
+        ),
+      );
+      return GeoPoint(position.latitude, position.longitude, accuracy: position.accuracy);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -240,14 +282,7 @@ class LocationService extends GetxService {
   }
 
   /// Konversi sudut relatif ke sistem Arah Jarum Jam (Clock-Face Direction)
-  ///
-  /// Sangat intuitif bagi tunanetra:
-  /// - Arah jam 12: Lurus di depan
-  /// - Arah jam 3: Kanan penuh (tegak lurus)
-  /// - Arah jam 9: Kiri penuh (tegak lurus)
-  /// - Arah jam 6: Di belakang / Putar balik
   String bearingToClockFace(double relativeAngleDegrees) {
-    // Normalisasi ke rentang 0..360 (jam 12 = 0/360)
     final positiveAngle = (relativeAngleDegrees + 360) % 360;
 
     if (positiveAngle >= 345 || positiveAngle < 15) return 'arah jam 12 (lurus depan)';

@@ -14,7 +14,7 @@ class NearbyPlacesService extends GetxService {
     PlaceCategory category, {
     double radiusMeters = 1000.0,
   }) async {
-    final pos = _locationService.currentPosition.value;
+    final pos = _locationService.currentGpsPosition.value;
     if (pos == null) return [];
 
     final lat = pos.latitude;
@@ -89,7 +89,7 @@ class NearbyPlacesService extends GetxService {
 
   /// Pencarian kustom berdasarkan nama tempat (mis. "Indomaret", "Stasiun Gambir")
   Future<List<NearbyPlaceModel>> searchByText(String query) async {
-    final pos = _locationService.currentPosition.value;
+    final pos = _locationService.currentGpsPosition.value;
     if (pos == null) return [];
 
     final lat = pos.latitude;

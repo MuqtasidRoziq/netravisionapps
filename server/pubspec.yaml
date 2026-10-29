@@ -1,0 +1,13 @@
+name: netravision_pilot_server
+description: Pilot backend server for NetraVision Visual Help V2
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  http: ^1.2.0
+  crypto: ^3.0.3
+
+dev_dependencies:
+  lints: ^3.0.0

@@ -14,7 +14,7 @@ class PedestrianRoutingService extends GetxService {
     required LatLng destination,
     required String destinationName,
   }) async {
-    final pos = _locationService.currentPosition.value;
+    final pos = _locationService.currentGpsPosition.value;
     if (pos == null) return null;
 
     final startLat = pos.latitude;

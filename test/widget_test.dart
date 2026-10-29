@@ -3,12 +3,12 @@ import 'package:netravisionapps/app/data/models/vision_mode.dart';
 
 void main() {
   test('VisionMode title & announcement menggunakan Bahasa Indonesia', () {
-    expect(VisionMode.indoor.title, 'Mode Indoor');
-    expect(VisionMode.outdoor.title, 'Mode Outdoor');
+    expect(VisionMode.indoor.title, 'Mode Dalam Ruangan');
+    expect(VisionMode.outdoor.title, 'Mode Luar Ruangan');
     expect(VisionMode.currency.title, 'Mode Baca Uang');
-    expect(VisionMode.findObject.title, 'Mode Cari Objek');
+    expect(VisionMode.itemSearch.title, 'Cari Barang');
     expect(VisionMode.currency.announcement, contains('rupiah'));
-    expect(VisionMode.outdoor.announcement, contains('jalan'));
-    expect(VisionMode.findObject.announcement, contains('Cari Objek'));
+    expect(VisionMode.outdoor.announcement, contains('Luar Ruangan'));
+    expect(VisionMode.itemSearch.announcement, contains('Cari Barang'));
   });
 }

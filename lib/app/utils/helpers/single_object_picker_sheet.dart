@@ -246,7 +246,7 @@ class _SingleObjectPickerSheetState extends State<SingleObjectPickerSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
                 itemCount: SingleObjectSearchCatalog.quickTargets.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final target = SingleObjectSearchCatalog.quickTargets[index];
                   final isSelected = widget.currentTargetLabel != null &&
@@ -326,7 +326,7 @@ class _SingleObjectPickerSheetState extends State<SingleObjectPickerSheet> {
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                     itemCount: _filteredTargets.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final target = _filteredTargets[index];
                       final isSelected = widget.currentTargetLabel != null &&
