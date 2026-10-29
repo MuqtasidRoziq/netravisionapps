@@ -35,6 +35,44 @@ class ObjectSpeechHelper {
     'bukan jalan',
   };
 
+  // Daftar objek outdoor, kendaraan, hewan liar, dan olahraga terbuka
+  // yang dihapus/diabaikan khusus untuk Mode Indoor.
+  static const Set<String> _indoorIgnoredLabels = {
+    // 1. Kendaraan & Fasilitas Outdoor
+    'sepeda',
+    'mobil',
+    'sepeda motor',
+    'pesawat terbang',
+    'bus',
+    'kereta api',
+    'truk',
+    'perahu',
+    'lampu lalu lintas',
+    'hidran kebakaran',
+    'rambu berhenti',
+    'meteran parkir',
+    'bangku',
+    // 2. Hewan Liar (hanya kucing & anjing yang diizinkan untuk indoor)
+    'burung',
+    'kuda',
+    'domba',
+    'sapi',
+    'gajah',
+    'beruang',
+    'zebra',
+    'jerapah',
+    // 3. Olahraga Terbuka
+    'frisbee',
+    'ski',
+    'papan salju',
+    'layang-layang',
+    'pemukul baseball',
+    'sarung tangan baseball',
+    'papan luncur',
+    'papan selancar',
+    'raket tenis',
+  };
+
   // Kamus konversi nominal uang rupiah ke ucapan yang fasih
   static const Map<String, String> _currencyNames = {
     '1000': 'Uang seribu rupiah',
@@ -50,6 +88,9 @@ class ObjectSpeechHelper {
   static bool shouldAnnounce(String label, VisionMode mode) {
     final clean = label.trim().toLowerCase();
     if (_ignoredLabels.contains(clean)) return false;
+    if (mode == VisionMode.indoor && _indoorIgnoredLabels.contains(clean)) {
+      return false;
+    }
     return clean.isNotEmpty;
   }
 
@@ -102,10 +143,24 @@ class ObjectSpeechHelper {
     String label,
     VisionMode mode, {
     SpatialInfo? spatial,
+    String? targetObject,
   }) {
     final clean = label.trim().toLowerCase();
 
-    // 1. Jika mode baca uang
+    // 1. Jika mode pencarian objek tunggal
+    if (mode == VisionMode.findObject) {
+      final targetName = (targetObject ?? label).trim();
+      if (spatial == null) {
+        return '$targetName belum terlihat di kamera.';
+      }
+      if (spatial.band == ProximityBand.sangatDekat) {
+        return '$targetName sangat dekat di depan Anda, siap dijangkau!';
+      }
+      return '$targetName ditemukan! Ada ${_directionPhrase(spatial)}, '
+          '${_proximityPhrase(spatial)} di depan Anda.';
+    }
+
+    // 2. Jika mode baca uang
     if (mode == VisionMode.currency) {
       if (_currencyNames.containsKey(clean)) {
         return _currencyNames[clean]!;
@@ -113,7 +168,7 @@ class ObjectSpeechHelper {
       return 'Terdeteksi uang $label rupiah';
     }
 
-    // 2. Jika rintangan berbahaya (Indoor / Outdoor)
+    // 3. Jika rintangan berbahaya (Indoor / Outdoor)
     if (_dangerousObstacles.contains(clean)) {
       // Picu getaran getar bahaya di HP
       HapticFeedback.heavyImpact();
@@ -124,7 +179,7 @@ class ObjectSpeechHelper {
       return 'Awas, ada $clean di depan!';
     }
 
-    // 3. Objek biasa
+    // 4. Objek biasa
     if (spatial != null) {
       return 'Ada $clean ${_directionPhrase(spatial)}, '
           '${_proximityPhrase(spatial)} di depan Anda';
@@ -137,8 +192,37 @@ class ObjectSpeechHelper {
     String label,
     VisionMode mode, {
     SpatialInfo? spatial,
+    String? targetObject,
   }) {
     final clean = label.trim().toLowerCase();
+
+    // 1. Jika mode pencarian objek tunggal
+    if (mode == VisionMode.findObject) {
+      final targetName = (targetObject ?? label).trim();
+      if (spatial == null) return 'Mencari $targetName...';
+
+      final direction = switch (spatial.horizontal) {
+        HorizontalZone.kiri => 'kiri',
+        HorizontalZone.depan => 'depan',
+        HorizontalZone.kanan => 'kanan',
+      };
+      final vertical = switch (spatial.vertical) {
+        VerticalZone.atas => ' · atas',
+        VerticalZone.tengah => '',
+        VerticalZone.bawah => ' · bawah',
+      };
+      final distance = spatial.meters != null
+          ? ' · ${_formatMeters(spatial.meters!)} m'
+          : switch (spatial.band) {
+              ProximityBand.sangatDekat => ' · sangat dekat',
+              ProximityBand.dekat => ' · dekat',
+              ProximityBand.sedang => ' · cukup dekat',
+              ProximityBand.jauh => ' · jauh',
+            };
+      return '🎯 $targetName · $direction$vertical$distance';
+    }
+
+    // 2. Jika mode baca uang
     if (mode == VisionMode.currency) {
       switch (clean) {
         case '1000':

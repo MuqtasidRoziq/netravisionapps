@@ -19,6 +19,46 @@ void main() {
       expect(
           ObjectSpeechHelper.shouldAnnounce('tangga', VisionMode.indoor),
           isTrue);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('kursi', VisionMode.indoor),
+          isTrue);
+      expect(
+          ObjectSpeechHelper.shouldAnnounce('kucing', VisionMode.indoor),
+          isTrue);
+    });
+
+    test('mengabaikan kelas outdoor, kendaraan, hewan liar, dan olahraga saat Mode Indoor', () {
+      final ignoredIndoor = [
+        'mobil',
+        'sepeda',
+        'sepeda motor',
+        'pesawat terbang',
+        'bus',
+        'truk',
+        'perahu',
+        'lampu lalu lintas',
+        'hidran kebakaran',
+        'rambu berhenti',
+        'meteran parkir',
+        'bangku',
+        'burung',
+        'gajah',
+        'zebra',
+        'jerapah',
+        'kuda',
+        'frisbee',
+        'ski',
+        'papan salju',
+        'papan selancar',
+        'raket tenis',
+      ];
+      for (final label in ignoredIndoor) {
+        expect(
+          ObjectSpeechHelper.shouldAnnounce(label, VisionMode.indoor),
+          isFalse,
+          reason: '$label harus diabaikan di Mode Indoor',
+        );
+      }
     });
   });
 

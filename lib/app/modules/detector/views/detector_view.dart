@@ -5,6 +5,8 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 import '../../../data/models/vision_mode.dart';
 import '../../../utils/constants/app_colors.dart';
+import '../../../utils/helpers/single_object_picker_sheet.dart';
+import '../../../utils/helpers/single_object_search_catalog.dart';
 import '../controllers/detector_controller.dart';
 
 class DetectorView extends GetView<DetectorController> {
@@ -15,7 +17,9 @@ class DetectorView extends GetView<DetectorController> {
     return Obx(() {
       final subtitle = controller.mode == VisionMode.currency
           ? 'Ketuk layar kapan saja untuk mengulang nominal uang'
-          : 'Ketuk layar kapan saja untuk cek rintangan';
+          : controller.mode == VisionMode.findObject
+              ? 'Ketuk layar untuk status target atau tombol di atas untuk ganti objek'
+              : 'Ketuk layar kapan saja untuk cek rintangan';
 
       return Scaffold(
         backgroundColor: Colors.black,
@@ -58,6 +62,13 @@ class DetectorView extends GetView<DetectorController> {
                         onModelLoad: controller.handleModelLoad,
                         onModelError: controller.handleModelError,
                       ),
+
+                      // Overlay visual khusus Mode Cari Objek: HANYA menggambar
+                      // kotak penanda pada 1 objek target yang dipilih.
+                      if (controller.mode == VisionMode.findObject &&
+                          controller.targetBox.value != null &&
+                          !controller.isPaused.value)
+                        _buildSingleTargetOverlay(context),
 
                       // Overlay status jeda.
                       if (controller.isPaused.value)
@@ -149,22 +160,74 @@ class DetectorView extends GetView<DetectorController> {
             ),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.65),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white30, width: 1.5),
-          ),
-          child: Text(
-            controller.mode.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+        if (controller.mode == VisionMode.findObject)
+          Semantics(
+            label:
+                'Target saat ini: ${SingleObjectSearchCatalog.getDisplayName(controller.targetObject.value)}. Ketuk untuk mengganti target objek.',
+            button: true,
+            child: Material(
+              color: AppColors.primaryBlue,
+              borderRadius: BorderRadius.circular(16),
+              elevation: 4,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  SingleObjectPickerSheet.show(
+                    context,
+                    currentTargetLabel: controller.targetObject.value,
+                    onSelected: (target) {
+                      controller.setTargetObject(target.label);
+                    },
+                  );
+                },
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        SingleObjectSearchCatalog.getIcon(
+                            controller.targetObject.value),
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Cari: ${SingleObjectSearchCatalog.getDisplayName(controller.targetObject.value)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_drop_down,
+                          color: Colors.white70, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white30, width: 1.5),
+            ),
+            child: Text(
+              controller.mode.title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ),
         Semantics(
           label: controller.isPaused.value ? 'Lanjutkan Deteksi' : 'Jeda Deteksi',
           button: true,
@@ -220,8 +283,10 @@ class DetectorView extends GetView<DetectorController> {
                 color: AppColors.lightBlue,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.volume_up,
+              child: Icon(
+                controller.mode == VisionMode.findObject
+                    ? Icons.center_focus_strong_rounded
+                    : Icons.volume_up,
                 color: AppColors.primaryBlue,
                 size: 28,
               ),
@@ -254,6 +319,122 @@ class DetectorView extends GetView<DetectorController> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Menampilkan kotak pembidik fokus dan label eksklusif HANYA untuk
+  /// 1 objek target yang sedang dicari.
+  Widget _buildSingleTargetOverlay(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final box = controller.targetBox.value;
+        if (box == null) return const SizedBox.shrink();
+
+        final screenW = constraints.maxWidth;
+        final screenH = constraints.maxHeight;
+
+        final left = (box.left * screenW).clamp(0.0, screenW);
+        final top = (box.top * screenH).clamp(0.0, screenH);
+        final width = (box.width * screenW).clamp(0.0, screenW - left);
+        final height = (box.height * screenH).clamp(0.0, screenH - top);
+
+        final targetName = SingleObjectSearchCatalog.getDisplayName(
+          controller.targetObject.value,
+        );
+        final confPercent =
+            (controller.targetConfidence.value * 100).toInt();
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Kotak penanda target tunggal berkontras tinggi
+            Positioned(
+              left: left,
+              top: top,
+              width: width,
+              height: height,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.yellowAccent,
+                    width: 3.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.yellowAccent.withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      color: AppColors.yellowAccent.withValues(alpha: 0.6),
+                    ),
+                    child: const Icon(
+                      Icons.center_focus_strong_rounded,
+                      color: Colors.black,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 2. Badge label di atas kotak penanda objek target
+            Positioned(
+              left: left.clamp(12.0, (screenW - 220.0).clamp(12.0, screenW)),
+              top: (top - 38.0).clamp(65.0, screenH - 50.0),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.yellowAccent,
+                    width: 1.5,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black45,
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      SingleObjectSearchCatalog.getIcon(
+                        controller.targetObject.value,
+                      ),
+                      color: AppColors.yellowAccent,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$targetName ($confPercent%)',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

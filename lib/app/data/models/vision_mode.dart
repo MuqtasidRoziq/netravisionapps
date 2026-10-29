@@ -3,6 +3,7 @@ enum VisionMode {
   indoor,
   outdoor,
   currency,
+  findObject,
 }
 
 extension VisionModeExtension on VisionMode {
@@ -14,6 +15,8 @@ extension VisionModeExtension on VisionMode {
         return 'Mode Outdoor';
       case VisionMode.currency:
         return 'Mode Baca Uang';
+      case VisionMode.findObject:
+        return 'Mode Cari Objek';
     }
   }
 
@@ -25,6 +28,8 @@ extension VisionModeExtension on VisionMode {
         return 'Deteksi jalan, kendaraan & bahaya trotoar';
       case VisionMode.currency:
         return 'Pindai nominal uang kertas rupiah';
+      case VisionMode.findObject:
+        return 'Cari & pandu ke satu objek target spesifik';
     }
   }
 
@@ -36,6 +41,8 @@ extension VisionModeExtension on VisionMode {
         return 'Mode Outdoor aktif. Kamera siap mendeteksi jalan, kendaraan, dan rintangan luar ruangan.';
       case VisionMode.currency:
         return 'Mode Baca Uang aktif. Arahkan uang rupiah ke kamera.';
+      case VisionMode.findObject:
+        return 'Mode Cari Objek aktif. Arahkan kamera ke sekeliling ruangan untuk menemukan target.';
     }
   }
 }

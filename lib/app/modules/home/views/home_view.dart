@@ -143,10 +143,10 @@ class HomeView extends GetView<HomeController> {
             _buildMenuCard(
               index: '2',
               title: '2. Mode Outdoor',
-              subtitle: 'Navigasi jalan raya, trotoar & bahaya',
+              subtitle: 'Peta, navigasi jalan & tempat terdekat',
               icon: Icons.explore_rounded,
               onTap: () => controller.openMode(VisionMode.outdoor),
-              accessibilityHint: 'Ketuk dua kali untuk membuka kamera navigasi jalan luar ruangan',
+              accessibilityHint: 'Ketuk dua kali untuk membuka peta dan navigasi tempat luar ruangan',
             ),
             const SizedBox(height: 16),
 
@@ -161,10 +161,21 @@ class HomeView extends GetView<HomeController> {
             ),
             const SizedBox(height: 16),
 
-            // Card 4: Bantuan Relawan (SOS)
-            _buildSosCard(
+            // Card 4: Cari Objek Tunggal
+            _buildMenuCard(
               index: '4',
-              title: '4. Bantuan Relawan / SOS',
+              title: '4. Cari Objek Tunggal',
+              subtitle: 'Cari barang spesifik (kunci, dompet, ponsel, dll)',
+              icon: Icons.center_focus_strong_rounded,
+              onTap: () => controller.openFindObjectMode(context),
+              accessibilityHint: 'Ketuk dua kali untuk memilih objek spesifik yang ingin dicari',
+            ),
+            const SizedBox(height: 16),
+
+            // Card 5: Bantuan Relawan (SOS)
+            _buildSosCard(
+              index: '5',
+              title: '5. Bantuan Relawan / SOS',
               subtitle: 'Hubungi relawan pendamping darurat',
               icon: Icons.phone_in_talk_rounded,
               onTap: () => controller.triggerSos(),

@@ -6,7 +6,9 @@ void main() {
     expect(VisionMode.indoor.title, 'Mode Indoor');
     expect(VisionMode.outdoor.title, 'Mode Outdoor');
     expect(VisionMode.currency.title, 'Mode Baca Uang');
+    expect(VisionMode.findObject.title, 'Mode Cari Objek');
     expect(VisionMode.currency.announcement, contains('rupiah'));
     expect(VisionMode.outdoor.announcement, contains('jalan'));
+    expect(VisionMode.findObject.announcement, contains('Cari Objek'));
   });
 }

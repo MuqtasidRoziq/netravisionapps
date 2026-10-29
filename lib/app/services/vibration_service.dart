@@ -58,6 +58,34 @@ class VibrationService extends GetxService {
     }
   }
 
+  /// Getaran peringatan belokan (2 denyut pendek)
+  void vibrateWarning() {
+    try {
+      Vibration.vibrate(pattern: const [0, 150, 100, 150]);
+    } catch (_) {}
+  }
+
+  /// Getaran notifikasi langkah rute baru (1 denyut halus)
+  void vibrateNotification() {
+    try {
+      Vibration.vibrate(duration: 120);
+    } catch (_) {}
+  }
+
+  /// Getaran sukses tiba di tujuan
+  void vibrateSuccess() {
+    try {
+      Vibration.vibrate(pattern: const [0, 120, 80, 120, 80, 300]);
+    } catch (_) {}
+  }
+
+  /// Getaran bahaya / melenceng dari rute
+  void vibrateDanger() {
+    try {
+      Vibration.vibrate(pattern: const [0, 400, 150, 400]);
+    } catch (_) {}
+  }
+
   /// Hentikan semua getaran.
   void stop() {
     _activePattern = null;

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../data/models/vision_mode.dart';
 import '../../../routes/app_pages.dart';
 import '../../../services/tts_service.dart';
+import '../../../utils/helpers/single_object_picker_sheet.dart';
 import '../../detector/controllers/detector_controller.dart';
 
 class HomeController extends GetxController {
@@ -27,7 +28,31 @@ class HomeController extends GetxController {
     // mis. sisa Mode Baca Uang — bisa dipakai ulang dan membuat Mode Outdoor
     // ikut mendeteksi/membacakan uang.
     Get.delete<DetectorController>(force: true);
-    Get.toNamed(Routes.DETECTOR, arguments: mode);
+    if (mode == VisionMode.outdoor) {
+      Get.toNamed(Routes.OUTDOOR_NAVIGATION);
+    } else {
+      Get.toNamed(Routes.DETECTOR, arguments: mode);
+    }
+  }
+
+  /// Membuka pemilih objek target untuk Mode Cari Objek Tunggal
+  void openFindObjectMode(BuildContext context) {
+    HapticFeedback.mediumImpact();
+    _ttsService.speak('Pilih objek yang ingin dicari');
+    SingleObjectPickerSheet.show(
+      context,
+      onSelected: (target) {
+        _ttsService.speak('Mencari ${target.displayName}');
+        Get.delete<DetectorController>(force: true);
+        Get.toNamed(
+          Routes.DETECTOR,
+          arguments: {
+            'mode': VisionMode.findObject,
+            'target': target.label,
+          },
+        );
+      },
+    );
   }
 
   /// Fitur Darurat / SOS
@@ -61,7 +86,8 @@ class HomeController extends GetxController {
       'Panduan NetraVision. Menu satu: Mode Indoor untuk mendeteksi perabotan di dalam rumah. '
       'Menu dua: Mode Outdoor untuk mendeteksi jalan dan rintangan luar ruangan. '
       'Menu tiga: Mode Baca Uang untuk memindai uang rupiah. '
-      'Menu empat: Bantuan Relawan untuk panggilan darurat. '
+      'Menu empat: Cari Objek Tunggal untuk menemukan barang spesifik seperti ponsel atau botol. '
+      'Menu lima: Bantuan Relawan untuk panggilan darurat. '
       'Ketuk dua kali menu mana saja untuk mengaktifkannya.',
       isUrgent: true,
     );

@@ -1,42 +1,12 @@
 orang
-sepeda
-mobil
-sepeda motor
-pesawat terbang
-bus
-kereta api
-truk
-perahu
-lampu lalu lintas
-hidran kebakaran
-rambu berhenti
-meteran parkir
-bangku
-burung
 kucing
 anjing
-kuda
-domba
-sapi
-gajah
-beruang
-zebra
-jerapah
 tas punggung
 payung
 tas tangan
 dasi
 koper
-frisbee
-ski
-papan salju
 bola
-layang-layang
-pemukul baseball
-sarung tangan baseball
-papan luncur
-papan selancar
-raket tenis
 botol
 gelas anggur
 cangkir

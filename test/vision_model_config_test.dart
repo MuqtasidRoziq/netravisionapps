@@ -18,10 +18,17 @@ void main() {
       expect(config.task, YOLOTask.segment);
     });
 
-    test('Mode Indoor memakai model indoor khusus (detect 80 kelas)', () {
+    test('Mode Indoor memakai model indoor khusus (detect 50 kelas indoor)', () {
       final config = VisionModelConfig.forMode(VisionMode.indoor);
       expect(config.modelPath, 'assets/models/indoor/indoor_objects.tflite');
       expect(config.task, YOLOTask.detect);
+    });
+
+    test('Mode Cari Objek memakai model indoor_objects.tflite dengan task detect', () {
+      final config = VisionModelConfig.forMode(VisionMode.findObject);
+      expect(config.modelPath, 'assets/models/indoor/indoor_objects.tflite');
+      expect(config.task, YOLOTask.detect);
+      expect(config.confidenceThreshold, 0.25);
     });
 
     test('Mode Baca Uang punya ambang confidence lebih ketat (> 0.55)', () {

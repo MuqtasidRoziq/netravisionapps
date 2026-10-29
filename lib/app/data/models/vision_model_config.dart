@@ -36,12 +36,20 @@ class VisionModelConfig {
       confidenceThreshold: 0.45,
       iouThreshold: 0.45,
     ),
-    // Model indoor: YOLO11n detect COCO 80 kelas (perabotan, pintu, penghuni)
-    // — jauh lebih ringan & sesuai fitur daripada meminjam model segment outdoor.
+    // Model indoor: YOLO11n 50 kelas indoor terpilih (mencakup perabotan, alat makan,
+    // barang pribadi, perangkat elektronik, dan bebas dari 30 kelas kendaraan/outdoor).
     VisionMode.indoor: VisionModelConfig(
       modelPath: 'assets/models/indoor/indoor_objects.tflite',
       task: YOLOTask.detect,
       confidenceThreshold: 0.45,
+      iouThreshold: 0.45,
+    ),
+    // Pencarian Objek Tunggal: memanfaatkan model indoor (50 kelas) dengan ambang
+    // batas responsif (0.25) agar target tidak mudah hilang saat kamera bergerak.
+    VisionMode.findObject: VisionModelConfig(
+      modelPath: 'assets/models/indoor/indoor_objects.tflite',
+      task: YOLOTask.detect,
+      confidenceThreshold: 0.25,
       iouThreshold: 0.45,
     ),
   };

@@ -10,6 +10,7 @@ import '../../../services/vibration_service.dart';
 import '../../../utils/helpers/danger_speech_policy.dart';
 import '../../../utils/helpers/detection_filter.dart';
 import '../../../utils/helpers/object_speech_helper.dart';
+import '../../../utils/helpers/single_object_search_catalog.dart';
 import '../../../utils/helpers/spatial_estimator.dart';
 
 /// Orkestrasi deteksi NetraVision di atas plugin `ultralytics_yolo`.
@@ -25,9 +26,19 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   final YOLOViewController yoloController = YOLOViewController();
 
   late VisionMode mode;
+  final RxString targetObject = 'ponsel'.obs;
+  /// Bounding box normalisasi (0.0..1.0) khusus objek tunggal yang sedang dicari
+  final Rx<Rect?> targetBox = Rx<Rect?>(null);
+  final RxDouble targetConfidence = 0.0.obs;
   final RxString currentStatusText = 'Menyiapkan kamera & model AI...'.obs;
   final RxString lastDetectedObject = ''.obs;
   final RxBool isPaused = false.obs;
+
+  // Buffer persistensi temporal khusus Mode Cari Objek:
+  // Menjaga kotak dan status tidak berkedip (flicker) saat ada frame yang sempat drop
+  // akibat gerakan kamera atau blur sesaat.
+  static const int _targetPersistenceMs = 600;
+  DateTime _lastTargetDetectedTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Throttle: proses maksimal 2 frame per detik agar CPU & TTS tidak dibanjiri.
   static const _frameIntervalMs = 500;
@@ -38,6 +49,7 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   static const _announceCooldownMs = 3000;
   String _lastAnnouncedLabel = '';
   ProximityBand? _lastAnnouncedBand;
+  HorizontalZone? _lastSearchHorizontal;
   DateTime _lastAnnounceTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Gating pengumuman bahaya: "Awas" diredam agar tidak seranah tiap frame.
@@ -65,12 +77,23 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
-    mode = Get.arguments is VisionMode
-        ? Get.arguments as VisionMode
-        : VisionMode.indoor;
+    if (Get.arguments is VisionMode) {
+      mode = Get.arguments as VisionMode;
+    } else if (Get.arguments is Map) {
+      final args = Get.arguments as Map;
+      mode = (args['mode'] as VisionMode?) ?? VisionMode.indoor;
+      if (args['target'] != null) {
+        targetObject.value = args['target'].toString().trim().toLowerCase();
+      }
+    } else {
+      mode = VisionMode.indoor;
+    }
     // Terapkan segera; YOLOViewController mengingat nilainya dan menyamplikannya
     // ke native saat platform view menempel.
     yoloController.setNumItemsThreshold(_maxNumItems);
+    if (mode == VisionMode.findObject) {
+      yoloController.setShowOverlays(false);
+    }
   }
 
   @override
@@ -97,10 +120,25 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   /// Dipanggil [YOLOView] setelah model berhasil dimuat/diganti.
   void handleModelLoad(String modelPath, YOLOTask? task) {
-    currentStatusText.value = mode == VisionMode.currency
-        ? 'Arahkan uang ke kamera...'
-        : 'Mencari objek di depan Anda...';
-    ttsService.speak(mode.announcement);
+    if (mode == VisionMode.currency) {
+      yoloController.setShowOverlays(true);
+      currentStatusText.value = 'Arahkan uang ke kamera...';
+      ttsService.speak(mode.announcement);
+    } else if (mode == VisionMode.findObject) {
+      // Sembunyikan seluruh bounding box objek lain secara native
+      // agar fokus visual murni hanya ke 1 objek yang dipilih.
+      yoloController.setShowOverlays(false);
+      targetBox.value = null;
+      targetConfidence.value = 0.0;
+      currentStatusText.value = 'Mencari ${targetObject.value}...';
+      ttsService.speak(
+        'Mode Cari Objek aktif. Mencari ${targetObject.value}. Arahkan kamera ke sekeliling ruangan.',
+      );
+    } else {
+      yoloController.setShowOverlays(true);
+      currentStatusText.value = 'Mencari objek di depan Anda...';
+      ttsService.speak(mode.announcement);
+    }
   }
 
   /// Dipanggil [YOLOView] bila model gagal dimuat.
@@ -111,7 +149,35 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
   /// Callback hasil inferensi per frame dari [YOLOView].
   void handleResults(List<YOLOResult> results) {
-    if (isPaused.value || results.isEmpty) return;
+    if (isPaused.value || results.isEmpty) {
+      if (mode == VisionMode.findObject) {
+        targetBox.value = null;
+        targetConfidence.value = 0.0;
+      }
+      return;
+    }
+
+    // Khusus Mode Cari Objek: update posisi kotak visual sehalus mungkin (per frame)
+    // dan pastikan HANYA 1 objek target yang terdeteksi & ditampilkan.
+    if (mode == VisionMode.findObject) {
+      final target = targetObject.value.trim().toLowerCase();
+      final targetMatches = results
+          .where((r) => SingleObjectSearchCatalog.matches(r.className, target))
+          .toList();
+
+      if (targetMatches.isNotEmpty) {
+        final best = DetectionFilter.selectBest(targetMatches);
+        _lastTargetDetectedTime = DateTime.now();
+        targetBox.value = best.normalizedBox;
+        targetConfidence.value = best.confidence;
+      } else {
+        final elapsed = DateTime.now().difference(_lastTargetDetectedTime).inMilliseconds;
+        if (elapsed > _targetPersistenceMs) {
+          targetBox.value = null;
+          targetConfidence.value = 0.0;
+        }
+      }
+    }
 
     final now = DateTime.now();
     if (now.difference(_lastFrameTime).inMilliseconds < _frameIntervalMs) {
@@ -123,6 +189,12 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   }
 
   void _processDetectionResults(List<YOLOResult> results) {
+    // 0. Cabang khusus Mode Cari Objek Tunggal
+    if (mode == VisionMode.findObject) {
+      _processSingleObjectSearch(results);
+      return;
+    }
+
     // 1. Saring label yang layak diumumkan + (khusus uang) bentuk kotak yang
     //    memang layak uang (ukuran cukup, tidak terpotong tepi).
     final validDetections = results
@@ -250,8 +322,113 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  /// Pemrosesan khusus mode pencarian objek tunggal.
+  void _processSingleObjectSearch(List<YOLOResult> results) {
+    final target = targetObject.value.trim().toLowerCase();
+    final matches = results
+        .where((r) => SingleObjectSearchCatalog.matches(r.className, target))
+        .toList();
+
+    final now = DateTime.now();
+
+    if (matches.isEmpty) {
+      final elapsedSinceDetected = now.difference(_lastTargetDetectedTime).inMilliseconds;
+      // Bila masih dalam batas persistensi temporal (drop frame sesaat karena gerak kamera),
+      // pertahankan status agar getaran dan pengumuman arah tidak terputus kaget.
+      if (elapsedSinceDetected < _targetPersistenceMs && targetBox.value != null) {
+        return;
+      }
+
+      currentStatusText.value = 'Mencari $target...';
+      vibrationService.stop();
+
+      // Pengingat periodik tiap 6 detik jika target belum tampak di kamera
+      if (now.difference(_lastAnnounceTime).inMilliseconds >= 6000) {
+        _lastAnnounceTime = now;
+        ttsService.speak('$target belum terlihat. Putar kamera perlahan.');
+      }
+      return;
+    }
+
+    final bestTarget = DetectionFilter.selectBest(matches);
+    final spatial = SpatialEstimator.of(bestTarget);
+    lastDetectedObject.value = target;
+
+    final displayName = ObjectSpeechHelper.formatDisplayName(
+      target,
+      mode,
+      spatial: spatial,
+      targetObject: target,
+    );
+    currentStatusText.value = displayName;
+
+    final speechText = ObjectSpeechHelper.formatForTts(
+      target,
+      mode,
+      spatial: spatial,
+      targetObject: target,
+    );
+
+    final band = spatial.band;
+    final hor = spatial.horizontal;
+
+    final bool positionChanged =
+        hor != _lastSearchHorizontal || band != _lastAnnouncedBand;
+    final bool cooldownPassed =
+        now.difference(_lastAnnounceTime).inMilliseconds >= 2500;
+
+    if (positionChanged || cooldownPassed) {
+      _lastSearchHorizontal = hor;
+      _lastAnnouncedBand = band;
+      _lastAnnounceTime = now;
+      final bool isSuperClose = band == ProximityBand.sangatDekat;
+      ttsService.speak(speechText, isUrgent: isSuperClose);
+    }
+
+    // Getaran taktil memandu kedekatan:
+    vibrationService.vibrateNear(
+      band: band,
+      dangerous: band == ProximityBand.sangatDekat,
+    );
+  }
+
+  /// Mengganti target objek yang ingin dicari secara interaktif
+  void setTargetObject(String newTarget) {
+    targetObject.value = newTarget.trim().toLowerCase();
+    targetBox.value = null;
+    targetConfidence.value = 0.0;
+    _lastTargetDetectedTime = DateTime.fromMillisecondsSinceEpoch(0);
+    _lastAnnouncedLabel = '';
+    _lastAnnouncedBand = null;
+    _lastSearchHorizontal = null;
+    _lastAnnounceTime = DateTime.fromMillisecondsSinceEpoch(0);
+    lastDetectedObject.value = '';
+    currentStatusText.value = 'Mencari ${targetObject.value}...';
+    HapticFeedback.mediumImpact();
+    ttsService.speak(
+      'Target diubah ke ${targetObject.value}. Arahkan kamera ke sekitar.',
+      isUrgent: true,
+    );
+  }
+
   void handleScreenTap() {
     HapticFeedback.mediumImpact();
+    if (mode == VisionMode.findObject) {
+      final target = targetObject.value;
+      if (lastDetectedObject.value == target) {
+        ttsService.speak(
+          'Target $target terdeteksi di hadapan kamera Anda.',
+          isUrgent: true,
+        );
+      } else {
+        ttsService.speak(
+          'Target $target belum terlihat. Silakan gerakkan kamera ke sekitar.',
+          isUrgent: true,
+        );
+      }
+      return;
+    }
+
     if (lastDetectedObject.value.isNotEmpty) {
       final speech =
           ObjectSpeechHelper.formatForTts(lastDetectedObject.value, mode);

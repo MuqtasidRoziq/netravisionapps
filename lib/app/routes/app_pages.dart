@@ -4,6 +4,8 @@ import '../modules/detector/bindings/detector_binding.dart';
 import '../modules/detector/views/detector_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
+import '../modules/outdoor/bindings/outdoor_navigation_binding.dart';
+import '../modules/outdoor/views/outdoor_navigation_view.dart';
 import '../modules/splash/bindings/splash_binding.dart';
 import '../modules/splash/views/splash_view.dart';
 
@@ -29,6 +31,12 @@ class AppPages {
       name: _Paths.DETECTOR,
       page: () => const DetectorView(),
       binding: DetectorBinding(),
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: _Paths.OUTDOOR_NAVIGATION,
+      page: () => const OutdoorNavigationView(),
+      binding: OutdoorNavigationBinding(),
       transition: Transition.fadeIn,
     ),
   ];
