@@ -12,16 +12,25 @@ class FallbackService extends GetxService {
   Future<bool> launchDirectWhatsAppVideoCall({
     required String phoneNumber,
     String? contactName,
+    String? customMessage,
   }) async {
+    final name = contactName ?? 'Keluarga';
+    final message = customMessage ??
+        '🚨 *PANGGILAN BANTUAN NETRAVISION*\n'
+        'Halo $name, saya membutuhkan bantuan visual mendesak melalui aplikasi NetraVision. '
+        'Mohon segera hubungi saya kembali atau angkat panggilan video ini.';
+    final encodedMsg = Uri.encodeComponent(message);
+
     try {
       final success = await _whatsAppChannel.invokeMethod<bool>('directVideoCall', {
         'phoneNumber': phoneNumber,
         'contactName': contactName ?? '',
+        'message': message,
       });
       if (success == true) return true;
     } catch (_) {}
 
-    // Fallback: Arm auto-click and launch clean whatsapp://send?phone=... tanpa teks obrolan
+    // Fallback: Arm auto-click and launch whatsapp://send?phone=...&text=...
     final autoClickService = Get.isRegistered<AutoClickService>() ? Get.find<AutoClickService>() : null;
     autoClickService?.armAutoClick(AutoClickAction.videoCall);
 
@@ -30,14 +39,14 @@ class FallbackService extends GetxService {
       clean = '62${clean.substring(1)}';
     }
 
-    final directWaUri = Uri.parse('whatsapp://send?phone=$clean');
+    final directWaUri = Uri.parse('whatsapp://send?phone=$clean&text=$encodedMsg');
     try {
       if (await canLaunchUrl(directWaUri)) {
         return await launchUrl(directWaUri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {}
 
-    final waMeUri = Uri.parse('https://wa.me/$clean');
+    final waMeUri = Uri.parse('https://wa.me/$clean?text=$encodedMsg');
     try {
       if (await canLaunchUrl(waMeUri)) {
         return await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
@@ -51,11 +60,20 @@ class FallbackService extends GetxService {
   Future<bool> launchDirectWhatsAppVoiceCall({
     required String phoneNumber,
     String? contactName,
+    String? customMessage,
   }) async {
+    final name = contactName ?? 'Keluarga';
+    final message = customMessage ??
+        '🚨 *PANGGILAN BANTUAN NETRAVISION*\n'
+        'Halo $name, saya membutuhkan bantuan melalui aplikasi NetraVision. '
+        'Mohon segera hubungi saya kembali.';
+    final encodedMsg = Uri.encodeComponent(message);
+
     try {
       final success = await _whatsAppChannel.invokeMethod<bool>('directVoiceCall', {
         'phoneNumber': phoneNumber,
         'contactName': contactName ?? '',
+        'message': message,
       });
       if (success == true) return true;
     } catch (_) {}
@@ -65,7 +83,7 @@ class FallbackService extends GetxService {
       clean = '62${clean.substring(1)}';
     }
 
-    final directWaUri = Uri.parse('whatsapp://send?phone=$clean');
+    final directWaUri = Uri.parse('whatsapp://send?phone=$clean&text=$encodedMsg');
     try {
       if (await canLaunchUrl(directWaUri)) {
         return await launchUrl(directWaUri, mode: LaunchMode.externalApplication);

@@ -50,6 +50,7 @@ dependencies:
   google_mlkit_text_recognition: ^0.17.1
   flutter_accessibility_service: ^1.2.0
   permission_handler: 11.3.1
+  flutter_contacts: ^1.1.9+2
 dev_dependencies:
   flutter_test:
     sdk: flutter

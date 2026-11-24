@@ -5,7 +5,7 @@ import 'package:flutter_accessibility_service/constants.dart';
 import 'package:flutter_accessibility_service/flutter_accessibility_service.dart';
 import 'package:get/get.dart';
 
-enum AutoClickAction { none, videoCall, sendChat }
+enum AutoClickAction { none, videoCall, voiceCall, sendChat }
 
 /// Service untuk menangani auto-klik otomatis saat WhatsApp terbuka (VC WA / Kirim Chat)
 class AutoClickService extends GetxService {
@@ -50,7 +50,13 @@ class AutoClickService extends GetxService {
     _pendingAction = action;
     _actionArmTime = DateTime.now();
 
-    final actStr = action == AutoClickAction.videoCall ? 'video_call' : 'send_chat';
+    String actStr = 'video_call';
+    if (action == AutoClickAction.voiceCall) {
+      actStr = 'voice_call';
+    } else if (action == AutoClickAction.sendChat) {
+      actStr = 'send_chat';
+    }
+
     try {
       _nativeChannel.invokeMethod('armAutoClick', {'action': actStr});
     } catch (_) {}
@@ -85,6 +91,10 @@ class AutoClickService extends GetxService {
 
   Future<void> _handleWhatsAppEvent(AccessibilityEvent event) async {
     if (_pendingAction == AutoClickAction.videoCall) {
+      // 1. Kirim pesan darurat otomatis terlebih dahulu
+      await _searchAndClick(event, ['kirim', 'send', 'kirim pesan']);
+      await Future.delayed(const Duration(milliseconds: 300));
+      // 2. Klik tombol video call
       await _searchAndClick(event, [
         'telepon video',
         'panggilan video',
@@ -93,6 +103,16 @@ class AutoClickService extends GetxService {
         'panggilan_video',
         'videocall',
         'video',
+      ]);
+    } else if (_pendingAction == AutoClickAction.voiceCall) {
+      await _searchAndClick(event, ['kirim', 'send', 'kirim pesan']);
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _searchAndClick(event, [
+        'telepon suara',
+        'panggilan suara',
+        'voice call',
+        'voice_call',
+        'audio call',
       ]);
     } else if (_pendingAction == AutoClickAction.sendChat) {
       await _searchAndClick(event, [

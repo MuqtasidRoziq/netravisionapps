@@ -40,12 +40,22 @@ class MainActivity : FlutterFragmentActivity() {
                 Log.d(TAG, "MethodChannel call: ${call.method}, phone: $phoneNumber, name: $contactName")
                 when (call.method) {
                     "directVideoCall" -> {
+                        val directStarted = triggerWhatsAppCall(phoneNumber, contactName, isVideo = true)
+                        if (directStarted) {
+                            Log.d(TAG, "Direct WhatsApp Video Call launched via ContactsContract successfully!")
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
+
                         NetraAccessibilityService.arm("video_call")
                         var clean = phoneNumber.replace(Regex("[^0-9]"), "")
                         if (clean.startsWith("0")) {
                             clean = "62" + clean.substring(1)
                         }
-                        val uri = Uri.parse("whatsapp://send?phone=$clean")
+                        val message = call.argument<String>("message")
+                            ?: "🚨 *PANGGILAN BANTUAN NETRAVISION*\nHalo, saya membutuhkan bantuan visual mendesak melalui aplikasi NetraVision. Mohon segera hubungi saya kembali atau angkat panggilan video ini."
+                        val encodedMsg = Uri.encode(message)
+                        val uri = Uri.parse("whatsapp://send?phone=$clean&text=$encodedMsg")
                         val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
@@ -56,7 +66,7 @@ class MainActivity : FlutterFragmentActivity() {
                         } catch (e: Exception) {
                             Log.w(TAG, "whatsapp:// scheme failed, trying wa.me: ${e.message}")
                             try {
-                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean")).apply {
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean?text=$encodedMsg")).apply {
                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                 }
                                 startActivity(webIntent)
@@ -68,12 +78,22 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(launched)
                     }
                     "directVoiceCall" -> {
+                        val directStarted = triggerWhatsAppCall(phoneNumber, contactName, isVideo = false)
+                        if (directStarted) {
+                            Log.d(TAG, "Direct WhatsApp Voice Call launched via ContactsContract successfully!")
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
+
                         NetraAccessibilityService.arm("voice_call")
                         var clean = phoneNumber.replace(Regex("[^0-9]"), "")
                         if (clean.startsWith("0")) {
                             clean = "62" + clean.substring(1)
                         }
-                        val uri = Uri.parse("whatsapp://send?phone=$clean")
+                        val message = call.argument<String>("message")
+                            ?: "🚨 *PANGGILAN BANTUAN NETRAVISION*\nHalo, saya membutuhkan bantuan melalui aplikasi NetraVision. Mohon segera hubungi saya kembali."
+                        val encodedMsg = Uri.encode(message)
+                        val uri = Uri.parse("whatsapp://send?phone=$clean&text=$encodedMsg")
                         val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
@@ -84,7 +104,7 @@ class MainActivity : FlutterFragmentActivity() {
                         } catch (e: Exception) {
                             Log.w(TAG, "whatsapp:// scheme failed, trying wa.me: ${e.message}")
                             try {
-                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean")).apply {
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean?text=$encodedMsg")).apply {
                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                 }
                                 startActivity(webIntent)
@@ -102,6 +122,38 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                     "isAccessibilityRunning" -> {
                         result.success(NetraAccessibilityService.isServiceRunning())
+                    }
+                    "getWhatsAppRegisteredNumbers" -> {
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                            result.success(emptyList<String>())
+                            return@setMethodCallHandler
+                        }
+                        val numbers = mutableListOf<String>()
+                        try {
+                            val cursor = contentResolver.query(
+                                ContactsContract.Data.CONTENT_URI,
+                                arrayOf(ContactsContract.Data.DATA1),
+                                "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?)",
+                                arrayOf(
+                                    "vnd.android.cursor.item/vnd.com.whatsapp.profile",
+                                    "vnd.android.cursor.item/vnd.com.whatsapp.video.call",
+                                    "vnd.android.cursor.item/vnd.com.whatsapp.voip.call"
+                                ),
+                                null
+                            )
+                            cursor?.use {
+                                while (it.moveToNext()) {
+                                    val data1 = it.getString(0) ?: ""
+                                    val clean = data1.replace(Regex("[^0-9]"), "")
+                                    if (clean.length >= 8) {
+                                        numbers.add(clean)
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error querying WhatsApp registered numbers: ${e.message}")
+                        }
+                        result.success(numbers.distinct())
                     }
                     else -> result.notImplemented()
                 }

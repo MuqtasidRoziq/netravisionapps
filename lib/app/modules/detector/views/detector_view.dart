@@ -121,17 +121,10 @@ class DetectorView extends GetView<DetectorController> {
                 child: _buildCoordinateCard(),
               ),
 
-            // 3. Banner status bawah (kontras tinggi putih-biru, reaktif mandiri).
-            Positioned(
-              bottom: 16,
-              left: 14,
-              right: 14,
-              child: _buildBottomStatusBar(),
-            ),
-
-            // 4. Peta navigasi — tampil sejak Mode Jalan dibuka (agar titik
+            // 3. Peta navigasi — tampil sejak Mode Jalan dibuka (agar titik
             //    koordinat & posisi pengguna langsung terlihat), mengecil
-            //    otomatis setelah rute terbentuk.
+            //    otomatis setelah rute terbentuk. Ditaruh sebelum banner status
+            //    agar tombol-tombol banner status selalu di lapisan teratas (bisa diklik).
             if (controller.mode == VisionMode.outdoor)
               Obx(() {
                 final isExpanded = controller.mapExpanded.value;
@@ -142,7 +135,7 @@ class DetectorView extends GetView<DetectorController> {
                   left: isExpanded ? 14 : null,
                   right: 14,
                   top: 160,
-                  bottom: isExpanded ? 85 : null,
+                  bottom: isExpanded ? 240 : null,
                   width: isExpanded ? null : 145,
                   height: isExpanded ? null : 145,
                   child: NavigationMapEmbed(
@@ -151,6 +144,14 @@ class DetectorView extends GetView<DetectorController> {
                   ),
                 );
               }),
+
+            // 4. Banner status bawah (kontras tinggi putih-biru, reaktif mandiri).
+            Positioned(
+              bottom: 16,
+              left: 14,
+              right: 14,
+              child: _buildBottomStatusBar(),
+            ),
 
 
             // 5. Overlay Darurat SOS (Tampil saat hitung mundur 5 detik)

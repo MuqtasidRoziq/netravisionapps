@@ -846,7 +846,10 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   }
 
   /// Mulai mendengarkan ucapan tujuan (dipicu otomatis & tombol mikrofon).
-  Future<void> startDestinationListening({bool announcePrompt = false}) async {
+  Future<void> startDestinationListening({
+    bool announcePrompt = false,
+    String? promptText,
+  }) async {
     if (!isOutdoor.value || _navBusy) return;
 
     // Pemicu manual (tombol mikrofon) → reset putaran percobaan & izin.
@@ -864,6 +867,19 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
     if (_sttStarting) return;
 
+    // Jika pengguna sedang dalam rute aktif dan ingin mengganti tujuan,
+    // bersihkan rute lama terlebih dahulu agar tidak memblokir sesi STT baru.
+    final bool isChangingRoute = destinationPoint.value != null;
+    if (isChangingRoute) {
+      _navGuider = null;
+      routePolyline.value = [];
+      destinationPoint.value = null;
+      destinationName.value = '';
+      destinationDistance.value = '';
+      mapExpanded.value = true;
+      navStatus.value = 'Mengganti tujuan rute...';
+    }
+
     if (!await _ensureSpeechReady()) {
       speechPhase = DestinationSpeechPhase.idle;
       isListeningDestination.value = false;
@@ -880,13 +896,21 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
       return;
     }
 
-    await _runDestinationListen(attempt: 1, announcePrompt: announcePrompt);
+    await _runDestinationListen(
+      attempt: 1,
+      announcePrompt: announcePrompt || isChangingRoute,
+      promptText: promptText ??
+          (isChangingRoute
+              ? 'Mengganti tujuan rute. Silakan sebutkan tempat tujuan baru Anda.'
+              : null),
+    );
   }
 
   /// Jalankan satu putaran sesi dengar ([attempt] mulai dari 1).
   Future<void> _runDestinationListen({
     required int attempt,
     required bool announcePrompt,
+    String? promptText,
   }) async {
     if (!isOutdoor.value || destinationPoint.value != null) return;
     if (_sttStarting) return;
@@ -915,7 +939,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
 
       if (announcePrompt) {
         navStatus.value = 'Mempersiapkan mikrofon...';
-        await ttsService.speakAndWait('Silakan sebutkan tujuan Anda.',
+        await ttsService.speakAndWait(
+            promptText ?? 'Silakan sebutkan tujuan Anda.',
             priority: TtsPriority.navigation);
       }
 

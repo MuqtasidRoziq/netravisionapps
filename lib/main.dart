@@ -24,8 +24,7 @@ void main() async {
   await Get.putAsync(() async => VibrationService());
   await Get.putAsync(() async => LocationService());
   await Get.putAsync(() async => CompassService());
-  final contactsService = await Get.putAsync(() => ContactsService().init());
-  await contactsService.ensureIlmaContact();
+  await Get.putAsync(() => ContactsService().init());
   Get.put(FallbackService());
   Get.put(AutoClickService());
   await Get.putAsync(() => VisualHelpService().init());

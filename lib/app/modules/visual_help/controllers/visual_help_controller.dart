@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../data/models/visual_help_models.dart';
 import '../../../routes/app_pages.dart';
@@ -13,6 +15,7 @@ import '../../../services/livekit_call_service.dart';
 import '../../../services/location_service.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/visual_help_service.dart';
+import '../../../utils/helpers/contact_speech_filter.dart';
 
 class VisualHelpController extends GetxController {
   /// Mengirim pesan broadcast panggilan ke grup relawan WhatsApp
@@ -104,24 +107,142 @@ class VisualHelpController extends GetxController {
   final RxInt selectedButtonIndex = (-1).obs;
   final RxString selectedContactActionKey = ''.obs;
 
+  // ================= Pencarian Kontak Berbasis Suara (STT) & Teks =================
+  final SpeechToText _contactSpeech = SpeechToText();
+  final TextEditingController contactTextController = TextEditingController();
+  final RxBool isContactListening = false.obs;
+  final RxString contactSearchQuery = ''.obs;
+  final RxList<TrustedContact> contactSearchResults = <TrustedContact>[].obs;
+  final RxBool hasContactSearched = false.obs;
+
+  /// Memulai pendengaran suara untuk mencari nama kontak
+  Future<void> startContactVoiceSearch() async {
+    HapticFeedback.heavyImpact();
+    ttsService.stop();
+
+    // Minta izin kontak HP jika belum
+    await contactsService.requestContactsPermission();
+
+    final available = await _contactSpeech.initialize(
+      onError: (err) {
+        isContactListening.value = false;
+        ttsService.speak('Pengenalan suara kontak terhenti. Silakan ketuk tombol mikrofon lagi.', isUrgent: true);
+      },
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          isContactListening.value = false;
+        }
+      },
+    );
+
+    if (!available) {
+      isContactListening.value = false;
+      ttsService.speak('Mikrofon ponsel belum siap. Pastikan izin mikrofon telah diberikan.', isUrgent: true);
+      return;
+    }
+
+    isContactListening.value = true;
+    contactSearchQuery.value = '';
+    contactTextController.clear();
+    HapticFeedback.mediumImpact();
+
+    await _contactSpeech.listen(
+      onResult: (SpeechRecognitionResult result) {
+        contactSearchQuery.value = result.recognizedWords;
+        contactTextController.text = result.recognizedWords;
+        if (result.finalResult) {
+          _processContactSearchResult(result.recognizedWords, speakResult: true);
+        }
+      },
+      listenOptions: SpeechListenOptions(
+        listenFor: const Duration(seconds: 8),
+        pauseFor: const Duration(seconds: 3),
+        localeId: 'id_ID',
+        listenMode: ListenMode.dictation,
+        cancelOnError: true,
+      ),
+    );
+  }
+
+  /// Melakukan pencarian kontak berdasarkan teks ketikan manual / pencarian instan
+  Future<void> searchContactsByText(String text) async {
+    final query = text.trim();
+    if (query.isEmpty) {
+      resetContactSearch(silent: true);
+      return;
+    }
+    contactSearchQuery.value = query;
+    await _processContactSearchResult(query, speakResult: false);
+  }
+
+  /// Memproses hasil pengenalan suara dan mencari kontak yang cocok
+  Future<void> _processContactSearchResult(String rawQuery, {bool speakResult = true}) async {
+    isContactListening.value = false;
+    hasContactSearched.value = true;
+
+    final matches = await contactsService.searchContacts(rawQuery);
+    contactSearchResults.assignAll(matches);
+
+    if (!speakResult) return;
+
+    if (matches.isNotEmpty) {
+      final first = matches.first;
+      final cleanName = first.name;
+      final count = matches.length;
+      final phoneDigits = first.phoneNumber.replaceAll(RegExp(r'\D'), '');
+      final formattedDigits = phoneDigits.replaceAllMapped(RegExp(r'.{4}'), (m) => '${m.group(0)} ');
+      final text = count == 1
+          ? 'Ditemukan kontak $cleanName, nomor $formattedDigits. Ketuk tombol hijau Telepon WhatsApp Sekarang untuk mulai memanggil.'
+          : 'Ditemukan $count kontak, yang pertama $cleanName, nomor $formattedDigits. Ketuk tombol hijau Telepon WhatsApp Sekarang untuk memanggil.';
+      ttsService.speak(text, isUrgent: true);
+    } else {
+      final cleanName = ContactSpeechFilter.extractContactName(rawQuery);
+      final queryText = cleanName.isNotEmpty ? cleanName : rawQuery;
+      ttsService.speak(
+        'Kontak $queryText tidak ditemukan di buku telepon. Pastikan nama sesuai dengan yang tersimpan di kontak ponsel, lalu ketuk mikrofon untuk mencoba lagi.',
+        isUrgent: true,
+      );
+    }
+  }
+
+  /// Menghentikan pencarian dan mereset hasil ke daftar kontak lengkap
+  void resetContactSearch({bool silent = false}) {
+    _contactSpeech.stop();
+    isContactListening.value = false;
+    contactSearchQuery.value = '';
+    contactTextController.clear();
+    contactSearchResults.clear();
+    hasContactSearched.value = false;
+    if (!silent) {
+      ttsService.speak('Pencarian kontak direset. Menampilkan semua kontak.');
+    }
+  }
+
   /// Penjelasan suara ramah saat masuk ke halaman Kontak Tepercaya
   void speakTrustedContactsIntro() {
     if (_hasSpokenTrustedIntro) return;
     _hasSpokenTrustedIntro = true;
-    final list = contactsService.contacts;
-    if (list.isNotEmpty) {
-      final count = list.length;
-      final names = list.map((c) => c.name).take(3).join(', ');
-      ttsService.speak(
-        'Halaman Kontak Keluarga. Tersedia $count kontak tersimpan: $names. Aktifkan tombol untuk langsung menjalankan fungsinya.',
-        isUrgent: true,
-      );
-    } else {
-      ttsService.speak(
-        'Halaman Kontak Keluarga. Belum ada nomor keluarga yang tersimpan. Silakan ketuk tombol Tambah Kontak dua kali untuk meminta keluarga mengisi nomor mereka.',
-        isUrgent: true,
-      );
-    }
+
+    // Otomatis sinkronkan kontak ponsel saat pertama kali masuk ke halaman kontak
+    contactsService.requestContactsPermission().then((granted) {
+      final total = contactsService.contacts.length + contactsService.deviceContacts.length;
+      if (granted && total > 0) {
+        ttsService.speak(
+          'Halaman Kontak. Tersinkronisasi $total kontak WhatsApp dari buku telepon Anda. Ketuk tombol mikrofon di atas untuk mencari nama kontak menggunakan suara.',
+          isUrgent: true,
+        );
+      } else if (!granted) {
+        ttsService.speak(
+          'Halaman Kontak. Izin buku telepon diperlukan agar kontak keluarga terbaca otomatis. Silakan ketuk tombol Sinkronkan Kontak.',
+          isUrgent: true,
+        );
+      } else {
+        ttsService.speak(
+          'Halaman Kontak. Buku telepon ponsel kosong. Ketuk tombol mikrofon untuk mencari nama orang terdekat.',
+          isUrgent: true,
+        );
+      }
+    });
   }
 
   void resetTrustedContactsIntro() {
@@ -527,19 +648,31 @@ class VisualHelpController extends GetxController {
     Get.back();
   }
 
-  /// Melakukan Video Call WhatsApp langsung ke Kontak (Auto-VC tanpa masuk ke mode obrolan/chat)
+  /// Melakukan Video Call WhatsApp langsung ke Kontak (dengan pesan darurat otomatis & auto-call)
   Future<void> callContactWhatsAppVoice(
     String phoneNumber, {
     String? contactName,
   }) async {
     HapticFeedback.heavyImpact();
     final name = contactName ?? 'kontak';
-    ttsService.speak(
-      'Menghubungi video call WhatsApp ke $name sekarang...',
-      isUrgent: true,
-    );
 
-    // Langsung buka WhatsApp dan picu Auto-VC tanpa masuk ke pengetikan obrolan/chat
+    final autoClickService = Get.isRegistered<AutoClickService>()
+        ? Get.find<AutoClickService>()
+        : null;
+    final isA11yActive = await autoClickService?.checkPermission() ?? false;
+
+    if (isA11yActive) {
+      ttsService.speak(
+        'Membuka WhatsApp ke $name. Panggilan video otomatis ditekan.',
+        isUrgent: true,
+      );
+    } else {
+      ttsService.speak(
+        'Membuka WhatsApp ke $name. Pesan darurat telah terisi otomatis di kolom chat. Anda dapat langsung mengetuk kirim atau tombol video call di kanan atas.',
+        isUrgent: true,
+      );
+    }
+
     final directSuccess = await fallbackService.launchDirectWhatsAppVideoCall(
       phoneNumber: phoneNumber,
       contactName: contactName,
@@ -874,6 +1007,8 @@ class VisualHelpController extends GetxController {
 
   @override
   void onClose() {
+    _contactSpeech.stop();
+    contactTextController.dispose();
     _stopCountdown();
     _stopHandshakeTimer();
     targetNameController.dispose();
