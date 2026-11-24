@@ -45,6 +45,45 @@ void main() {
       expect(extractDestinationQuery('carikan apotek'), 'apotek');
       expect(extractDestinationQuery('antarkan saya ke stasiun dong'), 'stasiun');
       expect(extractDestinationQuery('silakan sebutkan tujuan anda minimarket'), 'minimarket');
+      expect(extractDestinationQuery('lapangan terdekat'), 'lapangan');
+      expect(extractDestinationQuery('mau ke lapangan terdekat dong'), 'lapangan');
+      expect(extractDestinationQuery('cari lapangan bola terdekat'), 'lapangan bola');
+      expect(extractDestinationQuery('ke lapangan yang paling dekat'), 'lapangan');
+      expect(extractDestinationQuery('lokasi lapangan'), 'lapangan');
+      expect(extractDestinationQuery('dimana lapangan'), 'lapangan');
+      expect(extractDestinationQuery('ada lapangan di dekat sini'), 'lapangan');
+      expect(extractDestinationQuery('tunjukkan jalan ke lapangan'), 'lapangan');
+    });
+
+    test('ekstraksi dan normalisasi variasi masjid / sholat', () {
+      expect(extractDestinationQuery('masjid'), 'masjid');
+      expect(extractDestinationQuery('mesjid'), 'masjid');
+      expect(extractDestinationQuery('mushola'), 'masjid');
+      expect(extractDestinationQuery('musholla'), 'masjid');
+      expect(extractDestinationQuery('lokasi masjid'), 'masjid');
+      expect(extractDestinationQuery('dimana masjid'), 'masjid');
+      expect(extractDestinationQuery('di mana masjid'), 'masjid');
+      expect(extractDestinationQuery('ada masjid di dekat sini'), 'masjid');
+      expect(extractDestinationQuery('tunjukkan jalan ke masjid'), 'masjid');
+      expect(extractDestinationQuery('pandu saya ke masjid'), 'masjid');
+      expect(extractDestinationQuery('rute ke masjid'), 'masjid');
+      expect(extractDestinationQuery('mau sholat di masjid'), 'masjid');
+      expect(extractDestinationQuery('mau sholat'), 'masjid');
+      expect(extractDestinationQuery('sholat'), 'masjid');
+      expect(extractDestinationQuery('tempat sholat terdekat'), 'masjid');
+    });
+
+    test('ekstraksi dan normalisasi variasi sekolah dasar (SD) dan madrasah (MI)', () {
+      expect(extractDestinationQuery('sd'), 'sekolah dasar');
+      expect(extractDestinationQuery('cari sd'), 'sekolah dasar');
+      expect(extractDestinationQuery('sd terdekat'), 'sekolah dasar');
+      expect(extractDestinationQuery('sekolah sd terdekat'), 'sekolah dasar');
+      expect(extractDestinationQuery('mau ke sd terdekat dong'), 'sekolah dasar');
+      expect(extractDestinationQuery('antarkan saya ke sd negeri'), 'sekolah dasar');
+      expect(extractDestinationQuery('mi'), 'madrasah ibtidaiyah');
+      expect(extractDestinationQuery('cari mi'), 'madrasah ibtidaiyah');
+      expect(extractDestinationQuery('mi terdekat'), 'madrasah ibtidaiyah');
+      expect(extractDestinationQuery('madrasah terdekat'), 'madrasah ibtidaiyah');
     });
 
     test('tanpa frase perintah = kalimat utuh', () {

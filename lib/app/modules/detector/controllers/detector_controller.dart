@@ -75,6 +75,12 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
   /// Titik tujuan di peta.
   final Rx<GeoPoint?> destinationPoint = Rx<GeoPoint?>(null);
 
+  /// Nama tempat tujuan aktif.
+  final RxString destinationName = ''.obs;
+
+  /// Estimasi jarak ke tempat tujuan aktif.
+  final RxString destinationDistance = ''.obs;
+
   /// Peta kecil vs layar penuh.
   final RxBool mapExpanded = false.obs;
 
@@ -735,6 +741,8 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
         navStatus.value = 'Anda telah tiba di tujuan';
         routePolyline.value = [];
         destinationPoint.value = null;
+        destinationName.value = '';
+        destinationDistance.value = '';
         if (mode == VisionMode.outdoor) {
           yoloController.setShowOverlays(false);
         }
@@ -1120,38 +1128,61 @@ class DetectorController extends GetxController with WidgetsBindingObserver {
     if (_navBusy) return;
     _navBusy = true;
     try {
-       final origin = userPosition.value;
-       if (origin == null) {
-         navStatus.value = 'Menunggu sinyal GPS...';
-         ttsService.speak('Menunggu sinyal GPS untuk menentukan posisi Anda.');
-         return;
-       }
+      var origin = userPosition.value;
+      if (origin == null || (origin.accuracy != null && origin.accuracy! > 20.0)) {
+        final accuratePos = await locationService.getAccuratePosition(
+            timeLimit: const Duration(seconds: 4));
+        if (accuratePos != null) {
+          origin = accuratePos;
+          userPosition.value = accuratePos;
+        }
+      }
+      if (origin == null) {
+        origin = await locationService.lastKnownPosition();
+        if (origin != null) {
+          userPosition.value = origin;
+        }
+      }
+      if (origin == null || (origin.lat == 0.0 && origin.lng == 0.0)) {
+        navStatus.value = 'Menunggu sinyal GPS...';
+        ttsService.speak('Menunggu sinyal GPS untuk menentukan posisi Anda.');
+        return;
+      }
 
-       // Sembunyikan peta/rute lama sebelum pencarian tujuan baru.
-       destinationPoint.value = null;
-       routePolyline.value = [];
-       navStatus.value = 'Mencari $query...';
-      ttsService.speak('Mencari $query di sekitar Anda.');
+      debugPrint('[DetectorController] Searching destination: "$query", origin: (${origin.lat}, ${origin.lng})');
+
+      // Sembunyikan peta/rute lama sebelum pencarian tujuan baru.
+      destinationPoint.value = null;
+      routePolyline.value = [];
+      destinationName.value = '';
+      destinationDistance.value = '';
+      navStatus.value = 'Mencari $query terdekat...';
+      ttsService.speak('Mencari $query terdekat dari posisi Anda.');
 
       final result = await placesService.searchBest(query: query, center: origin);
       final place = result.place;
       if (place == null) {
         navStatus.value = 'Tempat tidak ditemukan';
         ttsService.speak(
-            "Tidak ditemukan '$query' di sekitar. Coba sebutkan nama atau jenis tempat lain.");
+            "Tidak ditemukan '$query' di sekitar Anda. Coba sebutkan nama tempat lain.");
         return;
       }
 
+      debugPrint('[DetectorController] Destination found: "${place.name}" (${place.point.lat}, ${place.point.lng}), distance: ${place.distanceMeters}m');
+
       final placeDist = place.distanceMeters ?? haversineMeters(origin, place.point);
       final placeName = _cleanPlaceName(place.name);
+      final placeDistStr = formatDistanceMeters(placeDist);
+      destinationName.value = placeName;
+      destinationDistance.value = placeDistStr;
       navStatus.value = 'Menuju $placeName';
       // Bila tempat terdekat masih jauh (di luar radius nyaman jalan kaki),
       // beri tahu pengguna jarak sebenarnya sebelum membuat rute.
       final farNote = result.beyondLocal
-          ? ' Tempat terdekat cukup jauh, sekitar ${formatDistanceMeters(placeDist)} dari posisi Anda.'
+          ? ' Tempat terdekat cukup jauh, sekitar $placeDistStr dari posisi Anda.'
           : '';
       ttsService.speak(
-          'Menuju $placeName, ${formatDistanceMeters(placeDist)}.$farNote Membuat rute.',
+          'Menuju $placeName, $placeDistStr.$farNote Membuat rute.',
           priority: TtsPriority.navigation);
       destinationPoint.value = place.point;
       yoloController.setShowOverlays(true);

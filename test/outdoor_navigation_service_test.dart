@@ -60,6 +60,12 @@ void main() {
 
       final synMinimarket = PlacesService.synonymsForQuery('minimarket');
       expect(synMinimarket, contains('indomaret'));
+
+      final synSd = PlacesService.synonymsForQuery('sd');
+      expect(synSd, contains('sekolah dasar'));
+
+      final synMi = PlacesService.synonymsForQuery('mi');
+      expect(synMi, contains('madrasah ibtidaiyah'));
     });
   });
 
@@ -115,9 +121,10 @@ void main() {
         expect(tiers[i], greaterThan(tiers[i - 1]));
       }
       expect(tiers.last, PlacesService.maxRadiusMeters);
+      expect(tiers.first, 100);
       expect(
         PlacesService.localRadiusMeters,
-        lessThanOrEqualTo(tiers.first),
+        greaterThanOrEqualTo(tiers.first),
       );
     });
 

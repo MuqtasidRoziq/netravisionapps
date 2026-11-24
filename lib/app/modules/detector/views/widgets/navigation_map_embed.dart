@@ -49,18 +49,24 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
       if (pos == null) return;
       // Selalu perbarui marker posisi pengguna di peta.
       _updateOverlays();
-      final moved = _lastCameraCenter == null ||
-          haversineMeters(_lastCameraCenter!, pos) > 3.0;
-      if (!moved || _mapController == null) return;
-      _moveTo(pos);
+      // Hanya pusatkan kamera ke user jika belum ada rute tujuan aktif
+      if (widget.controller.destinationPoint.value == null) {
+        final moved = _lastCameraCenter == null ||
+            haversineMeters(_lastCameraCenter!, pos) > 3.0;
+        if (!moved || _mapController == null) return;
+        _moveTo(pos);
+      }
     });
 
     _destSub = widget.controller.destinationPoint.listen((_) {
       _updateOverlays();
     });
 
-    _routeSub = widget.controller.routePolyline.listen((_) {
+    _routeSub = widget.controller.routePolyline.listen((route) {
       _updateOverlays();
+      if (route.isNotEmpty && _mapController != null) {
+        _fitRouteBounds(route);
+      }
     });
 
     // Beri jeda 600ms sebelum me-mount GoogleMap native PlatformView
@@ -104,7 +110,16 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
           Marker(
             markerId: _destMarketId,
             position: LatLng(dest.lat, dest.lng),
-            infoWindow: const InfoWindow(title: 'Tujuan'),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueRed),
+            infoWindow: InfoWindow(
+              title: widget.controller.destinationName.value.isNotEmpty
+                  ? widget.controller.destinationName.value
+                  : 'Tujuan',
+              snippet: widget.controller.destinationDistance.value.isNotEmpty
+                  ? 'Jarak: ${widget.controller.destinationDistance.value}'
+                  : null,
+            ),
           ),
       };
     });
@@ -164,8 +179,13 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
           CameraPosition(target: _initialPosition, zoom: 17),
       onMapCreated: (controller) {
         _mapController = controller;
-        final p = widget.controller.userPosition.value;
-        if (p != null) _moveTo(p);
+        final route = widget.controller.routePolyline.value;
+        if (route.isNotEmpty) {
+          _fitRouteBounds(route);
+        } else {
+          final p = widget.controller.userPosition.value;
+          if (p != null) _moveTo(p);
+        }
       },
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
@@ -187,6 +207,47 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
         CameraPosition(target: LatLng(p.lat, p.lng), zoom: 17),
       ),
     );
+  }
+
+  void _fitRouteBounds(List<GeoPoint> route) {
+    if (_mapController == null || route.isEmpty) return;
+    try {
+      double minLat = route.first.lat;
+      double maxLat = route.first.lat;
+      double minLng = route.first.lng;
+      double maxLng = route.first.lng;
+
+      for (final p in route) {
+        if (p.lat < minLat) minLat = p.lat;
+        if (p.lat > maxLat) maxLat = p.lat;
+        if (p.lng < minLng) minLng = p.lng;
+        if (p.lng > maxLng) maxLng = p.lng;
+      }
+
+      final latDiff = (maxLat - minLat).abs();
+      final lngDiff = (maxLng - minLng).abs();
+      if (latDiff < 0.001) {
+        minLat -= 0.0008;
+        maxLat += 0.0008;
+      }
+      if (lngDiff < 0.001) {
+        minLng -= 0.0008;
+        maxLng += 0.0008;
+      }
+
+      final bounds = LatLngBounds(
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
+      );
+
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 36.0),
+      );
+    } catch (_) {
+      if (route.isNotEmpty) {
+        _moveTo(route.first);
+      }
+    }
   }
 
   Widget _buildOverlay() {
@@ -239,11 +300,21 @@ class _NavigationMapEmbedState extends State<NavigationMapEmbed> {
                 semanticLabel: widget.controller.mapExpanded.value
                     ? 'Perkecil peta'
                     : 'Perbesar peta',
-                onTap: () => widget.controller.toggleMapExpanded(),
+                onTap: _handleToggleExpand,
               )),
         ),
       ],
     );
+  }
+
+  void _handleToggleExpand() {
+    widget.controller.toggleMapExpanded();
+    final route = widget.controller.routePolyline.value;
+    if (route.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _fitRouteBounds(route);
+      });
+    }
   }
 
   Widget _smallButton({

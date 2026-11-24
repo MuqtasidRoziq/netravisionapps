@@ -1,10 +1,17 @@
 import 'geo_math.dart';
 
-/// Buang frase perintah dari kalimat tujuan (hasil STT), sisakan kata tujuan.
+/// Buang frase perintah dari kalimat tujuan (hasil STT), sisakan kata tujuan
+/// yang sudah dinormalisasi ke entitas tempat yang dikenali (misal: "masjid", "lapangan").
 ///
-/// Contoh: "saya ingin pergi ke warung" → "warung".
+/// Contoh:
+/// - "saya ingin pergi ke warung" → "warung"
+/// - "lokasi masjid" → "masjid"
+/// - "dimana masjid terdekat" → "masjid"
+/// - "mau sholat" → "masjid"
+/// - "ada lapangan di dekat sini" → "lapangan"
 String extractDestinationQuery(String sentence) {
-  var lower = sentence.trim().toLowerCase();
+  final original = sentence.trim();
+  var lower = original.toLowerCase();
   // Hapus tanda baca
   lower = lower.replaceAll(RegExp(r'[^\w\s]'), ' ');
 
@@ -12,10 +19,13 @@ String extractDestinationQuery(String sentence) {
   final systemPhrases = [
     'silakan sebutkan tujuan anda',
     'silakan ucapkan tujuan anda',
+    'silakan sebutkan tujuan',
+    'silakan ucapkan tujuan',
     'sebutkan tujuan anda',
     'ucapkan tujuan anda',
     'sebutkan tujuan',
     'ucapkan tujuan',
+    'tujuan navigasi',
     'tujuan anda',
     'tujuan saya',
   ];
@@ -23,58 +33,266 @@ String extractDestinationQuery(String sentence) {
     lower = lower.replaceAll(phrase, ' ');
   }
 
-  // 2. Bersihkan awalan perintah
+  // 2. Bersihkan awalan perintah, pertanyaan, dan arahan (diurutkan dari terpanjang)
   const prefixes = [
+    'tolong tunjukkan jalan ke',
+    'tolong tunjukkan rute ke',
+    'tolong tunjukkan arah ke',
+    'tolong tunjukkan arah',
+    'tolong tunjukkan ke',
+    'tolong tunjukkan',
+    'tolong tunjukkin jalan ke',
+    'tolong tunjukkin rute ke',
+    'tolong tunjukkin arah ke',
+    'tolong tunjukkin arah',
+    'tolong tunjukkin ke',
+    'tolong tunjukkin',
+    'tolong pandukan saya ke',
+    'tolong pandu saya ke',
+    'tolong pandu ke',
+    'tolong pandu',
+    'tolong antarkan saya ke',
+    'tolong antarkan ke',
+    'tolong antar saya ke',
+    'tolong antar ke',
+    'tolong tuntun saya ke',
+    'tolong tuntun ke',
+    'tolong tuntun',
+    'tolong bawakan saya ke',
+    'tolong bawa saya ke',
+    'tolong bawa ke',
+    'tolong carikan jalan ke',
+    'tolong carikan rute ke',
+    'tolong carikan arah ke',
+    'tolong carikan tempat',
+    'tolong carikan saya',
+    'tolong carikan',
+    'tolong cari jalan ke',
+    'tolong cari rute ke',
+    'tolong cari arah ke',
+    'tolong cari tempat',
+    'tolong cari saya',
+    'tolong cari',
     'saya ingin pergi ke',
     'saya mau pergi ke',
-    'tolong antarkan saya ke',
-    'tolong antar saya ke',
-    'tolong bawa saya ke',
-    'tolong carikan rute ke',
-    'tolong carikan',
-    'tolong cari rute ke',
-    'tolong cari',
+    'saya ingin jalan ke',
+    'saya mau jalan ke',
     'saya ingin ke',
     'saya mau ke',
     'mau pergi ke',
     'ingin pergi ke',
     'mau jalan ke',
     'ingin jalan ke',
+    'tunjukkan jalan ke',
+    'tunjukkan rute ke',
+    'tunjukkan arah ke',
+    'tunjukkan arah',
+    'tunjukkan ke',
+    'tunjukkan',
+    'tunjukkin jalan ke',
+    'tunjukkin rute ke',
+    'tunjukkin arah ke',
+    'tunjukkin arah',
+    'tunjukkin ke',
+    'tunjukkin',
+    'pandukan saya ke',
+    'pandu saya ke',
+    'pandu arah ke',
+    'pandu jalan ke',
+    'pandu rute ke',
+    'pandu ke',
+    'pandu',
     'antarkan saya ke',
     'antarkan ke',
     'antar saya ke',
     'antar ke',
+    'tuntun saya ke',
+    'tuntun jalan ke',
+    'tuntun ke',
+    'tuntun',
+    'bawakan saya ke',
+    'bawa saya ke',
+    'bawa ke',
+    'carikan jalan ke',
+    'carikan rute ke',
+    'carikan arah ke',
+    'carikan tempat',
+    'carikan saya',
+    'carikan',
+    'cari jalan ke',
+    'cari rute ke',
+    'cari arah ke',
+    'cari tempat',
+    'cari saya',
+    'cari',
+    'apakah ada tempat',
+    'apakah ada',
+    'ada tempat',
+    'ada',
+    'dimana ada',
+    'di mana ada',
+    'dimanakah',
+    'dimana',
+    'di manakah',
+    'di mana',
+    'lokasi tempat',
+    'lokasi',
+    'posisi tempat',
+    'posisi',
+    'titik tempat',
+    'titik',
+    'rute jalan ke',
+    'rute menuju ke',
+    'rute menuju',
+    'rute ke',
+    'rute',
+    'jalur jalan ke',
+    'jalur menuju ke',
+    'jalur menuju',
+    'jalur ke',
+    'jalur',
+    'arah jalan ke',
+    'arah menuju ke',
+    'arah menuju',
+    'arah ke',
+    'arah',
+    'jalan menuju ke',
+    'jalan menuju',
+    'jalan ke',
     'menuju ke',
     'menuju',
     'pergi ke',
-    'jalan ke',
+    'tujuan ke',
+    'tujuan saya ke',
+    'tujuan saya',
+    'tujuan',
     'mau ke',
     'ingin ke',
-    'carikan',
-    'cari saya',
-    'cari',
+    'ke mana',
     'ke',
+    'mau sholat di',
+    'mau sholat ke',
+    'mau sholat',
+    'sholat di',
+    'sholat ke',
+    'sholat',
+    'mau makan di',
+    'mau makan ke',
+    'mau makan',
+    'tempat makan',
+    'makan di',
+    'tempat ibadah',
+    'tempat sholat',
   ];
+
   for (final prefix in prefixes) {
-    final pattern = RegExp('^\\s*' + RegExp.escape(prefix) + '\\b');
+    final pattern = RegExp('^\\s*${RegExp.escape(prefix)}\\b');
     if (pattern.hasMatch(lower)) {
       lower = lower.replaceFirst(pattern, ' ').trim();
       break;
     }
   }
 
-  // 3. Bersihkan akhiran pemanis kalimat
-  final suffixPatterns = [
-    RegExp(r'\b(dong|ya|sih|deh|nih|lah|tolong)\b'),
+  // 3. Bersihkan modifier relatif (seperti "terdekat dari sini", "di sekitar sini", dll.)
+  final modifierPatterns = [
+    RegExp(r'\b(yang paling dekat dari sini|paling dekat dari sini|yang terdekat dari sini|terdekat dari sini)\b'),
+    RegExp(r'\b(yang paling dekat|paling dekat|yang terdekat|terdekat)\b'),
+    RegExp(r'\b(yang ada di dekat sini|yang ada di sekitar sini|yang ada di sini|yang ada)\b'),
+    RegExp(r'\b(di dekat sini|dekat sini|di sekitar sini|sekitar sini|di sini|dari sini)\b'),
+    RegExp(r'\b(yang dekat|dekat)\b'),
+    RegExp(r'\b(dong|ya|sih|deh|nih|lah|tolong|kah|coba)\b'),
   ];
-  for (final pattern in suffixPatterns) {
+  for (final pattern in modifierPatterns) {
     lower = lower.replaceAll(pattern, ' ');
   }
 
   lower = lower.replaceAll(RegExp(r'\s+'), ' ').trim();
-  if (lower.isNotEmpty) return lower;
 
-  return sentence.trim();
+  // 4. Normalisasi semantik kata kunci tempat populer di Indonesia
+  final normalized = _normalizePlaceCategory(lower, original.toLowerCase());
+  if (normalized.isNotEmpty) return normalized;
+
+  if (lower.isNotEmpty) return lower;
+  return original;
+}
+
+/// Normalisasi kata kunci/sinonim tempat umum (masjid, mushola, lapangan, apotek, dll.)
+String _normalizePlaceCategory(String query, String raw) {
+  final q = query.trim();
+  final r = raw.trim();
+
+  // Ibadah / Sholat (masjid, mushola, musholla, mesjid, surau, langgar)
+  if (q == 'mesjid' ||
+      q == 'mushola' ||
+      q == 'musholla' ||
+      q == 'surau' ||
+      q == 'langgar' ||
+      q == 'sholat' ||
+      q == 'solat' ||
+      q == 'ibadah' ||
+      (q.isEmpty && (r.contains('sholat') || r.contains('solat') || r.contains('mesjid') || r.contains('mushola') || r.contains('ibadah')))) {
+    return 'masjid';
+  }
+
+  // Sekolah Dasar (SD)
+  if (q == 'sd' ||
+      q == 'sekolah sd' ||
+      q == 'sekolah dasar' ||
+      q == 'sd negeri' ||
+      q == 'sd swasta' ||
+      (q.isEmpty && (r.contains('sekolah sd') || r.contains('sekolah dasar') || r.contains('sd')))) {
+    return 'sekolah dasar';
+  }
+
+  // Madrasah Ibtidaiyah (MI)
+  if (q == 'mi' ||
+      q == 'sekolah mi' ||
+      q == 'madrasah' ||
+      q == 'madrasah ibtidaiyah' ||
+      (q.isEmpty && (r.contains('sekolah mi') || r.contains('madrasah ibtidaiyah') || r.contains('madrasah')))) {
+    return 'madrasah ibtidaiyah';
+  }
+
+  // SMP / SMA
+  if (q == 'smp' || q == 'sekolah smp' || q == 'smp negeri') {
+    return 'smp';
+  }
+  if (q == 'sma' || q == 'smk' || q == 'sekolah sma' || q == 'sma negeri') {
+    return 'sma';
+  }
+
+  // Lapangan / Olahraga (futsal, stadion, gor -> lapangan)
+  if (q == 'futsal' ||
+      q == 'stadion' ||
+      q == 'gor' ||
+      (q.isEmpty && (r.contains('lapangan') || r.contains('stadion') || r.contains('futsal')))) {
+    return 'lapangan';
+  }
+
+  // Makanan / Kuliner
+  if (q == 'makan' ||
+      q == 'lapar' ||
+      q == 'kuliner' ||
+      (q.isEmpty && (r.contains('makan') || r.contains('lapar')))) {
+    return 'warung makan';
+  }
+
+  // Apotek / Obat
+  if (q == 'apotik' || q == 'obat' || (q.isEmpty && (r.contains('apotik') || r.contains('obat')))) {
+    return 'apotek';
+  }
+
+  // Toko / Minimarket
+  if (q == 'belanja' || q == 'jajan' || q == 'swalayan' || q == 'kelontong') {
+    return 'minimarket';
+  }
+
+  // SPBU / Bensin
+  if (q == 'pom bensin' || q == 'bensin' || q == 'bbm') {
+    return 'spbu';
+  }
+
+  return q;
 }
 
 /// Tempat hasil pencarian tujuan (Google Places).

@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 
 import '../utils/helpers/geo_math.dart';
 
-/// Layanan posisi GPS (stream) untuk navigasi Mode Jalan.
+/// Layanan posisi GPS (stream) untuk navigasi Mode Jalan dengan presisi tinggi.
 class LocationService extends GetxService {
   /// Meminta izin lokasi + memastikan GPS aktif. True bila posisi bisa didapat.
   Future<bool> ensurePermission() async {
@@ -18,15 +19,29 @@ class LocationService extends GetxService {
         permission == LocationPermission.always;
   }
 
-  /// Stream posisi (interval ringan, jarak filter 2 m agar tidak boros baterai).
+  /// Stream posisi presisi tinggi real-time layaknya Google Maps navigasi.
   Stream<GeoPoint> positionStream() {
+    LocationSettings settings;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      settings = AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
+        forceLocationManager: false,
+        intervalDuration: const Duration(milliseconds: 800),
+      );
+    } else {
+      settings = const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
+      );
+    }
     return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 2,
-      ),
-    ).map((position) => GeoPoint(position.latitude, position.longitude,
-        accuracy: position.accuracy));
+      locationSettings: settings,
+    ).map((position) => GeoPoint(
+          position.latitude,
+          position.longitude,
+          accuracy: position.accuracy,
+        ));
   }
 
   /// Ambil posisi terakhir yang tersimpan di sistem (instan tanpa menunggu sinyal satelit).
@@ -34,28 +49,67 @@ class LocationService extends GetxService {
     try {
       final position = await Geolocator.getLastKnownPosition();
       if (position != null) {
-        return GeoPoint(position.latitude, position.longitude,
-            accuracy: position.accuracy);
+        return GeoPoint(
+          position.latitude,
+          position.longitude,
+          accuracy: position.accuracy,
+        );
       }
     } catch (_) {}
     return null;
   }
 
-  /// Ambil posisi sekali (mis. saat membuat rute awal).
+  /// Ambil posisi sekali dengan tingkat akurasi tinggi (bestForNavigation).
   Future<GeoPoint?> currentPosition({
-    Duration timeLimit = const Duration(seconds: 12),
+    Duration timeLimit = const Duration(seconds: 6),
+    LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
   }) async {
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(
-          accuracy: LocationAccuracy.high,
+      LocationSettings settings;
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        settings = AndroidSettings(
+          accuracy: accuracy,
           timeLimit: timeLimit,
-        ),
+          forceLocationManager: false,
+        );
+      } else {
+        settings = LocationSettings(
+          accuracy: accuracy,
+          timeLimit: timeLimit,
+        );
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: settings,
       );
-      return GeoPoint(position.latitude, position.longitude,
-          accuracy: position.accuracy);
+      return GeoPoint(
+        position.latitude,
+        position.longitude,
+        accuracy: position.accuracy,
+      );
     } catch (_) {
       return null;
     }
+  }
+
+  /// Mengambil posisi saat ini dengan memprioritaskan akurasi satelit tinggi (< 20 meter).
+  Future<GeoPoint?> getAccuratePosition({
+    Duration timeLimit = const Duration(seconds: 4),
+  }) async {
+    final fresh = await currentPosition(
+      timeLimit: timeLimit,
+      accuracy: LocationAccuracy.bestForNavigation,
+    );
+    if (fresh != null && (fresh.accuracy == null || fresh.accuracy! <= 20.0)) {
+      return fresh;
+    }
+    final lastKnown = await lastKnownPosition();
+    if (fresh != null) {
+      if (lastKnown != null &&
+          (lastKnown.accuracy ?? 100) < (fresh.accuracy ?? 100)) {
+        return lastKnown;
+      }
+      return fresh;
+    }
+    return lastKnown;
   }
 }

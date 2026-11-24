@@ -42,9 +42,23 @@ class SpeechResultFilter {
     final text = normalize(recognized);
     if (text.isEmpty) return false;
 
+    // Gema pengumuman koordinat: latitude / longitude / titik koordinat
+    if (text.contains('latitude') ||
+        text.contains('longitude') ||
+        text.contains('titik koordinat')) {
+      return true;
+    }
+
     // Gema arahan navigasi: "Menuju [Tempat], [X] meter"
     if (text.contains('menuju') &&
         (text.contains('meter') || text.contains('membuat rute') || text.contains('sisa jarak'))) {
+      return true;
+    }
+
+    // Gema tiba di tujuan atau instruksi prompt tujuan
+    if (text.contains('anda telah tiba') ||
+        text.contains('silakan sebutkan tujuan') ||
+        text.contains('silakan ucapkan tujuan')) {
       return true;
     }
 

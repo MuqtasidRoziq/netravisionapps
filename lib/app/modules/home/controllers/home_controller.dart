@@ -198,10 +198,6 @@ class HomeController extends GetxController {
 
   final TtsService _ttsService = Get.find<TtsService>();
 
-  @override
-  void onReady() {
-    super.onReady();
-  }
 
   /// Membuka kamera dengan mode yang dipilih
   Future<void> openMode(VisionMode mode) async {
